@@ -1,0 +1,30 @@
+{
+  "name": "bubble-sdk",
+  "version": "0.0.1",
+  "description": "Bubble Protocol SDK",
+  "main": "index.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs",
+    "test": "test"
+  },
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Bubble-Protocol/bubble-sdk.git"
+  },
+  "author": "Bubble Protocol",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Bubble-Protocol/bubble-sdk/issues"
+  },
+  "homepage": "https://github.com/Bubble-Protocol/bubble-sdk#readme",
+  "devDependencies": {
+    "jest": "^29.5.0"
+  },
+  "dependencies": {
+    "web3": "^1.9.0"
+  }
+}
