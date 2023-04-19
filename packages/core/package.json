@@ -1,5 +1,5 @@
 {
-  "name": "bubble-core",
+  "name": "@bubble-protocol/core",
   "version": "0.0.1",
   "description": "Bubble Protocol core classes, types and constants",
   "main": "src/index.js",

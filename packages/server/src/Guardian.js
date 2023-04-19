@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes } from 'bubble-core';
+import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes } from '@bubble-protocol/core';
 
 
 /**

@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { BubbleError } from 'bubble-core';
+import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian';
 import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR } from './common';
 import { testPostParams } from './post.params';

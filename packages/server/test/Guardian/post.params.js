@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { BubbleError } from 'bubble-core';
+import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
