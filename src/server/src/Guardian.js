@@ -4,8 +4,8 @@
 
 import { ROOT_PATH } from '../core/constants';
 import { BubbleProvider } from '../core/BubbleProvider';
-import {isHash, isPOSIXFilename} from '../core/assertions';
-import * as assert from '../core/assertions';
+import {isHash, isPOSIXFilename} from '../../core/src/assertions';
+import * as assert from '../../core/src/assertions';
 import { BubblePermissions } from '../core/Permissions';
 import { BubbleError, ErrorCodes } from '../core/errors';
 

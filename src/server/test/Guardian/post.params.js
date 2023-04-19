@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
 import { BubbleError } from '../../src/core/errors';
-import { Guardian } from '../../src/server/Guardian';
+import { Guardian } from '../../src/server/src/Guardian';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
   generateKey, signRPC, publicKeyToEthereumAddress, 
