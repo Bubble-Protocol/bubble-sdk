@@ -2,12 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { ROOT_PATH } from '../core/constants';
-import { BubbleProvider } from '../core/BubbleProvider';
-import {isHash, isPOSIXFilename} from '../../core/src/assertions';
-import * as assert from '../../core/src/assertions';
-import { BubblePermissions } from '../core/Permissions';
-import { BubbleError, ErrorCodes } from '../core/errors';
+import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes } from 'bubble-core';
 
 
 /**
@@ -241,8 +236,8 @@ class BubbleFilename {
     this.fullFilename = filenameStr;
     this._parts = filenameStr.split('/');
     this._valid = 
-      this._parts.length === 1 ? isHash(this._parts[0]) :
-      this._parts.length === 2 ? isHash(this._parts[0]) && isPOSIXFilename(this._parts[1]) :
+      this._parts.length === 1 ? assert.isHash(this._parts[0]) :
+      this._parts.length === 2 ? assert.isHash(this._parts[0]) && assert.isPOSIXFilename(this._parts[1]) :
       false;
   }
 

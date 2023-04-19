@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
-import { BlockchainProvider } from '../../src/core/BlockchainProvider';
-import { BubbleError } from '../../src/core/errors';
-import { DataServer } from '../../src/server/DataServer';
+import { BlockchainProvider } from 'bubble-core';
+import { BubbleError } from 'bubble-core';
+import { DataServer } from '../../src/DataServer';
 
 /**
  * Errors
