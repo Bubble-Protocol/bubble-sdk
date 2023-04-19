@@ -100,8 +100,14 @@ describe("Guardian", () => {
         dataServer[method].mockResolvedValueOnce();
         return expect(guardian.post(method, newParams)).resolves.not.toThrow()
           .then(() => {
+            const expectedSignedPacket = {
+              method: method,
+              params: {...newParams}
+            }
+            delete expectedSignedPacket.params.signature;
             expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toMatch(/^(0x)?[a-fA-F0-9]{64}$/);
+            expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
+            expect(JSON.parse(blockchainProvider.recoverSignatory.mock.calls[0][0])).toStrictEqual(expectedSignedPacket);
             expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
             expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
             expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);

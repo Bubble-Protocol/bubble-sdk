@@ -6,7 +6,6 @@ import { ROOT_PATH } from '../core/constants';
 import { BubbleProvider } from '../core/BubbleProvider';
 import {isHash, isPOSIXFilename} from '../core/assertions';
 import * as assert from '../core/assertions';
-import { hash } from '../core/crypto';
 import { BubblePermissions } from '../core/Permissions';
 import { BubbleError, ErrorCodes } from '../core/errors';
 
@@ -111,7 +110,7 @@ export class Guardian extends BubbleProvider {
       params: {...params}
     }
     delete packet.params.signature;
-    const signatory = await this.blockchainProvider.recoverSignatory(await hash(JSON.stringify(packet)), params.signature);
+    const signatory = await this.blockchainProvider.recoverSignatory(JSON.stringify(packet), params.signature);
     if (!assert.isAddress(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
     if (signatory.toLowerCase() !== params.signatory.toLowerCase()) 
       throw new BubbleError(ErrorCodes.BUBBLE_ERROR_AUTHENTICATION_FAILURE, "signature is invalid");
