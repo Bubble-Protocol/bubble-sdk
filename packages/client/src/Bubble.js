@@ -535,5 +535,4 @@ export class RPCFactory {
 
 }
 
-// TODO encryption policy tests
 
