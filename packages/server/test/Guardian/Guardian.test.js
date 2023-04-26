@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian';
-import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR } from './common';
+import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress } from '../../../../test/common';
 import { testPostParams } from './post.params';
 
 describe("Guardian", () => {
@@ -15,7 +15,9 @@ describe("Guardian", () => {
 
     beforeAll(async () => {
       key1 = await generateKey(['sign']);
+      key1.address = await publicKeyToEthereumAddress(key1.publicKey);
       key2 = await generateKey(['sign']);
+      key2.address = await publicKeyToEthereumAddress(key2.publicKey);
       dataServer = new TestDataServer();
       blockchainProvider = new TestBlockchainProvider();
       guardian = new Guardian(dataServer, blockchainProvider);
@@ -32,7 +34,7 @@ describe("Guardian", () => {
       const newParams = {...params};
       stubs();
       return signRPC(method, newParams, key).then(() => {
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(newParams.signatory);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key.address);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
         return guardian.post(method, newParams)
@@ -94,7 +96,7 @@ describe("Guardian", () => {
       test('resolves if user has (and only has) the require permissions', async () => {
         const newParams = {...params};
         await signRPC(method, newParams, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(newParams.signatory);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
         dataServer[method].mockResolvedValueOnce();
@@ -107,12 +109,12 @@ describe("Guardian", () => {
             delete expectedSignedPacket.params.signature;
             expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
             expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-            expect(JSON.parse(blockchainProvider.recoverSignatory.mock.calls[0][0])).toStrictEqual(expectedSignedPacket);
+            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toMatch(/^(0x)[0-9a-fA-F]{64}$/);
             expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
             expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
             expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
             expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(newParams.signatory);
+            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
             expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
             expect(dataServer[method].mock.calls).toHaveLength(1);
             let paramIndex = 0;
@@ -160,7 +162,7 @@ describe("Guardian", () => {
           file: ROOT_PATH
         }
         await signRPC(method, params, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(params.signatory);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.WRITE_BIT);
         dataServer[method].mockResolvedValueOnce();
@@ -170,7 +172,7 @@ describe("Guardian", () => {
           expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(params.contract);
-          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(params.signatory);
+          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
           expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(ROOT_PATH);
         })
       })
@@ -435,6 +437,38 @@ describe("Guardian", () => {
   
     })
 
+
+    describe("rpc getPermissions", () => {
+
+      const method = 'getPermissions';
+
+      const params = {
+        ...COMMON_RPC_PARAMS,
+        file: VALID_FILE
+      };
+
+      test('rejects if the file param is missing', async () => {
+        const newParams = {...params};
+        delete newParams.file;
+        return expect(post(method, newParams, 0n))
+          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+      })
+
+      test('resolves with the file permissions regardless of user permissions', async () => {
+        const params = {
+          ...COMMON_RPC_PARAMS,
+          file: VALID_FILE
+        };
+        const mockPermissions = BigInt("0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
+        const permissions = await post(method, params, mockPermissions);
+        expect(typeof permissions).toBe('string');
+        expect(permissions).toMatch(/^0x[0-9a-fA-F]*$/);
+        expect(BigInt(permissions)).toBe(mockPermissions);
+      })
+  
+    })
+
+
     describe("rpc terminate", () => {
 
       const method = 'terminate';
@@ -514,7 +548,40 @@ describe("Guardian", () => {
   
     })
       
+    describe('fails gracefully when blockchain is unavailable', () => {
 
+      test('BlockchainProvider throws', async () => {
+        const params = {...COMMON_RPC_PARAMS};
+        await signRPC('create', params, key1);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockImplementation(() => { throw new Error('getPermissions mock force failed') });
+        return expect(guardian.post('create', params))
+        .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+        });
+      })
+  
+      test('BlockchainProvider rejects', async () => {
+        const params = {...COMMON_RPC_PARAMS};
+        await signRPC('create', params, key1);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
+        return expect(guardian.post('create', params))
+        .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+        });
+      })
+  
+    })
+  
   })
 
 });

@@ -1,11 +1,10 @@
 {
-  "name": "@bubble-protocol/server",
+  "name": "@bubble-protocol/client",
   "version": "0.0.1",
-  "description": "Bubble Protocol server-side library",
+  "description": "Bubble Protocol client-side library",
   "main": "index.js",
   "type": "module",
   "directories": {
-    "doc": "docs",
     "test": "test"
   },
   "scripts": {
@@ -18,6 +17,7 @@
   },
   "dependencies": {
     "@bubble-protocol/core": "0.x",
-    "web3": "^1.9.0"
+    "web3": "^1.9.0",
+    "jayson": "^4.0.0"
   }
 }

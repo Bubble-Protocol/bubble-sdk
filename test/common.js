@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import { BlockchainProvider, BubbleError } from '@bubble-protocol/core';
-import { DataServer } from '../../src/DataServer';
+import { BlockchainProvider, BubbleError } from '../packages/core';
+import { DataServer } from '../packages/server/src/DataServer';
 
 /**
  * Errors
@@ -15,24 +15,29 @@ export const ErrorCodes = {
   BUBBLE_ERROR_PERMISSION_DENIED: -32002,
   BUBBLE_ERROR_AUTHENTICATION_FAILURE: -32003,
   BUBBLE_ERROR_METHOD_FAILED: -32004,
-  BUBBLE_ERROR_INTERNAL_ERROR: -32005
+  BUBBLE_ERROR_INTERNAL_ERROR: -32005,
+  BUBBLE_SERVER_ERROR_BUBBLE_ALREADY_EXISTS: -32020,
+  BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST: -32021,
+  BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST: -32022,
+  BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS: -32023,
+  BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY: -32024
 }
 
 expect.extend({
 
   withBubbleError(received, expected) {
     if (!received) return {pass: false, message: () => `Expected a BubbleError but received nothing`}
-    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() +' ('+ JSON.stringify(received.stack) +')' : 'null'}`}
-    if (expected.code && received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}')`}
-    if (expected.message && received.message !== expected.message) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}"`}
+    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() : 'null'}`}
+    if (expected.code && received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}', cause: '${received.cause}')`}
+    if (expected.message && received.message !== expected.message) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}" (cause: '${received.cause}')`}
     return {pass: true, message: () => 'Expected error not to be BubbleError'}
   },
   
   withBubbleErrorMatches(received, expected) {
     if (!received) return {pass: false, message: () => `Expected a BubbleError but received nothing`}
-    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() +' ('+ JSON.stringify(received.stack) +')' : 'null'}`}
-    if (received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}')`}
-    if (new RegExp(expected.message).test(received.message) !== true) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}"`}
+    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() : 'null'}`}
+    if (received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}, cause: '${received.cause}'')`}
+    if (new RegExp(expected.message).test(received.message) !== true) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}" (cause: '${received.cause}')`}
     return {pass: true, message: () => 'Expected error not to be BubbleError'}
   },
   
@@ -69,7 +74,6 @@ export const COMMON_RPC_PARAMS = {
   nonce: "a1",
   chainId: 1,
   contract: VALID_CONTRACT,
-  signatory: undefined, // must populate based on signature
 };
 
 export const VALID_RPC_PARAMS = {
@@ -96,14 +100,7 @@ export function signRPC(method, params, key) {
     method: method,
     params: params
   }
-  packet.params.signatory = '0x1c141b67ae5b05349fba6d2f6b74b4045d5c3535';
-  packet.params.signature = '79754bd4ec467b5003fe5417429badb5c66c2ff0e8eadc9fe9d8856b5a419d8db960a51ec70a815eded53e32190d71ec777c359e2f8b484493026b862d85a516';
-  return Promise.resolve();
-  return publicKeyToEthereumAddress(key.publicKey)
-    .then(signatory => {
-      packet.params.signatory = signatory;
-      return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(JSON.stringify(packet)));
-    })
+  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(JSON.stringify(packet)))
     .then(signature => {
       packet.params.signature = uint8ArrayToHex(signature);
     })
@@ -143,6 +140,7 @@ export class TestDataServer extends DataServer {
     this.delete = jest.fn(() => Promise.reject(new Error('unexpected stub call: delete')));
     this.mkdir = jest.fn(() => Promise.reject(new Error('unexpected stub call: mkdir')));
     this.list = jest.fn(() => Promise.reject(new Error('unexpected stub call: list')));
+    this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
     this.terminate = jest.fn(() => Promise.reject(new Error('unexpected stub call: terminate')));
   }
 

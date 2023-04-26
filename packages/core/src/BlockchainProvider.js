@@ -17,7 +17,7 @@ export class BlockchainProvider {
    * @param {20-byte hex string} account address to pass to the contract's getPermissions function
    * @param {32-byte hex string} file bytes32 (as hex string) to pass to the contract's 
    * getPermissions function
-   * @returns Promise to return the 256-bit uint returned by the contract
+   * @returns Promise to return a BigInt containing the 256-bit uint returned by the contract
    */
   getPermissions(contract, account, file) {
     throw new Error('BlockchainProvider.getPermissions is a virtual function and must be implemented');

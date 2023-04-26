@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
+import * as assert from './assertions';
+
 /**
  * BubblePermissions class represents the permissions bitmap returned from a Bubble ACC (Access 
  * Control Contract).  
@@ -31,6 +33,7 @@ export class BubblePermissions {
   permissions;
 
   constructor(_permissions) {
+    assert.isBigInt(_permissions, 'permissions');
     this.permissions = _permissions;
   }
 
@@ -56,10 +59,6 @@ export class BubblePermissions {
 
   canExecute() {
     return !this.bubbleTerminated() && (this.permissions & EXECUTE_BIT) > 0;
-  }
-
-  canTerminate() {
-    return this.bubbleTerminated() && (this.permissions & WRITE_BIT) > 0;
   }
 
 }

@@ -3,6 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes } from '@bubble-protocol/core';
+import web3 from "web3";
 
 
 /**
@@ -52,7 +53,7 @@ export class Guardian extends BubbleProvider {
      * Basic RPC field validation
      */
 
-    if (!assert.isString(method))
+    if (!assert.isString(method) || !assert.isNotEmpty(method))
       throw new BubbleError(JSON_RPC_ERROR_INVALID_REQUEST, 'malformed method');
 
     if (!assert.isObject(params))
@@ -61,7 +62,7 @@ export class Guardian extends BubbleProvider {
     if (!assert.isNumber(params.timestamp)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed timestamp');
 
-    if (!assert.isString(params.nonce)) 
+    if (!assert.isString(params.nonce) || !assert.isNotEmpty(params.nonce)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed nonce');
 
     if (!assert.isNumber(params.chainId)) 
@@ -70,16 +71,13 @@ export class Guardian extends BubbleProvider {
     if (!assert.isAddress(params.contract)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract');
 
-    if (!assert.isAddress(params.signatory)) 
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory');
-
     if (!assert.isHexString(params.signature)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature');
 
-    if (params.file !== undefined && !assert.isString(params.file)) 
+    if (params.file !== undefined && (!assert.isString(params.file) || !assert.isNotEmpty(params.file))) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
 
-    if (params.file === undefined && ['write', 'append', 'read', 'delete', 'mkdir', 'list'].includes(method)) 
+    if (params.file === undefined && ['write', 'append', 'read', 'delete', 'mkdir', 'list', 'getPermissions'].includes(method)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing file param');
       
     if (params.data !== undefined && !assert.isString(params.data)) 
@@ -88,6 +86,8 @@ export class Guardian extends BubbleProvider {
     if (params.options && !assert.isObject(params.options)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options');
 
+
+    // TODO validate timestamp
 
     /**
      * Parse and validate params.file
@@ -98,17 +98,22 @@ export class Guardian extends BubbleProvider {
 
 
     /**
-     * Recover signatory from signature and validate against params.signatory
+     * Recover signatory from signature
      */
+
     const packet = {
       method: method,
       params: {...params}
     }
     delete packet.params.signature;
-    const signatory = await this.blockchainProvider.recoverSignatory(JSON.stringify(packet), params.signature);
+    let signatory;
+    try {
+      signatory = await this.blockchainProvider.recoverSignatory(web3.utils.keccak256(JSON.stringify(packet)), params.signature);
+    }
+    catch(error) {
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
+    }
     if (!assert.isAddress(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
-    if (signatory.toLowerCase() !== params.signatory.toLowerCase()) 
-      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_AUTHENTICATION_FAILURE, "signature is invalid");
 
 
     /** 
@@ -123,9 +128,20 @@ export class Guardian extends BubbleProvider {
      * Get permissions from ACC
      */
 
-    const permissionBits = await this.blockchainProvider.getPermissions(params.contract, signatory, file.getPermissionedPart());
-    if (permissionBits === undefined) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.');
-    file.setPermissions(new BubblePermissions(permissionBits));
+    let permissionBits;
+    try {
+      permissionBits = await this.blockchainProvider.getPermissions(params.contract, signatory, file.getPermissionedPart());
+      file.setPermissions(new BubblePermissions(permissionBits));
+    }
+    catch(error) {
+      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
+    }
+
+    /**
+     * Handle getPermissions request
+     */
+
+    if (method === 'getPermissions') return Promise.resolve('0x'+permissionBits.toString(16));
 
 
     /**

@@ -6,7 +6,7 @@ import {
   generateKey, signRPC, publicKeyToEthereumAddress, 
   TestDataServer, TestBlockchainProvider, 
   ErrorCodes, Permissions
-} from './common';
+} from '../../../../test/common';
 
 
 export function testPostParams() {
@@ -15,7 +15,9 @@ export function testPostParams() {
 
   beforeAll(async () => {
     key1 = await generateKey(['sign']);
+    key1.address = await publicKeyToEthereumAddress(key1.publicKey);
     key2 = await generateKey(['sign']);
+    key2.address = await publicKeyToEthereumAddress(key2.publicKey);
     dataServer = new TestDataServer();
     blockchainProvider = new TestBlockchainProvider();
     guardian = new Guardian(dataServer, blockchainProvider);
@@ -54,7 +56,7 @@ export function testPostParams() {
       const params = {...VALID_RPC_PARAMS};
       const method = 'garbled';
       await signRPC(method, params, key1);
-      blockchainProvider.recoverSignatory.mockResolvedValueOnce(params.signatory);
+      blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS);
       return guardian.post(method, params)
@@ -91,7 +93,7 @@ export function testPostParams() {
       params.chainId = 2;
       await signRPC('write', params, key1);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
-      blockchainProvider.recoverSignatory.mockReturnValueOnce(Promise.resolve(params.signatory));
+      blockchainProvider.recoverSignatory.mockReturnValueOnce(Promise.resolve(key1.address));
       return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED));
     });
 
@@ -223,75 +225,38 @@ export function testPostParams() {
   });
 
 
-  describe("signatory", () => {
-
-    test("is missing", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
-      params.signatory = undefined;
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory'));
-    });
-
-    test("is empty", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
-      params.signatory = '';
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory'));
-    });
-
-    test("is too long", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
-      params.signatory = params.signatory+'0';
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory'));
-    });
-
-    test("is too short", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
-      params.signatory = params.signatory.slice(0, params.signatory.length-1);
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory'));
-    });
-
-    test("is invalid type", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
-      params.signatory = 1;
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signatory'));
-    });
-
-  });
-
-
   describe("signature", () => {
 
     test("is missing", async () => {
       const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
       params.signature = undefined;
       return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
     });
 
     test("is empty", async () => {
       const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
       params.signature = '';
       return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
     });
 
     test("is invalid type", async () => {
       const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
       params.signature = 1;
       return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
     });
 
-    test("does not match the signatory", async () => {
+    test("cannot be decoded (blockchain provider recoverSignatory throws)", async () => {
       const params = {...VALID_RPC_PARAMS};
       await signRPC('write', params, key1);
-      blockchainProvider.recoverSignatory.mockReturnValueOnce(Promise.resolve(params.signatory));
-      params.signatory = await publicKeyToEthereumAddress(key2.publicKey);
-      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_AUTHENTICATION_FAILURE, 'signature is invalid'));
+      blockchainProvider.recoverSignatory.mockImplementation(() => { throw new Error('failed') });
+      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
+    });
+
+    test("cannot be decoded (blockchain provider recoverSignatory rejects)", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      await signRPC('write', params, key1);
+      blockchainProvider.recoverSignatory.mockRejectedValueOnce(new Error('failed'));
+      return expect(guardian.post('write', params)).rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
     });
 
   });

@@ -43,37 +43,43 @@ export function isArray(value, name) {
 };
 
 export function isBoolean(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object Boolean]');
+  const result = isNotNull(value, name) && (toString.call(value) === '[object Boolean]');
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected Boolean");
   else return result;
 };
 
 export function isBuffer(value, name) {
-  const result = isNotEmpty(value, name) && Buffer.isBuffer(value);
+  const result = isNotNull(value, name) && Buffer.isBuffer(value);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected Buffer");
   else return result;
 };
 
 export function isFunction(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object Function]');
+  const result = isNotNull(value, name) && (toString.call(value) === '[object Function]');
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected function");
   else return result;
 };
 
 export function isNumber(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object Number]');
+  const result = isNotNull(value, name) && (toString.call(value) === '[object Number]');
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected number");
   else return result;
 };
 
+export function isBigInt(value, name) {
+  const result = isNotNull(value, name) && (toString.call(value) === '[object BigInt]');
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected BigInt");
+  else return result;
+};
+
 export function isString(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object String]');
+  const result = isNotNull(value, name) && (toString.call(value) === '[object String]');
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected string");
   else return result;
 };
 
 export function isObject(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object Object]');
+  const result = isNotNull(value, name) && (toString.call(value) === '[object Object]');
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected Object");
   else return result;
 };
@@ -103,7 +109,7 @@ export function isAddress(value, name) {
 };
 
 export function isInstanceOf(value, type, name) {
-  const result = isNotEmpty(value, name) && (value instanceof type);
+  const result = isNotNull(value, name) && (value instanceof type);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected " + type.name);
   else return result;
 };

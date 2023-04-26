@@ -14,7 +14,12 @@ export const ErrorCodes = {
   BUBBLE_ERROR_AUTHENTICATION_FAILURE: -32003,
   BUBBLE_ERROR_METHOD_FAILED: -32004,
   BUBBLE_ERROR_INTERNAL_ERROR: -32005,
-  // -32020..-32099 reserved for data server errors
+  BUBBLE_SERVER_ERROR_BUBBLE_ALREADY_EXISTS: -32020,
+  BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST: -32021,
+  BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST: -32022,
+  BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS: -32023,
+  BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY: -32024
+    // -32040..-32099 reserved for data server errors
 }
 
 
@@ -37,6 +42,14 @@ export class BubbleError extends Error {
         cause: this.options && this.options.cause ? this.options.cause : undefined
       }
     })
+  }
+
+  toObject() {
+    return {
+      code: this.code,
+      message: this.message,
+      options: this.options
+    }
   }
   
 }
