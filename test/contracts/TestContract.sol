@@ -27,7 +27,7 @@ contract TestContract is BubbleACC {
 
     // Permissions are set to support a variety of tests:
     //   - Vault Root: owner:rwa, requester:r
-    //   - cid 1: owner:wa, requester:r
+    //   - cid 1: owner:rwa, requester:r
     //   - cid 2: owner:r, requester:w
     //   - cid 3: owner:r, requester:a
     //   - cid 4: owner:da, requester:dr
@@ -40,7 +40,7 @@ contract TestContract is BubbleACC {
         if (signatory == requester) return NO_PERMISSIONS | READ_BIT;
       }
       else if ( cid == 1 ) {
-        if (signatory == owner) return NO_PERMISSIONS | WRITE_BIT | APPEND_BIT;
+        if (signatory == owner) return NO_PERMISSIONS | READ_BIT | WRITE_BIT | APPEND_BIT;
         if (signatory == requester) return NO_PERMISSIONS | READ_BIT;
       }
       else if ( cid == 2 ) {

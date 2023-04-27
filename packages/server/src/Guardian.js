@@ -201,9 +201,12 @@ export class Guardian extends BubbleProvider {
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "read":
-        if (file.permissions.canRead()) 
-          return this.dataServer.read(params.contract, file.fullFilename, params.options)
-            .catch(_validateDataServerError);
+        if (file.permissions.canRead())
+          return file.permissions.isDirectory()
+            ? this.dataServer.list(params.contract, file.fullFilename, params.options)
+                .catch(_validateDataServerError)
+            : this.dataServer.read(params.contract, file.fullFilename, params.options)
+                .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "delete":

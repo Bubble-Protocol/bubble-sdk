@@ -9,6 +9,7 @@ import { Bubble } from '../packages/client/src/Bubble';
 import { HTTPBubbleProvider } from '../packages/client/src/bubble-providers/HTTPBubbleProvider';
 import jayson from 'jayson';
 import { ErrorCodes } from './common';
+import { AESGCMEncryptionPolicy } from '../packages/client/src/encryption-policies/AESGCMEncryptionPolicy';
 
 const CHAIN_ID = 1;
 const CONTRACT_ABI_VERSION = '0.0.2';
@@ -219,6 +220,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       test('can read an empty file', async () => {
         await expect(ownerBubble.write(file6, "")).resolves.toBe(null);
         await expect(ownerBubble.read(file6)).resolves.toBe('');
+      })
+
+      test('a read of a directory is equivalent to list', async () => {
+        await expect(ownerBubble.append(file4+'/test1', "")).resolves.toBe(null);
+        await expect(requesterBubble.read(file4)).resolves.toStrictEqual([{"directory": false, "name": "test1"}]);
       })
 
     })
@@ -451,7 +457,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         let permissions = await ownerBubble.getPermissions(file1);
         expect(permissions.bubbleTerminated()).toBe(false);
         expect(permissions.isDirectory()).toBe(false);
-        expect(permissions.canRead()).toBe(false);
+        expect(permissions.canRead()).toBe(true);
         expect(permissions.canWrite()).toBe(true);
         expect(permissions.canAppend()).toBe(true);
         expect(permissions.canExecute()).toBe(false);
@@ -487,6 +493,41 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     })
 
 
+    describe('Encryption policy', () => {
+
+      test('writes and reads encrypted data', async () => {
+        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+          isEncrypted(path) { return path === file1 } 
+        }
+        ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.read(file1)).resolves.toBe("hello");
+        await expect(requesterBubble.read(file1)).resolves.toMatch(/^0x[0-9a-fA-F]{17}[0-9a-fA-F]*$/);
+      })
+    
+      test('appends and reads encrypted data', async () => {
+        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+          isEncrypted(path) { return path === file1 } 
+        }
+        ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
+        await expect(ownerBubble.append(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.read(file1)).resolves.toBe("hello");
+        await expect(requesterBubble.read(file1)).resolves.toMatch(/^0x[0-9a-fA-F]{17}[0-9a-fA-F]*$/);
+      })
+
+      test('does not encrypt when policy returns false', async () => {
+        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+          isEncrypted(path) { return path === file2 } 
+        }
+        ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.read(file1)).resolves.toBe("hello");
+        await expect(requesterBubble.read(file1)).resolves.toBe("hello");
+      })
+    
+    })
+  
+
     describe('bubble terminate and isTerminated', () => {
 
       test('fails if contract is not terminated', async () => {
@@ -511,3 +552,4 @@ describe('end-to-end bubble to server and blockchain tests', () => {
   })
 
 })
+

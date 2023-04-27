@@ -6,6 +6,8 @@ import web3 from "web3";
 import { EncryptionPolicy, NullEncryptionPolicy } from "./EncryptionPolicy";
 import { BubblePermissions, BubbleProvider, ROOT_PATH, assert } from '@bubble-protocol/core';
 
+const Crypto = crypto || (window ? window.crypto : undefined);
+
 
 export class Bubble {
 
@@ -20,6 +22,12 @@ export class Bubble {
   rpcFactory;
 
   /**
+   * @dev optional policy that identifies which files in the bubble are to be encrypted and
+   * defines the encryption/decryption functions
+   */
+  encryptionPolicy = new NullEncryptionPolicy();
+
+  /**
    * Represents a Bubble hosted on an external Bubble server.
    * 
    * @param _provider {BubbleProvider} - the storage service provider
@@ -29,6 +37,7 @@ export class Bubble {
    *   bubble.
    */
   constructor(_provider, _chainId, _contract, _signFunction ) {
+    if (!Crypto) throw new Error('missing crypto object');
     assert.isInstanceOf(_provider, BubbleProvider, "provider");
     this.provider = _provider;
     this.rpcFactory = new RPCFactory(_chainId, _contract, _signFunction);
@@ -42,7 +51,8 @@ export class Bubble {
    * @param _policy {EncryptionPolicy} - the policy to adopt
    */
   setEncryptionPolicy(_policy) {
-    this.rpcFactory.setEncryptionPolicy(_policy);
+    assert.isInstanceOf(_policy, EncryptionPolicy, "provider");
+    this.encryptionPolicy = _policy;
   }
 
   /**
@@ -65,10 +75,12 @@ export class Bubble {
    * @param options passed transparently to the bubble server
    * @returns Promise to resolve when complete
    */
-  write(_path, data, options) {
-    const encrypt = (options && options.encrypted) || this.rpcFactory.encryptionPolicy.isEncrypted(_path);
-    const dataToSend = (data && encrypt) ? this.rpcFactory.encryptionPolicy.encrypt(_path, data) : data;
-    return this.rpcFactory.write(_path, dataToSend, options)
+  write(_path, data, options = {}) {
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(_path));
+    return (encrypt ? this.encryptionPolicy.encrypt(data, _path) : Promise.resolve(data))
+      .then(dataToSend => {
+        return this.rpcFactory.write(_path, dataToSend, options);
+      })
       .then(this.post);
   }
 
@@ -81,10 +93,12 @@ export class Bubble {
    * @param options passed transparently to the bubble server
    * @returns Promise to resolve when complete
    */
-  append(_path, data, options) {
-    const encrypt = (options && options.encrypted) || this.rpcFactory.encryptionPolicy.isEncrypted(_path);
-    const dataToSend = (data && encrypt) ? this.rpcFactory.encryptionPolicy.encrypt(_path, data) : data;
-    return this.rpcFactory.append(_path, dataToSend, options)
+  append(_path, data, options = {}) {
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(_path));
+    return (encrypt ? this.encryptionPolicy.encrypt(data, _path) : Promise.resolve(data))
+      .then(dataToSend => {
+        return this.rpcFactory.append(_path, dataToSend, options);
+      })
       .then(this.post);
   }
 
@@ -96,12 +110,14 @@ export class Bubble {
    * @param options passed transparently to the bubble server
    * @returns Promise to resolve with the file contents
    */
-  read(_path = ROOT_PATH, options) {
-    const decrypt = (options && options.encrypted) || this.rpcFactory.encryptionPolicy.isEncrypted(_path);
+  read(_path = ROOT_PATH, options = {}) {
+    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(_path);
     return this.rpcFactory.read(_path, options)
       .then(this.post)
       .then(data => {
-        return (data && decrypt) ? this.rpcFactory.encryptionPolicy.decrypt(_path, data) : data || '';
+        return (data && decrypt) 
+          ? this.encryptionPolicy.decrypt(data, _path).then(buf => { return Buffer.from(buf).toString() }) 
+          : data || '';
       })
   }
 
@@ -195,30 +211,6 @@ export class Bubble {
   }
 
   /**
-   * 
-   * @param data Encrypts the given data using the encrypt function within this bubble's 
-   * encryption policy.
-   * 
-   * @returns the encrypted data
-   */
-  encrypt(data) {
-    assert.isString(data, "data");
-    return this.rpcFactory.encryptionPolicy.encrypt(data, ROOT_PATH);
-  }
-
-  /**
-   * 
-   * @param data Decrypts the given data using the decrypt function within this bubble's 
-   * encryption policy.
-   * 
-   * @returns the decrypted data
-   */
-  decrypt(data) {
-    assert.isString(data, "data");
-    return this.rpcFactory.encryptionPolicy.decrypt(data, ROOT_PATH);
-  }
-
-  /**
    * Posts the given RPC to the bubble server.  May be used if the bubble server
    * implements non-standard methods.  
    * 
@@ -262,11 +254,6 @@ export class RPCFactory {
   signFunction;
 
   /**
-   * @dev optional policy that identifies which files in the bubble are to be encrypted
-   */
-  encryptionPolicy = new NullEncryptionPolicy();
-
-  /**
    * @dev id to be included with the next RPC
    */
   nextId = 0;
@@ -288,17 +275,6 @@ export class RPCFactory {
   }
 
   /**
-   * Optional function to set an encryption policy.  Encryption policies determine which files in the 
-   * bubble are encrypted and contain the encryption function.
-   * 
-   * @param _policy {EncryptionPolicy} - the policy to adopt
-   */
-  setEncryptionPolicy(_policy) {
-    assert.isInstanceOf(_policy, EncryptionPolicy, "provider");
-    this.encryptionPolicy = _policy;
-  }
-
-  /**
    * RPC to construct the bubble on the bubble server.
    * 
    * @param options passed transparently to the bubble server
@@ -310,7 +286,7 @@ export class RPCFactory {
       method: 'create',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         options: options 
@@ -331,16 +307,15 @@ export class RPCFactory {
     assert.isString(_path, "path");
     assert.isString(data, "data");
     assert.isObject(options, "options");
-    const encrypt = (options && options.encrypted) || this.encryptionPolicy.isEncrypted(_path);
     return this.sign({
       method: 'write',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
-        data: encrypt ? this.encryptionPolicy.encrypt(_path, data) : data,
+        data: data,
         options: options 
       }
     });
@@ -359,16 +334,15 @@ export class RPCFactory {
     assert.isString(_path, "path");
     assert.isString(data, "data");
     assert.isObject(options, "options");
-    const encrypt = (options && options.encrypted) || this.encryptionPolicy.isEncrypted(_path);
     return this.sign({
       method: 'append',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
-        data: encrypt ? this.encryptionPolicy.encrypt(_path, data) : data,
+        data: data,
         options: options 
       }
     });
@@ -388,7 +362,7 @@ export class RPCFactory {
       method: 'read',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
@@ -415,7 +389,7 @@ export class RPCFactory {
       method: 'delete',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
@@ -441,7 +415,7 @@ export class RPCFactory {
       method: 'mkdir',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
@@ -464,7 +438,7 @@ export class RPCFactory {
       method: 'list',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
@@ -488,7 +462,7 @@ export class RPCFactory {
       method: 'getPermissions',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         file: _path,
@@ -509,7 +483,7 @@ export class RPCFactory {
       method: 'terminate',
       params: {
         timestamp: Date.now(),
-        nonce: (crypto || window.crypto).randomUUID(),
+        nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
         options: options 
