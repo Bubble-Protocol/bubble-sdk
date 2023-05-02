@@ -30,11 +30,9 @@ pragma solidity ^0.8.0;
 //
 //
 
-abstract contract BubbleACC {
+abstract contract AccessControlledStorage {
 
-  bytes32 public constant BubbleVersion = "0.0.2";
-
-  function getPermissions( address requester, uint256 cid ) public virtual view returns (uint256);
+  function getAccessPermissions( address user, uint256 contentId ) public virtual view returns (uint256);
 
 }
 

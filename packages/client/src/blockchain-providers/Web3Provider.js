@@ -24,7 +24,7 @@ export class Web3Provider extends BlockchainProvider {
 
   getPermissions(contract, account, file) {
     const contractObj = new this.web3.eth.Contract(this.abi, contract);
-    return contractObj.methods.getPermissions(account, file).call()
+    return contractObj.methods.getAccessPermissions(account, file).call()
       .then(permissions => {
         return BigInt(permissions);
       })
