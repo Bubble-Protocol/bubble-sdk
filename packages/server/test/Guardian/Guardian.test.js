@@ -290,13 +290,14 @@ describe("Guardian", () => {
         return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT)).resolves.toBe("the data");
       })
   
-      test('is successful if the file is a directory', async () => {
+      test('returns directory listing if the file is a directory', async () => {
         const params = {
           ...COMMON_RPC_PARAMS,
           file: VALID_DIR
         };
-        dataServer[method].mockResolvedValueOnce("the data");
-        return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT)).resolves.toBe("the data")
+        const method = 'list';
+        dataServer[method].mockResolvedValueOnce("the listing");
+        return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT)).resolves.toBe("the listing")
           .then(() => {
             expect(dataServer[method].mock.calls).toHaveLength(1);
             expect(dataServer[method].mock.calls[0][1]).toBe(VALID_DIR);

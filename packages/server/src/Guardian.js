@@ -202,7 +202,7 @@ export class Guardian extends BubbleProvider {
 
       case "read":
         if (file.permissions.canRead())
-          return file.permissions.isDirectory()
+          return file.isDirectory()
             ? this.dataServer.list(params.contract, file.fullFilename, params.options)
                 .catch(_validateDataServerError)
             : this.dataServer.read(params.contract, file.fullFilename, params.options)
