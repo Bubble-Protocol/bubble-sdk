@@ -1,15 +1,13 @@
 import Web3 from 'web3';
-import { GanacheServer } from "./GanacheServer";
-import { Web3Provider } from '../packages/client/src/blockchain-providers/Web3Provider';
-import contractSrc from './contracts/TestContract.json';
-import { RamBasedBubbleServer } from './RamBasedBubbleServer';
-import { BubblePermissions } from '../packages/core/src/Permissions';
-import { BubbleError } from '../packages/core/src/errors';
-import { Bubble } from '../packages/client/src/Bubble';
-import { HTTPBubbleProvider } from '../packages/client/src/bubble-providers/HTTPBubbleProvider';
 import jayson from 'jayson';
+
+import { Bubble, blockchainProviders, bubbleProviders, encryptionPolicies, BubblePermissions, BubbleError } from '../packages/index';
+import { RamBasedBubbleServer } from './RamBasedBubbleServer';
+import { GanacheServer } from "./GanacheServer";
 import { ErrorCodes } from './common';
-import { AESGCMEncryptionPolicy } from '../packages/client/src/encryption-policies/AESGCMEncryptionPolicy';
+
+import contractSrc from './contracts/TestContract.json';
+
 
 const CHAIN_ID = 1;
 const CONTRACT_ABI_VERSION = '0.0.2';
@@ -54,7 +52,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
     // Setup a test blockchain and a basic bubble server
     const web3 = new Web3('http://127.0.0.1:8545');
-    blockchainProvider = new Web3Provider(CHAIN_ID, web3, CONTRACT_ABI_VERSION);
+    blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, web3, CONTRACT_ABI_VERSION);
     ganacheServer = new GanacheServer(8545, {mnemonic: GANACHE_MNEMONIC});
     bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
     ganacheServer.start();
@@ -73,10 +71,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
       .on('receipt', receipt => {
         contract.options.address = receipt.contractAddress;
-      });
+      })
+      .catch(console.error);
     
     // Construct a bubble wrapper instance now we have the contract address
-    bubbleProvider = new HTTPBubbleProvider(new URL('http://127.0.0.1:8131'));
+    bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL('http://127.0.0.1:8131'));
     ownerBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, (hash) => {return sign(web3, owner.address, hash)});
     requesterBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, (hash) => {return sign(web3, requester.address, hash)});
 
@@ -496,7 +495,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('Encryption policy', () => {
 
       test('writes and reads encrypted data', async () => {
-        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+        class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
           isEncrypted(path) { return path === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
@@ -506,7 +505,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
     
       test('appends and reads encrypted data', async () => {
-        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+        class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
           isEncrypted(path) { return path === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
@@ -516,7 +515,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('does not encrypt when policy returns false', async () => {
-        class TestEncryptionPolicy extends AESGCMEncryptionPolicy {
+        class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
           isEncrypted(path) { return path === file2 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));

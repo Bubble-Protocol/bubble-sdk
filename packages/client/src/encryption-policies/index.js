@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { HTTPBubbleProvider } from './HTTPBubbleProvider';
+import { AESGCMEncryptionPolicy } from './AESGCMEncryptionPolicy';
 
-export const bubbleProviders = {
-  HTTPBubbleProvider: HTTPBubbleProvider
+export const encryptionPolicies = {
+  AESGCMEncryptionPolicy: AESGCMEncryptionPolicy
 }
