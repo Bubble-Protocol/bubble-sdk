@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes } from '@bubble-protocol/core';
+import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
 import web3 from "web3";
 
 
@@ -233,56 +233,6 @@ export class Guardian extends BubbleProvider {
       default:
         throw new BubbleError(JSON_RPC_ERROR_METHOD_NOT_FOUND, 'unknown method: '+method);
     }
-  }
-
-}
-
-
-/**
- * Deconstructs a string filename representing a file or directory in a bubble.  Bubble
- * path names consist of <file-or-directory-hash>[/<posix-filename>].  Bubbles don't have
- * the concept of nested directories at the storage level - if required it can be implemented at
- * application level.
- * 
- * @dev Always confirm isValid() before relying on any other accessor function.
- */
-class BubbleFilename {
-
-  fullFilename;
-  permissions;
-
-  constructor(filenameStr) {
-    this.fullFilename = filenameStr;
-    this._parts = filenameStr.split('/');
-    this._valid = 
-      this._parts.length === 1 ? assert.isHash(this._parts[0]) :
-      this._parts.length === 2 ? assert.isHash(this._parts[0]) && assert.isPOSIXFilename(this._parts[1]) :
-      false;
-  }
-
-  setPermissions(permissions) {
-    this.permissions = permissions;
-    if (this._parts.length === 2 && !permissions.isDirectory()) this._valid = false;
-  }
-
-  getPermissionedPart() {
-    return this._parts[0];
-  }
-
-  isFile() {
-    return !this.isDirectory();
-  }
-
-  isDirectory() {
-    return this._parts.length === 1 && this.permissions.isDirectory() === true;
-  }
-
-  isRoot() {
-    return this._parts[0].toLowerCase() === ROOT_PATH;
-  }
-
-  isValid() {
-    return this._valid;
   }
 
 }

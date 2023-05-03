@@ -9,7 +9,7 @@
 const VALID_BLOCKCHAIN_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 const VALID_HEX_STRING_REGEX = /^(0x)?[0-9a-fA-F]+$/;
 const VALID_HASH_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
-const VALID_POSIX_FILENAME_REGEX = /^[^\0\/]+$/;  // POSIX files can be any string but must not contain null or '/'
+const VALID_POSIX_FILENAME_REGEX = /^[^\0\/]{1,255}$/;  // POSIX files can be any string between 1 and 255 chars but must not contain null or '/'
 
 
 export function isNotEmpty(value, name) {
