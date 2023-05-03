@@ -33,7 +33,7 @@ contract TestContract is AccessControlledStorage {
     //   - cid 4: owner:da, requester:dr
     //   - cid 5: owner:dr, requester:dwa
     //   - cid 6: owner:rwa, requester:-
-    function getAccessPermissions( address user, uint256 contentId ) public virtual view override returns (uint256) {
+    function getAccessPermissions( address user, uint256 contentId ) external view override returns (uint256) {
       if (terminated) return BUBBLE_TERMINATED_BIT;
       if ( contentId == 0 ) {
         if (user == owner) return ALL_PERMISSIONS;

@@ -30,9 +30,9 @@ pragma solidity ^0.8.0;
 //
 //
 
-abstract contract AccessControlledStorage {
+interface AccessControlledStorage {
 
-  function getAccessPermissions( address user, uint256 contentId ) public virtual view returns (uint256);
+  function getAccessPermissions( address user, uint256 contentId ) external view returns (uint256);
 
 }
 
