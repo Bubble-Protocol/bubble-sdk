@@ -22,8 +22,14 @@ export const BUBBLE_SERVER_URL = 'http://127.0.0.1:8131';
 export var blockchainProvider, bubbleProvider;
 var ganacheServer, bubbleServer;
 
+const stats = {
+  startStop: 0
+}
 
 export async function startServers() {
+
+  if (stats.startStop > 0) throw new Error("cannot start a server when it hasn't been stopped");
+  stats.startStop++;
 
   const CONTRACT_ABI_VERSION = '0.0.2';
   const GANACHE_MNEMONIC = 'foil message analyst universe oval sport super eye spot easily veteran oblige';
@@ -32,17 +38,23 @@ export async function startServers() {
   ganacheServer = new GanacheServer(8545, {mnemonic: GANACHE_MNEMONIC});
   blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_SERVER_URL), CONTRACT_ABI_VERSION);
   bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
-  ganacheServer.start();
-  bubbleServer.start();
+  await ganacheServer.start();
+  await bubbleServer.start();
 
 }
 
 
-export async function stopServers() {
-  await Promise.all([
+export function stopServers() {
+
+  if (stats.startStop <= 0) throw new Error("cannot stop a server when it hasn't been started");
+
+  return Promise.all([
     new Promise(resolve => bubbleServer.close(resolve)),
     new Promise(resolve => ganacheServer.close(resolve))
   ])
+  .then(() => {
+    stats.startStop--;
+  })
 }
 
 

@@ -46,7 +46,12 @@ export class RamBasedBubbleServer {
   }
 
   start() {
-    this.server = this.httpServer.listen(this.port);
+    return new Promise((resolve, reject) => {
+      this.server = this.httpServer.listen(this.port, error => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
   }
 
   close(callback) {

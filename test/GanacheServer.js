@@ -9,7 +9,12 @@ export class GanacheServer {
   }
 
   start() {
-    this.server.listen(this.port);
+    return new Promise((resolve, reject) => {
+      this.server.listen(this.port, error => {
+        if (error) reject(error);
+        else resolve();
+      });
+    });
   }
 
   close(callback) {
