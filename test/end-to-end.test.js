@@ -1,30 +1,11 @@
-import Web3 from 'web3';
-import jayson from 'jayson';
-
+import { MockBubbleServer, pingServerTest, startServers, stopServers } from './test-servers';
+import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, requesterBubble } from './test-bubble';
 import '../packages/core/test/BubbleErrorMatcher';
-import { Bubble, blockchainProviders, bubbleProviders, encryptionPolicies, BubblePermissions, BubbleError } from '../packages/index';
-import { RamBasedBubbleServer } from './RamBasedBubbleServer';
-import { GanacheServer } from "./GanacheServer";
+
+import { encryptionPolicies } from '../packages/index';
 import { ErrorCodes } from './common';
+import { constructTestBubble } from './test-bubble';
 
-import contractSrc from './contracts/TestContract.json';
-
-
-const CHAIN_ID = 1;
-const CONTRACT_ABI_VERSION = '0.0.2';
-const GANACHE_MNEMONIC = 'foil message analyst universe oval sport super eye spot easily veteran oblige';
-
-let ganacheServer, bubbleServer, blockchainProvider, bubbleProvider, contract, ownerBubble, requesterBubble;
-
-const owner = {
-  privateKey: "24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063",
-  address: "0xc16a409a39EDe3F38E212900f8d3afe6aa6A8929"
-};
-
-const requester = {
-  privateKey: "e68e40257cfee330038c49637fcffff82fae04b9c563f4ea071c20f2eb55063c",
-  address: "0x41A60F71063CD7c9e5247d3E7d551f91f94b5C3b"
-};
 
 // Permissions are set to support a variety of tests:
 //   - Vault Root: owner:rwa, requester:r
@@ -42,86 +23,25 @@ const file4 = "0x000000000000000000000000000000000000000000000000000000000000000
 const file5 = "0x0000000000000000000000000000000000000000000000000000000000000005";
 const file6 = "0x0000000000000000000000000000000000000000000000000000000000000006";
 
-function sign(web3, address, hash) {
-  return web3.eth.sign(hash, address);
-}
-
 
 describe('end-to-end bubble to server and blockchain tests', () => {
 
   beforeAll(async () => {
-
-    // Setup a test blockchain and a basic bubble server
-    const web3 = new Web3('http://127.0.0.1:8545');
-    blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, web3, CONTRACT_ABI_VERSION);
-    ganacheServer = new GanacheServer(8545, {mnemonic: GANACHE_MNEMONIC});
-    bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
-    ganacheServer.start();
-    bubbleServer.start();
-
-    // Deploy the test contract on the blockchain
-    contract = new web3.eth.Contract(contractSrc.abi);
-    await contract.deploy({
-        data: contractSrc.bytecode,
-        arguments: [owner.address, requester.address]
-      })
-      .send({
-        from: owner.address,
-        gas: 1500000,
-        gasPrice: '30000000000000'
-      })
-      .on('receipt', receipt => {
-        contract.options.address = receipt.contractAddress;
-      })
-      .catch(console.error);
-    
-    // Construct a bubble wrapper instance now we have the contract address
-    bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL('http://127.0.0.1:8131'));
-    ownerBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, (hash) => {return sign(web3, owner.address, hash)});
-    requesterBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, (hash) => {return sign(web3, requester.address, hash)});
-
-    // Mock a bubble created on the bubble server
-    await bubbleServer.dataServer.create(contract.options.address);
-
+    await startServers();
+    await constructTestBubble();
   }, 20000)
-
 
   beforeEach(() => {
-    // reset the bubble so it is empty
-    bubbleServer._resetBubble(contract.options.address);
+    clearTestBubble();
   })
 
-
   afterAll( async () => {
-    await Promise.all([
-      new Promise(resolve => bubbleServer.close(resolve)),
-      new Promise(resolve => ganacheServer.close(resolve))
-    ])
+    await stopServers();
   }, 20000)
 
 
-  test('confirm contract has deployed', async () => {
-    const permissionBits = await blockchainProvider.getPermissions(contract.options.address, owner.address, file0);
-    const permissions = new BubblePermissions(BigInt(permissionBits));
-    expect(permissions.bubbleTerminated()).toBe(false);
-    expect(permissions.isDirectory()).toBe(false);
-    expect(permissions.canRead()).toBe(true);
-    expect(permissions.canWrite()).toBe(true);
-    expect(permissions.canAppend()).toBe(true);
-    expect(permissions.canExecute()).toBe(true);
-  }, 20000)
-
-
-  test('confirm bubble server is running', async () => {
-    const client = jayson.Client.http('http://localhost:8131');
-    await new Promise((resolve, reject) => {
-      client.request('ping', [], function(err, response) {
-        if(err) reject(err);
-        else resolve(response.result || response);
-      });
-    })
-    .then(result => expect(result).toBe('pong'))
-  }, 20000)
+  pingServerTest();
+  bubbleAvailableTest();
 
 
   describe('basic functions', () => {
@@ -133,7 +53,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('is successful if permitted and unsuccessful if bubble already exists', async () => {
-        bubbleServer._reset(); // delete all bubbles
+        MockBubbleServer.deleteAllBubbles();
         await expect(ownerBubble.create()).resolves.toBe(null);
         await expect(ownerBubble.create()).rejects.toBeBubbleError();
       })
