@@ -10,6 +10,8 @@ const VALID_BLOCKCHAIN_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 const VALID_HEX_STRING_REGEX = /^(0x)?[0-9a-fA-F]+$/;
 const VALID_HASH_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
 const VALID_POSIX_FILENAME_REGEX = /^[^\0\/]{1,255}$/;  // POSIX files can be any string between 1 and 255 chars but must not contain null or '/'
+const VALID_BASE64_REGEX = /^[a-zA-Z0-9+/=]+$/;
+const VALID_BASE64URL_REGEX = /^[a-zA-Z0-9_-]+$/;
 
 
 export function isNotEmpty(value, name) {
@@ -105,6 +107,24 @@ export function isPrivateKey(value, name) {
 export function isAddress(value, name) {
   const result = isNotEmpty(value, name) && VALID_BLOCKCHAIN_ADDRESS_REGEX.test(value);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected address");
+  else return result;
+};
+
+export function isBase64String(value, name) {
+  const result = isNotEmpty(value, name) && VALID_BASE64_REGEX.test(value);
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected base64");
+  else return result;
+};
+
+export function isBase64UrlString(value, name) {
+  const result = isNotEmpty(value, name) && VALID_BASE64URL_REGEX.test(value);
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected base64");
+  else return result;
+};
+
+export function isBase64OrBase64UrlString(value, name) {
+  const result = isNotEmpty(value, name) && (VALID_BASE64_REGEX.test(value) || VALID_BASE64URL_REGEX.test(value));
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected base64 or base64url");
   else return result;
 };
 

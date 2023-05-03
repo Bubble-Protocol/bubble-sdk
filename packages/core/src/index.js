@@ -8,6 +8,7 @@
 
 export {BlockchainProvider} from './BlockchainProvider';
 export {BubbleProvider} from './BubbleProvider';
+export {ContentId} from './ContentId';
 export {BubbleFilename} from './BubbleFilename';
 export {BubblePermissions} from './Permissions';
 export {ROOT_PATH} from './constants';
