@@ -1,6 +1,7 @@
 import Web3 from 'web3';
 import jayson from 'jayson';
 
+import '../packages/core/test/BubbleErrorMatcher';
 import { Bubble, blockchainProviders, bubbleProviders, encryptionPolicies, BubblePermissions, BubbleError } from '../packages/index';
 import { RamBasedBubbleServer } from './RamBasedBubbleServer';
 import { GanacheServer } from "./GanacheServer";
@@ -128,13 +129,13 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble create', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(requesterBubble.create()).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.create()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('is successful if permitted and unsuccessful if bubble already exists', async () => {
         bubbleServer._reset(); // delete all bubbles
         await expect(ownerBubble.create()).resolves.toBe(null);
-        await expect(ownerBubble.create()).rejects.withBubbleError(new BubbleError());
+        await expect(ownerBubble.create()).rejects.toBeBubbleError();
       })
 
     })
@@ -142,20 +143,20 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble write', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(requesterBubble.write(file1, "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.write(file1, "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails if path is a directory', async () => {
-        await expect(requesterBubble.write(file5, "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.write(file5, "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails to write to a file within a directory if directory permission is denied', async () => {
-        await expect(ownerBubble.write(file5+'/test1', "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.write(file5+'/test1', "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails to write to a file within a directory if only have append permissions', async () => {
         await expect(ownerBubble.append(file4+'/test1', "hello")).resolves.toBe(null);
-        await expect(ownerBubble.write(file4+'/test2', "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.write(file4+'/test2', "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('writes ok if permitted', async () => {
@@ -172,16 +173,16 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails if permission is denied', async () => {
         await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
-        await expect(requesterBubble.append(file1, " world")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.append(file1, " world")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails if path is a directory', async () => {
-        await expect(requesterBubble.append(file5, "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.append(file5, "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails to append to a file within a directory if directory permission is denied', async () => {
         await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
-        await expect(ownerBubble.append(file5+'/test1', "hello")).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.append(file5+'/test1', "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('appends ok if permitted', async () => {
@@ -200,11 +201,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails if permission is denied', async () => {
         await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
-        await expect(requesterBubble.read(file6)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.read(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails if the file does not exist', async () => {
-        await expect(ownerBubble.read(file6)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST));
+        await expect(ownerBubble.read(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST});
       })
 
       test('resolves with empty string if file does not exist but the silent option is given', async () => {
@@ -232,11 +233,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails if permission is denied', async () => {
         await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
-        await expect(requesterBubble.delete(file6)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.delete(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails if file does not exist', async () => {
-        await expect(ownerBubble.delete(file1)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST));
+        await expect(ownerBubble.delete(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST});
       })
 
       test('does not fail if file does not exist and silent option is given', async () => {
@@ -255,7 +256,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails to delete directory if not empty', async () => {
         await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
-        await expect(requesterBubble.delete(file5)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY));
+        await expect(requesterBubble.delete(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY});
       })
 
       test('deletes non-empty directory if force option is given', async () => {
@@ -269,11 +270,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble mkdir', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(ownerBubble.mkdir(file5)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.mkdir(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('fails if path is not a directory', async () => {
-        await expect(ownerBubble.mkdir(file1)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.mkdir(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('succeeds if permitted', async () => {
@@ -282,7 +283,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails if directory already exists', async () => {
         await expect(requesterBubble.mkdir(file5)).resolves.toBe(null);
-        await expect(requesterBubble.mkdir(file5)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS));
+        await expect(requesterBubble.mkdir(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS});
       })
 
       test('does not fail if directory already exists but silent option is given', async () => {
@@ -296,7 +297,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble list', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(requesterBubble.list(file6)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(requesterBubble.list(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('succeeds if permitted', async () => {
@@ -329,7 +330,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('fails if directory does not exist', async () => {
-        await expect(ownerBubble.list(file5)).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST));
+        await expect(ownerBubble.list(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST});
       })
 
       test('does not fail if directory does not exist but silent option is given', async () => {
@@ -531,7 +532,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('fails if contract is not terminated', async () => {
         await expect(ownerBubble.isTerminated()).resolves.toBe(false);
-        await expect(ownerBubble.terminate()).rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+        await expect(ownerBubble.terminate()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
       test('succeeds if contract is terminated', async () => {

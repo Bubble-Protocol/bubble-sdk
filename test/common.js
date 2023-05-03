@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import { BlockchainProvider, BubbleError } from '../packages/core';
+import { BlockchainProvider } from '../packages/core';
 import { DataServer } from '../packages/server/src/DataServer';
 
 /**
@@ -22,26 +22,6 @@ export const ErrorCodes = {
   BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS: -32023,
   BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY: -32024
 }
-
-expect.extend({
-
-  withBubbleError(received, expected) {
-    if (!received) return {pass: false, message: () => `Expected a BubbleError but received nothing`}
-    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() : 'null'}`}
-    if (expected.code && received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}', cause: '${received.cause}')`}
-    if (expected.message && received.message !== expected.message) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}" (cause: '${received.cause}')`}
-    return {pass: true, message: () => 'Expected error not to be BubbleError'}
-  },
-  
-  withBubbleErrorMatches(received, expected) {
-    if (!received) return {pass: false, message: () => `Expected a BubbleError but received nothing`}
-    if (!(received instanceof BubbleError)) return {pass: false, message: () => `not a BubbleError - ${received ? received.toString() : 'null'}`}
-    if (received.code !== expected.code) return {pass: false, message: () => `Expected error code ${expected.code}, received ${received.code} (message: '${received.message}, cause: '${received.cause}'')`}
-    if (new RegExp(expected.message).test(received.message) !== true) return {pass: false, message: () => `Expected "${expected.message}", received "${received.message}" (cause: '${received.cause}')`}
-    return {pass: true, message: () => 'Expected error not to be BubbleError'}
-  },
-  
-});
 
 
 /**

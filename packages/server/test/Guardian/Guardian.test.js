@@ -3,6 +3,7 @@ import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian';
 import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress } from '../../../../test/common';
 import { testPostParams } from './post.params';
+import '../../../core/test/BubbleErrorMatcher';
 
 describe("Guardian", () => {
 
@@ -47,28 +48,28 @@ describe("Guardian", () => {
       test('rejects with permission denied error if signatory has no permissions', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | (Permissions.ALL_PERMISSIONS & ~requiredPermissions);
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
       test('rejects when the data server rejects and passes the error through if a BubbleError', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new BubbleError(1234, 'data server rejection'));
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(1234, 'data server rejection'));
+          .rejects.toBeBubbleError(new BubbleError(1234, 'data server rejection'));
       })
 
       test('rejects when the data server rejects and wraps a non-bubble error in a BubbleError Internal Error', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new Error('data server simple error'));
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
       })
   
       test('rejects with an Internal BubbleError when the data server rejects with no error', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
       })
   
       test('rejects with a Blockchain BubbleError if not the correct chainId', async () => {
@@ -76,7 +77,7 @@ describe("Guardian", () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED});
       })
   
       test('calls terminate and rejects with Terminated BubbleError when ACC has been terminated (and options are not passed through)', async () => {
@@ -85,7 +86,7 @@ describe("Guardian", () => {
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT;
         dataServer.terminate.mockResolvedValueOnce();
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED})
           .then(() => {
             expect(dataServer.terminate.mock.calls).toHaveLength(1);
             expect(dataServer.terminate.mock.calls[0][0]).toBe(params.contract);
@@ -153,7 +154,7 @@ describe("Guardian", () => {
           file: VALID_FILE
         }
         return expect(post(method, params, Permissions.WRITE_BIT))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
       test('is successful if a file parameter is given that is the root directory', async () => {
@@ -197,7 +198,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('rejects if the data param is missing', async () => {
@@ -205,7 +206,7 @@ describe("Guardian", () => {
         delete newParams.data;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
     })
@@ -228,7 +229,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('rejects if the data param is missing', async () => {
@@ -236,7 +237,7 @@ describe("Guardian", () => {
         delete newParams.data;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('is successful if user has only append permissions', async () => {
@@ -278,7 +279,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('resolves with the file contents', async () => {
@@ -323,7 +324,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('cannot delete the root directory', async () => {
@@ -332,7 +333,7 @@ describe("Guardian", () => {
           file: ROOT_PATH
         };
         return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
       test('can delete a directory', async () => {
@@ -367,7 +368,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('cannot mkdir the root directory', async () => {
@@ -376,7 +377,7 @@ describe("Guardian", () => {
           file: ROOT_PATH
         };
         return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
       test('cannot mkdir a file', async () => {
@@ -385,7 +386,7 @@ describe("Guardian", () => {
           file: VALID_FILE
         };
         return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
     })
@@ -407,7 +408,7 @@ describe("Guardian", () => {
         delete newParams.file;
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('is successful if the file is a directory', async () => {
@@ -452,7 +453,7 @@ describe("Guardian", () => {
         const newParams = {...params};
         delete newParams.file;
         return expect(post(method, newParams, 0n))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS));
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
 
       test('resolves with the file permissions regardless of user permissions', async () => {
@@ -483,21 +484,21 @@ describe("Guardian", () => {
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT | Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new BubbleError(1234, 'data server rejection'));
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(1234, 'data server rejection'));
+          .rejects.toBeBubbleError(new BubbleError(1234, 'data server rejection'));
       })
 
       test('rejects when the data server rejects and wraps a non-bubble error in a BubbleError Internal Error', async () => {
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT | Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new Error('data server simple error'));
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
       })
   
       test('rejects with an Internal BubbleError when the data server rejects with no error', async () => {
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT | Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
         return expect(post(method, params, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
       })
   
       test('rejects with a Blockchain BubbleError if not the correct chainId', async () => {
@@ -505,7 +506,7 @@ describe("Guardian", () => {
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
         return expect(post(method, newParams, mockPermissions))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED});
       })
   
       test('is successful if the data server resolves and regardless of write permissions', async () => {
@@ -544,7 +545,7 @@ describe("Guardian", () => {
           file: ROOT_PATH
         }
         return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS))
-          .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED));
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
     })
@@ -558,7 +559,7 @@ describe("Guardian", () => {
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockImplementation(() => { throw new Error('getPermissions mock force failed') });
         return expect(guardian.post('create', params))
-        .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
         .then(() => {
           expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
@@ -573,7 +574,7 @@ describe("Guardian", () => {
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
         return expect(guardian.post('create', params))
-        .rejects.withBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
         .then(() => {
           expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
