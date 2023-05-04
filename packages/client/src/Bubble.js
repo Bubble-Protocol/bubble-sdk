@@ -30,18 +30,21 @@ export class Bubble {
   /**
    * Represents a Bubble hosted on an external Bubble server.
    * 
-   * @param _provider {BubbleProvider} - the storage service provider
-   * @param _contract {Address} - the contract address that identifies the bubble
-   * @param _signFunction - function that takes a hash as a Buffer and promises to resolve the
-   *   user's signature of that data in a format appropriate to the blockchain controlling this
-   *   bubble.
+   * @param {ContentId} contentId the id of this bubble
+   * @param {BubbleProvider} provider the interface to the storage service
+   * @param {Function} signFunction function that signs all transactions. (The storage service
+   * identifies the user from the transaction signature). Takes the form:
+   * 
+   *   (Buffer: hash) => { return Promise to resolve the signature of the hash as a Buffer }
+   * 
+   * The type and format of the signature must be appropriate to the blockchain platform.
    */
-  constructor(_contentId, _provider, _signFunction ) {
+  constructor(contentId, provider, signFunction ) {
     if (!Crypto) throw new Error('missing crypto object');
-    assert.isInstanceOf(_provider, BubbleProvider, "provider");
-    this.contentId = _contentId;
-    this.provider = _provider;
-    this.rpcFactory = new RPCFactory(_contentId.chain, _contentId.contract, _signFunction);
+    assert.isInstanceOf(provider, BubbleProvider, "provider");
+    this.contentId = contentId;
+    this.provider = provider;
+    this.rpcFactory = new RPCFactory(contentId.chain, contentId.contract, signFunction);
     this.post = this.post.bind(this);
   }
 
@@ -49,18 +52,18 @@ export class Bubble {
    * Optional function to set an encryption policy.  Encryption policies determine which files in the 
    * bubble are encrypted and contain the encryption function.
    * 
-   * @param _policy {EncryptionPolicy} - the policy to adopt
+   * @param {EncryptionPolicy} policy the policy to adopt
    */
-  setEncryptionPolicy(_policy) {
-    assert.isInstanceOf(_policy, EncryptionPolicy, "provider");
-    this.encryptionPolicy = _policy;
+  setEncryptionPolicy(policy) {
+    assert.isInstanceOf(policy, EncryptionPolicy, "provider");
+    this.encryptionPolicy = policy;
   }
 
   /**
    * Construct the bubble on the bubble server.
    * 
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve when the bubble is constructed
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when the bubble is constructed
    */
   create(options) {
     return this.rpcFactory.create(options)
@@ -71,16 +74,16 @@ export class Bubble {
    * Writes the given data to the given file.  The data will be encrypted if the encryption policy
    * requires it or the `encrypted` option is given.
    * 
-   * @param _path file to write to
-   * @param data the data to write
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve when complete
+   * @param {String} path file to write to
+   * @param {any} data the data to write
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when complete
    */
-  write(_path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(_path));
-    return (encrypt ? this.encryptionPolicy.encrypt(data, _path) : Promise.resolve(data))
+  write(path, data, options = {}) {
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
+    return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
-        return this.rpcFactory.write(_path, dataToSend, options);
+        return this.rpcFactory.write(path, dataToSend, options);
       })
       .then(this.post);
   }
@@ -89,16 +92,16 @@ export class Bubble {
    * Appends the given data to the given file.  The data will be encrypted if the encryption policy
    * requires it or the `encrypted` option is given.
    * 
-   * @param _path file to append to
+   * @param {String} path file to append to
    * @param data the data to append
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve when complete
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when complete
    */
-  append(_path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(_path));
-    return (encrypt ? this.encryptionPolicy.encrypt(data, _path) : Promise.resolve(data))
+  append(path, data, options = {}) {
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
+    return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
-        return this.rpcFactory.append(_path, dataToSend, options);
+        return this.rpcFactory.append(path, dataToSend, options);
       })
       .then(this.post);
   }
@@ -107,17 +110,17 @@ export class Bubble {
    * Reads the given file.  The contents will be decrypted if the encryption policy
    * requires it or the `encrypted` option is given.
    * 
-   * @param _path file to read from
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve with the file contents
+   * @param {String} path file to read from
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve with the file contents
    */
-  read(_path = ROOT_PATH, options = {}) {
-    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(_path);
-    return this.rpcFactory.read(_path, options)
+  read(path = ROOT_PATH, options = {}) {
+    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(path);
+    return this.rpcFactory.read(path, options)
       .then(this.post)
       .then(data => {
         return (data && decrypt) 
-          ? this.encryptionPolicy.decrypt(data, _path).then(buf => { return Buffer.from(buf).toString() }) 
+          ? this.encryptionPolicy.decrypt(data, path).then(buf => { return Buffer.from(buf).toString() }) 
           : data || '';
       })
   }
@@ -129,12 +132,12 @@ export class Bubble {
    *    `force` - force delete of a non-empty directory
    *    `silent` - don't throw an error if file does not exist
    * 
-   * @param _path file to delete
-   * @param options passed transparently to the bubble server.
-   * @returns Promise to resolve when complete
+   * @param {String} path file to delete
+   * @param {Object} options passed transparently to the bubble server.
+   * @returns {Promise} Promise to resolve when complete
    */
-  delete(_path, options) {
-    return this.rpcFactory.delete(_path, options)
+  delete(path, options) {
+    return this.rpcFactory.delete(path, options)
       .then(this.post);
   }
 
@@ -144,24 +147,24 @@ export class Bubble {
    * `providerOpts`:
    *    `silent` - don't throw an error if directory already exists
    * 
-   * @param _path directory to create
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve when complete
+   * @param {String} path directory to create
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when complete
    */
-  mkdir(_path, options) {
-    return this.rpcFactory.mkdir(_path, options)
+  mkdir(path, options) {
+    return this.rpcFactory.mkdir(path, options)
       .then(this.post);
   }
 
   /**
    * Lists the given file or directory.  Equivalent to `ls` on a POSIX system.
    * 
-   * @param _path file or directory to list
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve with the listing
+   * @param {String} path file or directory to list
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve with the listing
    */
-  list(_path, options) {
-    return this.rpcFactory.list(_path, options)
+  list(path, options) {
+    return this.rpcFactory.list(path, options)
       .then(this.post)
       .then(result => {
         if (!result) throw new Error('list returned null');
@@ -173,12 +176,12 @@ export class Bubble {
    * Gets the permissions bitmap for the given file or directory as specified by the smart 
    * contract.  Use the `Permissions` class to decode.
    * 
-   * @param _path file or directory
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve with the listing
+   * @param {String} path file or directory
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve with the listing
    */
-  getPermissions(_path, options) {
-    return this.rpcFactory.getPermissions(_path, options)
+  getPermissions(path, options) {
+    return this.rpcFactory.getPermissions(path, options)
       .then(this.post)
       .then(result => {
         if (!assert.isHexString(result)) throw new Error('bubble server returned invalid permissions');
@@ -189,8 +192,8 @@ export class Bubble {
   /**
    * Resolves to true if the bubble's smart contract has been terminated.
    * 
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve with a boolean
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve with a boolean
    */
   isTerminated(options) {
     return this.getPermissions(ROOT_PATH, options)
@@ -203,8 +206,8 @@ export class Bubble {
    * Delete the bubble on the server.  This will only succeed if the bubble's smart contract has
    * already been terminated.
    * 
-   * @param options passed transparently to the bubble server
-   * @returns Promise to resolve when complete
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when complete
    */
   terminate(options) {
     return this.rpcFactory.terminate(options)
@@ -216,7 +219,7 @@ export class Bubble {
    * implements non-standard methods.  
    * 
    * @param rpc the remote procedure call
-   * @returns Promise to resolve with any response data when complete
+   * @returns {Promise} Promise to resolve with any response data when complete
    */
   post(rpc) {
     return this.provider.post(rpc.method, rpc.params);
@@ -237,17 +240,17 @@ export class Bubble {
    * Constructs a ContentId object from this bubble's details and the given path.  If the path
    * is not given, the ContentId for this bubble is returned.
    * 
-   * @param _path optional file or directory 
-   * @returns a ContentId object
+   * @param {String} path optional file or directory 
+   * @returns {ContentId} the unique content id that globally identifies the content.
    * @throws if the path is not a valid bubble path
    */
-  getContentId(_path) {
+  getContentId(path) {
     const id = new ContentId({
       chain: this.contentId.chain,
       contract: this.contentId.contract,
       provider: this.contentId.provider
     });
-    if (_path) id.setFile(_path);
+    if (path) id.setFile(path);
     return id;
   }
 
