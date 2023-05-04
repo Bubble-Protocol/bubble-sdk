@@ -4,7 +4,7 @@
 
 import web3 from "web3";
 import { EncryptionPolicy, NullEncryptionPolicy } from "./EncryptionPolicy";
-import { BubblePermissions, BubbleProvider, ROOT_PATH, assert } from '@bubble-protocol/core';
+import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
 
 const Crypto = crypto || (window ? window.crypto : undefined);
 
@@ -36,11 +36,12 @@ export class Bubble {
    *   user's signature of that data in a format appropriate to the blockchain controlling this
    *   bubble.
    */
-  constructor(_provider, _chainId, _contract, _signFunction ) {
+  constructor(_contentId, _provider, _signFunction ) {
     if (!Crypto) throw new Error('missing crypto object');
     assert.isInstanceOf(_provider, BubbleProvider, "provider");
+    this.contentId = _contentId;
     this.provider = _provider;
-    this.rpcFactory = new RPCFactory(_chainId, _contract, _signFunction);
+    this.rpcFactory = new RPCFactory(_contentId.chain, _contentId.contract, _signFunction);
     this.post = this.post.bind(this);
   }
 
@@ -230,6 +231,24 @@ export class Bubble {
    */
   postAll(rpcs) {
     return this.provider.postAll(rpcs);
+  }
+
+  /**
+   * Constructs a ContentId object from this bubble's details and the given path.  If the path
+   * is not given, the ContentId for this bubble is returned.
+   * 
+   * @param _path optional file or directory 
+   * @returns a ContentId object
+   * @throws if the path is not a valid bubble path
+   */
+  getContentId(_path) {
+    const id = new ContentId({
+      chain: this.contentId.chain,
+      contract: this.contentId.contract,
+      provider: this.contentId.provider
+    });
+    if (_path) id.setFile(_path);
+    return id;
   }
 
 }

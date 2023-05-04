@@ -178,10 +178,9 @@ const file0 = "0000000000000000000000000000000000000000000000000000000000000000"
 function _getBubble(contentId, signFunction) {
   if (signFunction === undefined) throw new TypeError("missing signFunction");
   if (!assert.isFunction(signFunction)) throw new TypeError("invalid signFunction");
-  return new Bubble(new HTTPBubbleProvider(
-    new URL(contentId.provider)),
-    contentId.chain,
-    contentId.contract,
+  return new Bubble(
+    contentId, 
+    new HTTPBubbleProvider(new URL(contentId.provider)),
     signFunction)
 }
 

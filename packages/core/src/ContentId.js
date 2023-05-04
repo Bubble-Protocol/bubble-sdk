@@ -69,6 +69,17 @@ export class ContentId {
 
 
   /**
+   * Sets or replaces this content id's file field.
+   * 
+   * @param {String} file must be a valid bubble path
+   */
+  setFile(file) {
+    if (!(new BubbleFilename(file)).isValid()) throw new TypeError('Invalid file parameter');
+    this.file = file;
+  }
+
+
+  /**
    * @returns the base64 encoded id
    */
   toString() {

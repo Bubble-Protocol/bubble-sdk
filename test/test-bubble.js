@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 
 import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers';
-import { Bubble, BubblePermissions, bubbleProviders } from '../packages/index';
+import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../packages/index';
 import contractSrc from './contracts/TestContract.json';
 
 
@@ -61,9 +61,14 @@ export async function constructTestBubble() {
     .catch(console.error);
   
   // Construct owner and requester bubbles now that we have the contract address
+  const bubbleId = new ContentId({
+    chain: CHAIN_ID,
+    contract: contract.options.address,
+    provider: BUBBLE_SERVER_URL
+  });
   const bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL(BUBBLE_SERVER_URL));
-  ownerBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, ownerSign);
-  requesterBubble = new Bubble(bubbleProvider, CHAIN_ID, contract.options.address, requesterSign);
+  ownerBubble = new Bubble(bubbleId, bubbleProvider, ownerSign);
+  requesterBubble = new Bubble(bubbleId, bubbleProvider, requesterSign);
 
   // Mock a bubble created on the bubble server
   await MockBubbleServer.createBubble(contract.options.address);
