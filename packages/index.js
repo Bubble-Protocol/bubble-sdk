@@ -8,6 +8,7 @@
 
 export * from './core/src/index';
 export {Bubble} from './client/src/Bubble';
+export {ContentManager, BubbleContentManager} from './client/src/ContentManager';
 export {EncryptionPolicy} from './client/src/EncryptionPolicy';
 export {blockchainProviders} from './client/src/blockchain-providers/index';
 export {bubbleProviders} from './client/src/bubble-providers/index';

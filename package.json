@@ -9,7 +9,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js -i"
   },
   "repository": {
     "type": "git",

@@ -87,7 +87,7 @@ export function isObject(value, name) {
 };
 
 export function isHexString(value, name) {
-  const result = isNotEmpty(value, name) && (toString.call(value) === '[object String]') && VALID_HEX_STRING_REGEX.test(value) && value.length % 2 === 0;
+  const result = isNotEmpty(value, name) && (toString.call(value) === '[object String]') && VALID_HEX_STRING_REGEX.test(value);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected hex string");
   else return result;
 };

@@ -1,3 +1,4 @@
+import { ROOT_PATH } from '../packages';
 import {BubbleError, ErrorCodes} from '../packages/core/src/errors';
 import {DataServer} from '../packages/server/src/DataServer';
 
@@ -99,20 +100,22 @@ export class RamBasedDataServer extends DataServer {
   }
 
   list(contract, file, options={}) {
+    const isRoot = file === ROOT_PATH;
     if (this.bubbles[contract] === undefined) {
       return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST, "bubble does not exist"));
     }
-    if (this.bubbles[contract][file] === undefined) {
+    if (this.bubbles[contract][file] === undefined && !isRoot) {
       if (options.silent) return Promise.resolve([])
       else return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST, "file does not exist"));
     }
 
-    const isDir = this.bubbles[contract][file].type === 'dir';
+    const isDir = isRoot || this.bubbles[contract][file].type === 'dir';
     const files = [];
     if (!isDir) files.push(file);
     else {
       for (let f in this.bubbles[contract]) {
-        if (f.slice(0,67) === file+"/") files.push(f);
+        if (isRoot && f.length === 66) files.push(f); 
+        else if (f.slice(0,67) === file+"/") files.push(f);
       }
     }
 
@@ -132,7 +135,7 @@ export class RamBasedDataServer extends DataServer {
       if (options.after !== undefined && meta.modified <= options.after) return;
       if (options.createdBefore !== undefined && meta.created >= options.createdBefore) return;
       if (options.createdAfter !== undefined && meta.created <= options.createdAfter) return;
-      const result = {name: isDir && f.length > 67 ? f.slice(67) : f, directory: meta.type === 'dir'};
+      const result = {name: isDir && f.length > 67 ? f.slice(67) : f, type: meta.type};
       if (options.long || options.length) result.length = meta.type === 'dir' ? countFilesIn(f) : meta.data ? meta.data.length : 0;
       if (options.long || options.created) result.created = meta.created;
       if (options.long || options.modified) result.modified = meta.modified;
@@ -152,7 +155,8 @@ export class RamBasedDataServer extends DataServer {
   }
 
   _resetBubble(contract) {
-    this.bubbles[contract] = {created: Date.now()};
+    this.terminate(contract);
+    this.create(contract);
   }
 
 }
