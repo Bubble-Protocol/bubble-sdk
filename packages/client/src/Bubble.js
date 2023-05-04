@@ -77,7 +77,7 @@ export class Bubble {
    * @param {String} path file to write to
    * @param {any} data the data to write
    * @param {Object} options passed transparently to the bubble server
-   * @returns {Promise} Promise to resolve when complete
+   * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   write(path, data, options = {}) {
     const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
@@ -85,7 +85,10 @@ export class Bubble {
       .then(dataToSend => {
         return this.rpcFactory.write(path, dataToSend, options);
       })
-      .then(this.post);
+      .then(this.post)
+      .then(() => { 
+        return this.getContentId(path) 
+      });
   }
 
   /**
@@ -95,7 +98,7 @@ export class Bubble {
    * @param {String} path file to append to
    * @param data the data to append
    * @param {Object} options passed transparently to the bubble server
-   * @returns {Promise} Promise to resolve when complete
+   * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   append(path, data, options = {}) {
     const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
@@ -103,7 +106,10 @@ export class Bubble {
       .then(dataToSend => {
         return this.rpcFactory.append(path, dataToSend, options);
       })
-      .then(this.post);
+      .then(this.post)
+      .then(() => { 
+        return this.getContentId(path) 
+      });
   }
 
   /**
@@ -149,11 +155,14 @@ export class Bubble {
    * 
    * @param {String} path directory to create
    * @param {Object} options passed transparently to the bubble server
-   * @returns {Promise} Promise to resolve when complete
+   * @returns {Promise} Promise to resolve with the directory's ContentId when complete
    */
   mkdir(path, options) {
     return this.rpcFactory.mkdir(path, options)
-      .then(this.post);
+      .then(this.post)
+      .then(() => { 
+        return this.getContentId(path) 
+      });
   }
 
   /**

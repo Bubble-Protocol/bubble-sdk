@@ -75,16 +75,30 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('fails to write to a file within a directory if only have append permissions', async () => {
-        await expect(ownerBubble.append(file4+'/test1', "hello")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.write(file4+'/test2', "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
-      test('writes ok if permitted', async () => {
-        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+      test(`writes ok if permitted and returns the file's ContentId`, async () => {
+        await expect(ownerBubble.write(file1, "hello")).resolves.toStrictEqual(new ContentId({
+          chain: CHAIN_ID,
+          contract: contract.options.address,
+          provider: BUBBLE_SERVER_URL,
+          file: file1
+        }));
       })
 
-      test('can write to a file within a directory', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
+      test(`can write to a file within a directory and returns the file's ContentId`, async () => {
+        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toStrictEqual(new ContentId({
+          chain: CHAIN_ID,
+          contract: contract.options.address,
+          provider: BUBBLE_SERVER_URL,
+          file: file5+'/test1'
+        }));
+      })
+
+      test(`returns the target's ContentId`, async () => {
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
       })
 
     })
@@ -92,7 +106,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble append', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.append(file1, " world")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
@@ -101,18 +115,23 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('fails to append to a file within a directory if directory permission is denied', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
+        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.append(file5+'/test1', "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
-      test('appends ok if permitted', async () => {
-        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
-        await expect(ownerBubble.append(file1, " world")).resolves.toBe(null);
+      test(`appends ok if permitted and returns the file's ContentId`, async () => {
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file1, " world")).resolves.toStrictEqual(new ContentId({
+          chain: CHAIN_ID,
+          contract: contract.options.address,
+          provider: BUBBLE_SERVER_URL,
+          file: file1
+        }));
       })
 
       test('can append to a file within a directory', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
-        await expect(requesterBubble.append(file5+'/test1', " world")).resolves.toBe(null);
+        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
+        await expect(requesterBubble.append(file5+'/test1', " world")).resolves.toBeInstanceOf(ContentId);
       })
 
     })
@@ -120,7 +139,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble read', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.read(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
@@ -133,17 +152,17 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('reads ok if permitted', async () => {
-        await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.read(file6)).resolves.toBe("hello");
       })
 
       test('can read an empty file', async () => {
-        await expect(ownerBubble.write(file6, "")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.read(file6)).resolves.toBe('');
       })
 
       test('a read of a directory is equivalent to list', async () => {
-        await expect(ownerBubble.append(file4+'/test1', "")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/test1', "")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.read(file4)).resolves.toStrictEqual([{type: "file", name: "test1"}]);
       })
 
@@ -152,7 +171,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     describe('bubble delete', () => {
 
       test('fails if permission is denied', async () => {
-        await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.delete(file6)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
@@ -165,22 +184,22 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('deletes file if permitted', async () => {
-        await expect(ownerBubble.write(file6, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.delete(file6)).resolves.toBe(null);
       })
 
       test('deletes empty directory if permitted', async () => {
-        await expect(requesterBubble.mkdir(file5)).resolves.toBe(null);
+        await expect(requesterBubble.mkdir(file5)).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.delete(file5)).resolves.toBe(null);
       })
 
       test('fails to delete directory if not empty', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
+        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.delete(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY});
       })
 
       test('deletes non-empty directory if force option is given', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBe(null);
+        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.delete(file5, {force: true})).resolves.toBe(null);
       })
 
@@ -197,18 +216,23 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         await expect(ownerBubble.mkdir(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
-      test('succeeds if permitted', async () => {
-        await expect(requesterBubble.mkdir(file5)).resolves.toBe(null);
+      test(`succeeds if permitted and returns the directory's ContentId`, async () => {
+        await expect(requesterBubble.mkdir(file5)).resolves.toStrictEqual(new ContentId({
+          chain: CHAIN_ID,
+          contract: contract.options.address,
+          provider: BUBBLE_SERVER_URL,
+          file: file5
+        }));
       })
 
       test('fails if directory already exists', async () => {
-        await expect(requesterBubble.mkdir(file5)).resolves.toBe(null);
+        await expect(requesterBubble.mkdir(file5)).resolves.toBeInstanceOf(ContentId);
         await expect(requesterBubble.mkdir(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_DIR_ALREADY_EXISTS});
       })
 
       test('does not fail if directory already exists but silent option is given', async () => {
-        await expect(requesterBubble.mkdir(file5)).resolves.toBe(null);
-        await expect(requesterBubble.mkdir(file5, {silent: true})).resolves.toBe(null);
+        await expect(requesterBubble.mkdir(file5)).resolves.toBeInstanceOf(ContentId);
+        await expect(requesterBubble.mkdir(file5, {silent: true})).resolves.toBeInstanceOf(ContentId);
       })
 
     })
@@ -221,7 +245,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('succeeds if permitted', async () => {
-        await expect(ownerBubble.write(file6, "hello world")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello world")).resolves.toBeInstanceOf(ContentId);
         const listing = await ownerBubble.list(file6);
         expect(listing).toHaveLength(1);
         expect(listing[0].name).toBe(file6);
@@ -232,9 +256,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns directory contents', async () => {
-        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBeInstanceOf(ContentId);
         const listing = await requesterBubble.list(file4, {long: true});
         expect(listing).toHaveLength(3);
         function checkFile(meta, name, type, length) {
@@ -250,9 +274,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns root directory contents', async () => {
-        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBeInstanceOf(ContentId);
         const listing = await requesterBubble.list(file0, {long: true});
         expect(listing).toHaveLength(1);
         function checkFile(meta, name, type, length) {
@@ -274,7 +298,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns length if the length option is given', async () => {
-        await expect(ownerBubble.write(file6, "hello world")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello world")).resolves.toBeInstanceOf(ContentId);
         const listing = await ownerBubble.list(file6, {length: true});
         expect(listing).toHaveLength(1);
         expect(listing[0].name).toBe(file6);
@@ -285,7 +309,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns created time if the create option is given', async () => {
-        await expect(ownerBubble.write(file6, "hello world")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello world")).resolves.toBeInstanceOf(ContentId);
         const listing = await ownerBubble.list(file6, {created: true});
         expect(listing).toHaveLength(1);
         expect(listing[0].name).toBe(file6);
@@ -296,7 +320,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns length if the length option is given', async () => {
-        await expect(ownerBubble.write(file6, "hello world")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello world")).resolves.toBeInstanceOf(ContentId);
         const listing = await ownerBubble.list(file6, {modified: true});
         expect(listing).toHaveLength(1);
         expect(listing[0].name).toBe(file6);
@@ -307,7 +331,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('returns length, created and modified fields if the long option is given', async () => {
-        await expect(ownerBubble.write(file6, "hello world")).resolves.toBe(null);
+        await expect(ownerBubble.write(file6, "hello world")).resolves.toBeInstanceOf(ContentId);
         const listing = await ownerBubble.list(file6, {long: true});
         expect(listing).toHaveLength(1);
         expect(listing[0].name).toBe(file6);
@@ -319,13 +343,13 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('time filters', async () => {
         // create files
-        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/f1', "hello world")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f2', "hello solar system")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f3', "hello universe")).resolves.toBeInstanceOf(ContentId);
         // modify in reverse order
-        await expect(ownerBubble.append(file4+'/f3', " again")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f2', " again")).resolves.toBe(null);
-        await expect(ownerBubble.append(file4+'/f1', " again")).resolves.toBe(null);
+        await expect(ownerBubble.append(file4+'/f3', " again")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f2', " again")).resolves.toBeInstanceOf(ContentId);
+        await expect(ownerBubble.append(file4+'/f1', " again")).resolves.toBeInstanceOf(ContentId);
 
         // list without filter and check modified times are different from created times
         const fullListing = await requesterBubble.list(file4, {long: true});
@@ -436,7 +460,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           isEncrypted(path) { return path === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
-        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         await expect(requesterBubble.read(file1)).resolves.toMatch(/^0x[0-9a-fA-F]{17}[0-9a-fA-F]*$/);
       })
@@ -446,7 +470,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           isEncrypted(path) { return path === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
-        await expect(ownerBubble.append(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.append(file1, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         await expect(requesterBubble.read(file1)).resolves.toMatch(/^0x[0-9a-fA-F]{17}[0-9a-fA-F]*$/);
       })
@@ -456,7 +480,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           isEncrypted(path) { return path === file2 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
-        await expect(ownerBubble.write(file1, "hello")).resolves.toBe(null);
+        await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
         await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         await expect(requesterBubble.read(file1)).resolves.toBe("hello");
       })
@@ -487,46 +511,46 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
   
         test('writes ok if permitted', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         })
   
         test('writes ok with base64url content id', async () => {
-          await expect(ContentManager.write(getContentId(file1).toString(), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1).toString(), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         })
   
         test('writes ok with plain object content id', async () => {
-          await expect(ContentManager.write(getContentId(file1).toObject(), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1).toObject(), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         })
   
         test('writes ok with DID', async () => {
-          await expect(ContentManager.write(getContentId(file1).toDID(), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1).toDID(), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         })
   
         test('writes ok with options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello");
         })
   
         test('writes ok with undefined options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", undefined, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", undefined, ownerSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('writes ok using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(manager.write(getContentId(file1), "hello")).resolves.toBe(null);
+          await expect(manager.write(getContentId(file1), "hello")).resolves.toBeInstanceOf(ContentId);
         })
 
         test('writes ok using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(manager.write(getContentId(file1), "hello", {test: true})).resolves.toBe(null);
+          await expect(manager.write(getContentId(file1), "hello", {test: true})).resolves.toBeInstanceOf(ContentId);
         })
   
         test('can write to a file within a directory', async () => {
-          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
       })  
@@ -539,50 +563,50 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
   
         test('appends ok if permitted', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
-          await expect(ContentManager.append(getContentId(file1), " world", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
+          await expect(ContentManager.append(getContentId(file1), " world", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello world");
         })
   
         test('appends ok with base64url content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
-          await expect(ContentManager.append(getContentId(file1).toString(), " world", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
+          await expect(ContentManager.append(getContentId(file1).toString(), " world", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello world");
         })
   
         test('appends ok with plain object content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
-          await expect(ContentManager.append(getContentId(file1).toObject(), " world", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
+          await expect(ContentManager.append(getContentId(file1).toObject(), " world", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello world");
         })
   
         test('appends ok with DID', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
-          await expect(ContentManager.append(getContentId(file1).toDID(), " world", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
+          await expect(ContentManager.append(getContentId(file1).toDID(), " world", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ownerBubble.read(file1)).resolves.toBe("hello world");
         })
   
         test('appends ok with options', async () => {
-          await expect(ContentManager.append(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.append(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('appends ok with undefined options', async () => {
-          await expect(ContentManager.append(getContentId(file1), "hello", undefined, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.append(getContentId(file1), "hello", undefined, ownerSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('appends ok using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(manager.append(getContentId(file1), "hello")).resolves.toBe(null);
+          await expect(manager.append(getContentId(file1), "hello")).resolves.toBeInstanceOf(ContentId);
         })
 
         test('appends ok using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(manager.append(getContentId(file1), "hello", {test: true})).resolves.toBe(null);
+          await expect(manager.append(getContentId(file1), "hello", {test: true})).resolves.toBeInstanceOf(ContentId);
         })
   
         test('can append to a file within a directory', async () => {
-          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBe(null);
-          await expect(ContentManager.append(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
+          await expect(ContentManager.append(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
       })  
@@ -591,54 +615,54 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       describe('read', () => {
 
         test('fails if permission is denied', async () => {
-          await expect(ContentManager.write(getContentId(file2), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file2), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file2), requesterSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
         })
   
         test('reads ok if permitted', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1), requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok with base64url content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1).toString(), requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok with plain object content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1).toObject(), requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok with DID', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1).toDID(), requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok with options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1), {test: true}, requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok with undefined options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file1), undefined, requesterSign)).resolves.toBe("hello");
         })
   
         test('reads ok using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.read(getContentId(file1))).resolves.toBe("hello");
         })
 
         test('reads ok using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.read(getContentId(file1), {test: true})).resolves.toBe("hello");
         })
   
         test('can read a file within a directory', async () => {
-          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.read(getContentId(file5+'/test1'), ownerSign)).resolves.toBe("hello");
         })
   
@@ -652,49 +676,49 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
   
         test('deletes ok if permitted', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1), ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok with base64url content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1).toString(), ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok with plain object content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1).toObject(), ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok with DID', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1).toDID(), ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok with options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1), {test: true}, ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok with undefined options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file1), undefined, ownerSign)).resolves.toBe(null);
         })
   
         test('deletes ok using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.delete(getContentId(file1))).resolves.toBe(null);
         })
 
         test('deletes ok using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", {test: true}, ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.delete(getContentId(file1), {test: true})).resolves.toBe(null);
         })
   
         test('can deletes a file within a directory', async () => {
-          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", {test: true}, requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", {test: true}, requesterSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.delete(getContentId(file5+'/test1'), {test: true}, requesterSign)).resolves.toBe(null);
         })
   
@@ -708,37 +732,37 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
   
         test('is successful if permitted', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5), requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5), requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful with base64url content id', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5).toString(), requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5).toString(), requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful with plain object content id', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5).toObject(), requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5).toObject(), requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful with DID', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5).toDID(), requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5).toDID(), requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful with options', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5), {force: true}, requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5), {force: true}, requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful with undefined options', async () => {
-          await expect(ContentManager.mkdir(getContentId(file5), undefined, requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.mkdir(getContentId(file5), undefined, requesterSign)).resolves.toBeInstanceOf(ContentId);
         })
   
         test('is successful using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(requesterSign);
-          await expect(manager.mkdir(getContentId(file5))).resolves.toBe(null);
+          await expect(manager.mkdir(getContentId(file5))).resolves.toBeInstanceOf(ContentId);
         })
 
         test('is successful using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(requesterSign);
-          await expect(manager.mkdir(getContentId(file5), {force: true})).resolves.toBe(null);
+          await expect(manager.mkdir(getContentId(file5), {force: true})).resolves.toBeInstanceOf(ContentId);
         })
   
       })  
@@ -747,59 +771,59 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       describe('list', () => {
 
         test('fails if permission is denied', async () => {
-          await expect(ContentManager.write(getContentId(file2), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file2), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file2), requesterSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
         })
   
         test('lists ok if permitted', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1), requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok with base64url content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1).toString(), requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok with plain object content id', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1).toObject(), requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok with DID', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1).toDID(), requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok with options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1), {test: true}, requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok with undefined options', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file1), undefined, requesterSign)).resolves.toHaveLength(1);
         })
   
         test('lists ok using instantiated BubbleContentManager', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.list(getContentId(file1))).resolves.toHaveLength(1);
         })
 
         test('lists ok using instantiated BubbleContentManager with options', async () => {
           const manager = new BubbleContentManager(ownerSign);
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(manager.list(getContentId(file1), {test: true})).resolves.toHaveLength(1);
         })
   
         test('can list a file within a directory', async () => {
-          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file5+'/test1'), "hello", requesterSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file5+'/test1'), ownerSign)).resolves.toHaveLength(1);
         })
   
         test('can list the root directory', async () => {
-          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBe(null);
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).resolves.toBeInstanceOf(ContentId);
           await expect(ContentManager.list(getContentId(file0), ownerSign)).resolves.toHaveLength(1);
         })
   
