@@ -66,6 +66,10 @@ export class RamBasedBubbleServer {
     this.dataServer._resetBubble(contract);
   }
 
+  _createBubble(contract) {
+    this.dataServer._createBubble(contract);
+  }
+
 }
 
 

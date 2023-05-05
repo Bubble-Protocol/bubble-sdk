@@ -155,8 +155,14 @@ export class RamBasedDataServer extends DataServer {
   }
 
   _resetBubble(contract) {
+    if (!this.bubbles[contract]) return;
     this.terminate(contract);
     this.create(contract);
+  }
+
+  _createBubble(contract) {
+    if (this.bubbles[contract]) this._resetBubble(contract);
+    else this.create(contract);
   }
 
 }

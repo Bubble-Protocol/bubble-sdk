@@ -44,21 +44,54 @@ describe('end-to-end bubble to server and blockchain tests', () => {
   bubbleAvailableTest();
 
 
-  describe('basic functions', () => {
+  describe('Bubble basic functions', () => {
 
-    describe('bubble create', () => {
 
-      test('fails if permission is denied', async () => {
+    describe('when the bubble does not exist', () => {
+
+      beforeEach(() => {
+        MockBubbleServer.deleteAllBubbles();
+      })
+
+      afterEach(() => {
+        MockBubbleServer.createBubble(contract.options.address);
+      })
+
+      test('write rejects with a Bubble Does Not Exist error', async () => {
+        await expect(ownerBubble.write(file1, "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('append rejects with a Bubble Does Not Exist error', async () => {
+        await expect(ownerBubble.append(file1, "hello")).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('read rejects with a Bubble Does Not Exist error', async () => {
+        await expect(ownerBubble.read(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('delete rejects with a Bubble Does Not Exist error', async () => {
+        await expect(ownerBubble.delete(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('mkdir rejects with a Bubble Does Not Exist error', async () => {
+        await expect(requesterBubble.mkdir(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('list rejects with a Bubble Does Not Exist error', async () => {
+        await expect(ownerBubble.list(file1)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('create fails if permission is denied', async () => {
         await expect(requesterBubble.create()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
 
-      test('is successful if permitted and unsuccessful if bubble already exists', async () => {
-        MockBubbleServer.deleteAllBubbles();
+      test('create is successful if permitted and unsuccessful if bubble already exists', async () => {
         await expect(ownerBubble.create()).resolves.toBe(null);
         await expect(ownerBubble.create()).rejects.toBeBubbleError();
       })
 
     })
+
 
     describe('bubble write', () => {
 
@@ -503,6 +536,42 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           file: fileId
         })
       }
+
+      describe('when the bubble does not exist', () => {
+
+        beforeEach(() => {
+          MockBubbleServer.deleteAllBubbles();
+        })
+
+        afterEach(() => {
+          MockBubbleServer.createBubble(contract.options.address);
+        })
+
+        test('write rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.write(getContentId(file1), "hello", ownerSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+        test('append rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.append(getContentId(file1), "hello", ownerSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+        test('read rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.read(getContentId(file1), ownerSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+        test('delete rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.delete(getContentId(file1), ownerSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+        test('mkdir rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.mkdir(getContentId(file5), requesterSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+        test('list rejects with a Bubble Does Not Exist error', async () => {
+          await expect(ContentManager.list(getContentId(file1), ownerSign)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        })
+  
+      })
 
       describe('write', () => {
 

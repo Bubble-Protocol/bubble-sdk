@@ -59,7 +59,7 @@ export function stopServers() {
 
 
 export const MockBubbleServer = {
-  createBubble: (address) => bubbleServer.dataServer.create(address),
+  createBubble: (address) => bubbleServer._createBubble(address),
   clearBubble: (address) => bubbleServer._resetBubble(address),
   deleteAllBubbles: () => bubbleServer._reset()
 }
