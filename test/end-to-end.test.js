@@ -5,6 +5,9 @@ import '../packages/core/test/BubbleErrorMatcher';
 import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies } from '../packages/index';
 import { ErrorCodes } from './common';
 import { constructTestBubble } from './test-bubble';
+import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint';
+import { RamBasedDataServer } from './RamBasedDataServer';
+import { testDataServerRequirements } from '../packages/server/test/DataServerTestSuite/requirementsTests';
 
 
 // Permissions are set to support a variety of tests:
@@ -22,6 +25,18 @@ const file3 = "0x000000000000000000000000000000000000000000000000000000000000000
 const file4 = "0x0000000000000000000000000000000000000000000000000000000000000004";
 const file5 = "0x0000000000000000000000000000000000000000000000000000000000000005";
 const file6 = "0x0000000000000000000000000000000000000000000000000000000000000006";
+
+
+describe('validate end-to-end test suite', () => {
+
+  const dataServer = new RamBasedDataServer();
+  const testPoint = new DataServerTestPoint(dataServer);
+  
+  testPoint.runTests();
+
+  testDataServerRequirements(dataServer, testPoint);
+
+})
 
 
 describe('end-to-end bubble to server and blockchain tests', () => {
@@ -86,7 +101,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       test('create is successful if permitted and unsuccessful if bubble already exists', async () => {
-        await expect(ownerBubble.create()).resolves.toBe(null);
+        await expect(ownerBubble.create()).resolves.toStrictEqual(new ContentId({
+          chain: CHAIN_ID,
+          contract: contract.options.address,
+          provider: BUBBLE_SERVER_URL
+        }));
         await expect(ownerBubble.create()).rejects.toBeBubbleError();
       })
 
@@ -196,7 +215,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('a read of a directory is equivalent to list', async () => {
         await expect(ownerBubble.append(file4+'/test1', "")).resolves.toBeInstanceOf(ContentId);
-        await expect(requesterBubble.read(file4)).resolves.toStrictEqual([{type: "file", name: "test1"}]);
+        await expect(requesterBubble.read(file4)).resolves.toStrictEqual([{type: "file", name: file4+"/test1"}]);
       })
 
     })
@@ -226,14 +245,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         await expect(requesterBubble.delete(file5)).resolves.toBe(null);
       })
 
-      test('fails to delete directory if not empty', async () => {
+      test('deletes non-empty directory', async () => {
         await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
-        await expect(requesterBubble.delete(file5)).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_DIR_NOT_EMPTY});
-      })
-
-      test('deletes non-empty directory if force option is given', async () => {
-        await expect(requesterBubble.write(file5+'/test1', "hello")).resolves.toBeInstanceOf(ContentId);
-        await expect(requesterBubble.delete(file5, {force: true})).resolves.toBe(null);
+        await expect(requesterBubble.delete(file5)).resolves.toBe(null);
       })
 
     })
@@ -301,9 +315,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           expect(typeof meta.created).toBe('number');
           expect(typeof meta.modified).toBe('number');
         }
-        checkFile(listing[0], 'f1', 'file', 11);
-        checkFile(listing[1], 'f2', 'file', 18);
-        checkFile(listing[2], 'f3', 'file', 14);
+        checkFile(listing[0], file4+'/f1', 'file', 11);
+        checkFile(listing[1], file4+'/f2', 'file', 18);
+        checkFile(listing[2], file4+'/f3', 'file', 14);
       })
 
       test('returns root directory contents', async () => {
@@ -387,9 +401,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         // list without filter and check modified times are different from created times
         const fullListing = await requesterBubble.list(file4, {long: true});
         expect(fullListing).toHaveLength(3);
-        expect(fullListing[0].name).toBe('f1');
-        expect(fullListing[1].name).toBe('f2');
-        expect(fullListing[2].name).toBe('f3');
+        expect(fullListing[0].name).toBe(file4+'/f1');
+        expect(fullListing[1].name).toBe(file4+'/f2');
+        expect(fullListing[2].name).toBe(file4+'/f3');
         expect(fullListing[0].modified).not.toBe(fullListing[0].created);
         expect(fullListing[1].modified).not.toBe(fullListing[1].created);
         expect(fullListing[2].modified).not.toBe(fullListing[2].created);
@@ -397,26 +411,26 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         // list with filter: modified after f3
         let filteredListing = await requesterBubble.list(file4, {long: true, after: fullListing[2].modified});
         expect(filteredListing).toHaveLength(2);
-        expect(filteredListing[0].name).toBe('f1');
-        expect(filteredListing[1].name).toBe('f2');
+        expect(filteredListing[0].name).toBe(file4+'/f1');
+        expect(filteredListing[1].name).toBe(file4+'/f2');
         
         // list with filter: modified before f1
         filteredListing = await requesterBubble.list(file4, {long: true, before: fullListing[0].modified});
         expect(filteredListing).toHaveLength(2);
-        expect(filteredListing[0].name).toBe('f2');
-        expect(filteredListing[1].name).toBe('f3');
+        expect(filteredListing[0].name).toBe(file4+'/f2');
+        expect(filteredListing[1].name).toBe(file4+'/f3');
 
         // list with filter: created after f1
         filteredListing = await requesterBubble.list(file4, {long: true, createdAfter: fullListing[0].created});
         expect(filteredListing).toHaveLength(2);
-        expect(filteredListing[0].name).toBe('f2');
-        expect(filteredListing[1].name).toBe('f3');
+        expect(filteredListing[0].name).toBe(file4+'/f2');
+        expect(filteredListing[1].name).toBe(file4+'/f3');
         
         // list with filter: created before f3
         filteredListing = await requesterBubble.list(file4, {long: true, createdBefore: fullListing[2].created});
         expect(filteredListing).toHaveLength(2);
-        expect(filteredListing[0].name).toBe('f1');
-        expect(filteredListing[1].name).toBe('f2');
+        expect(filteredListing[0].name).toBe(file4+'/f1');
+        expect(filteredListing[1].name).toBe(file4+'/f2');
 
         //
         // Check boundary conditions
