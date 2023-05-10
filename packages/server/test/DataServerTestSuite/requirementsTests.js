@@ -502,6 +502,8 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
         describe("modified files", () => {
 
+          const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+
           test( "[req-ds-ls-10] [req-ds-ls-11] listing a modified file within the directory shows the length has been updated and the modified time has advanced", async () => {
             const preModList = await dataServer.list(contractAddress, fileAinDir5, {long: true});
             await dataServer.append(contractAddress, fileAinDir5, " with append");
@@ -516,7 +518,21 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.append(contractAddress, fileAinDir5, " and again");
+            var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            expect(typeof result[0].modified).toBe('number');
+            expect(result[0].modified).toBe(originalModified);
+          })
+
+          test("[req-ds-ls-12] overwriting a file within a directory does not change the directory's modified time", async () => {
+            var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            const originalModified = result[0].modified;
+            expect(typeof originalModified).toBe('number');
+            await delay(2);
+            await dataServer.write(contractAddress, fileAinDir5, "hello world");
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
             expect(typeof result[0].modified).toBe('number');
@@ -529,6 +545,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.write(contractAddress, dir3+'/newFile', "testing");
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -541,6 +558,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.delete(contractAddress, dir3+'/newFile');
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -548,12 +566,26 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result[0].modified).toBeGreaterThan(originalModified);
           })
 
-          test("[req-ds-ls-12] modifying a file within the root directory does not change the directory's modified time", async () => {
+          test("[req-ds-ls-12] appending to a file within the root directory does not change the directory's modified time", async () => {
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.append(contractAddress, file1, " world");
+            var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            expect(typeof result[0].modified).toBe('number');
+            expect(result[0].modified).toBe(originalModified);
+          })
+
+          test("[req-ds-ls-12] overwriting a file within the root directory does not change the directory's modified time", async () => {
+            var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            const originalModified = result[0].modified;
+            expect(typeof originalModified).toBe('number');
+            await delay(2);
+            await dataServer.write(contractAddress, file1, "hello world");
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
             expect(typeof result[0].modified).toBe('number');
@@ -566,7 +598,22 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.write(contractAddress, file2, "testing");
+            var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            expect(typeof result[0].modified).toBe('number');
+            expect(result[0].modified).toBeGreaterThan(originalModified);
+          })
+
+          test("[req-ds-ls-12] adding a directory to the root directory changes the directory's modified time", async () => {
+            await dataServer.delete(contractAddress, dir3, {silent: true});
+            var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
+            expect(result).toHaveLength(1);
+            const originalModified = result[0].modified;
+            expect(typeof originalModified).toBe('number');
+            await delay(2);
+            await dataServer.mkdir(contractAddress, dir3);
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
             expect(typeof result[0].modified).toBe('number');
@@ -578,6 +625,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
+            await delay(2);
             await dataServer.delete(contractAddress, file2);
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
