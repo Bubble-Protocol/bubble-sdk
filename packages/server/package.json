@@ -2,17 +2,16 @@
   "name": "@bubble-protocol/server",
   "version": "0.0.1",
   "description": "Bubble Protocol server-side library",
-  "main": "index.js",
+  "author": "Bubble Protocol",
+  "license": "MIT",
+  "main": "src/index.js",
   "type": "module",
   "directories": {
-    "doc": "docs",
     "test": "test"
   },
   "scripts": {
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
-  "author": "Bubble Protocol",
-  "license": "MIT",
   "devDependencies": {
     "jest": "^29.5.0"
   },
