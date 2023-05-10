@@ -12,6 +12,11 @@ const Crypto = crypto || (window ? window.crypto : undefined);
 export class Bubble {
 
   /**
+   * @dev the bubble's content id
+   */
+  contentId;
+  
+  /**
    * @dev api to the bubble server
    */
   provider;
@@ -67,7 +72,10 @@ export class Bubble {
    */
   create(options) {
     return this.rpcFactory.create(options)
-      .then(this.post);
+      .then(this.post)
+      .then(() => { 
+        return this.getContentId() 
+      });
   }
 
   /**
