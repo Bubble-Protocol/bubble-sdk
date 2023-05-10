@@ -2,7 +2,7 @@
   "name": "bubble-sdk",
   "version": "0.0.1",
   "description": "Bubble Protocol SDK",
-  "main": "index.js",
+  "main": "packages/index.js",
   "type": "module",
   "directories": {
     "doc": "docs",
