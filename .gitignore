@@ -25,3 +25,6 @@ yarn-error.log*
 
 scratchpad
 remixd.sh
+.deps
+contracts/artifacts
+contracts/examples/artifacts
