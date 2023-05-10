@@ -14,3 +14,4 @@ export {BubblePermissions} from './Permissions';
 export {ROOT_PATH} from './constants';
 export * as assert from './assertions';
 export {BubbleError, ErrorCodes} from './errors';
+export {blockchainProviders} from './blockchain-providers';

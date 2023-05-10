@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 //
 
-import { BlockchainProvider } from '@bubble-protocol/core';
+import { BlockchainProvider } from '../BlockchainProvider';
 import ABIs from './abi.json';
 
 export class Web3Provider extends BlockchainProvider {
