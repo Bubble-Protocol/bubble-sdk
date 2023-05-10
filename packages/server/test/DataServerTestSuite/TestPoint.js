@@ -1,3 +1,7 @@
+// Copyright (c) 2023 Bubble Protocol
+// Distributed under the MIT software license, see the accompanying
+// file LICENSE or http://www.opensource.org/licenses/mit-license.php.
+
 import { ErrorCodes } from '@bubble-protocol/core';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
@@ -47,7 +51,7 @@ export class TestPoint {
 
   async runTests(options={}) {
 
-    describe("Unit TestPoint tests", () => {
+    describe("TestPoint tests", () => {
 
       var contractAddress;
 
