@@ -44,7 +44,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
         testPoint.deleteFile(contractAddress, dir3),
       ])
     }
-  
+
     beforeAll(() => {
       contractAddress = options.contractAddress || defaultContractAddress;
     })
@@ -144,6 +144,27 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
       })
 
 
+      test("test clearBubble", async () => {
+        await testPoint.writeFile(contractAddress, file1, 'hello world');
+        await testPoint.writeFile(contractAddress, file2, 'hello world');
+        await testPoint.writeFile(contractAddress, dir3+'/a.txt', 'hello world');
+        await testPoint.writeFile(contractAddress, dir3+'/b.txt', 'hello world');
+        await testPoint.writeFile(contractAddress, dir3+'/c.txt', 'hello world');
+        await testPoint.assertExists(contractAddress, file1);
+        await testPoint.assertExists(contractAddress, file2);
+        await testPoint.assertExists(contractAddress, dir3);
+        await testPoint.assertExists(contractAddress, dir3+'/a.txt');
+        await testPoint.assertExists(contractAddress, dir3+'/b.txt');
+        await testPoint.assertExists(contractAddress, dir3+'/c.txt');
+        await clearBubble();
+        await testPoint.assertNotExists(contractAddress, file1);
+        await testPoint.assertNotExists(contractAddress, file2);
+        await testPoint.assertNotExists(contractAddress, dir3);
+        await testPoint.assertNotExists(contractAddress, dir3+'/a.txt');
+        await testPoint.assertNotExists(contractAddress, dir3+'/b.txt');
+        await testPoint.assertNotExists(contractAddress, dir3+'/c.txt');
+      })
+  
       describe("but before a file exists", () => {
 
         test( "[req-ds-rd-2] read fails with FILE_DOES_NOT_EXIST error", async () => {
@@ -502,8 +523,6 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
         describe("modified files", () => {
 
-          const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
-
           test( "[req-ds-ls-10] [req-ds-ls-11] listing a modified file within the directory shows the length has been updated and the modified time has advanced", async () => {
             const preModList = await dataServer.list(contractAddress, fileAinDir5, {long: true});
             await dataServer.append(contractAddress, fileAinDir5, " with append");
@@ -518,7 +537,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.append(contractAddress, fileAinDir5, " and again");
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -531,7 +550,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.write(contractAddress, fileAinDir5, "hello world");
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -545,7 +564,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.write(contractAddress, dir3+'/newFile', "testing");
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -558,7 +577,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.delete(contractAddress, dir3+'/newFile');
             var result = await dataServer.list(contractAddress, dir3, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -571,7 +590,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.append(contractAddress, file1, " world");
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -584,7 +603,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.write(contractAddress, file1, "hello world");
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -598,7 +617,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.write(contractAddress, file2, "testing");
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -612,7 +631,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.mkdir(contractAddress, dir3);
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -625,7 +644,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(result).toHaveLength(1);
             const originalModified = result[0].modified;
             expect(typeof originalModified).toBe('number');
-            await delay(2);
+            await sleep(2);
             await dataServer.delete(contractAddress, file2);
             var result = await dataServer.list(contractAddress, ROOT_PATH, {directoryOnly: true, modified: true});
             expect(result).toHaveLength(1);
@@ -635,10 +654,177 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
         });
 
-          // TODO list matches filter on directory
-          // TODO list before, after tests
-          // TODO terminate
-          // TODO attacks?  (send empty request)
+
+        describe("matches", () => {
+
+          test("[req-ds-ls-19] [req-ds-gen-1] rejects with an INVALID_OPTION bubble error if regex is invalid", async () => {
+            await expect(dataServer.list(contractAddress, dir3, {matches: '*.*'}))
+              .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION});
+          })
+
+          test("[req-ds-ls-19] filters files in a directory based on given regex", async () => {
+            await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello world");
+            await testPoint.writeFile(contractAddress, dir3+'/bb.txt', "hello world");
+            await testPoint.writeFile(contractAddress, dir3+'/ccc.txt', "hello world");
+            await expect(dataServer.list(contractAddress, dir3, {matches: '^.*/[ab]*.txt$'}))
+              .resolves.toStrictEqual([
+                {name: dir3+'/a.txt', type: 'file'},
+                {name: dir3+'/bb.txt', type: 'file'}
+              ])
+          })
+
+          test("[req-ds-ls-19] filters the root based on given regex", async () => {
+            await testPoint.writeFile(contractAddress, file1, "hello world");
+            await testPoint.writeFile(contractAddress, file2, "hello world");
+            await testPoint.mkdir(contractAddress, dir3, "hello world");
+            await expect(dataServer.list(contractAddress, ROOT_PATH, {matches: '.*[13]$'}))
+              .resolves.toStrictEqual([
+                {name: file1, type: 'file'},
+                {name: dir3, type: 'dir'}
+              ])
+          })
+
+        })
+
+
+        describe("time filters", () => {
+
+          var fileA, fileB;
+
+          beforeAll(async () => {
+            await clearBubble();
+            await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello");
+            await sleep(2); // ensure create and modified times are different
+            await dataServer.append(contractAddress, dir3+'/a.txt', " world");
+            await sleep(2);
+            await testPoint.writeFile(contractAddress, dir3+'/b.txt', "hello");
+            await sleep(2);
+            await dataServer.append(contractAddress, dir3+'/b.txt', " world");
+            await sleep(2);
+            await testPoint.writeFile(contractAddress, dir3+'/c.txt', "hello");
+            await sleep(2);
+            await dataServer.append(contractAddress, dir3+'/c.txt', " world");
+            fileA = (await dataServer.list(contractAddress, dir3+'/a.txt', {long: true}))[0];
+            fileB = (await dataServer.list(contractAddress, dir3+'/b.txt', {long: true}))[0];
+          })
+              
+          test("[req-ds-ls-15] [req-ds-gen-1] rejects with an INVALID_OPTION bubble error if after option is invalid", async () => {
+            await expect(dataServer.list(contractAddress, dir3, {after: 'abc'}))
+              .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION});
+          })
+
+          test("[req-ds-ls-16] [req-ds-gen-1] rejects with an INVALID_OPTION bubble error if before option is invalid", async () => {
+            await expect(dataServer.list(contractAddress, dir3, {before: 'abc'}))
+              .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION});
+          })
+
+          test("[req-ds-ls-17] [req-ds-gen-1] rejects with an INVALID_OPTION bubble error if createdAfter option is invalid", async () => {
+            await expect(dataServer.list(contractAddress, dir3, {createdAfter: 'abc'}))
+              .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION});
+          })
+
+          test("[req-ds-ls-18] [req-ds-gen-1] rejects with an INVALID_OPTION bubble error if createdBefore option is invalid", async () => {
+            await expect(dataServer.list(contractAddress, dir3, {createdBefore: 'abc'}))
+              .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION});
+          })
+
+          describe("filters files modified after the given time", () => {
+
+            test("[req-ds-ls-15] boundary condition: excludes when modified=after", async () => {
+             await expect(dataServer.list(contractAddress, dir3, {after: fileA.modified}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/b.txt', type: 'file'},
+                  {name: dir3+'/c.txt', type: 'file'}
+                ])
+            })
+  
+            test("[req-ds-ls-15] boundary condition: includes when modified=after+1", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {after: fileA.modified-1}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'},
+                  {name: dir3+'/b.txt', type: 'file'},
+                  {name: dir3+'/c.txt', type: 'file'}
+                ])
+            })
+  
+          })
+
+          describe("filters files modified before the given time", () => {
+
+            test("[req-ds-ls-16] boundary condition: excludes when modified=before", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {before: fileB.modified}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'}
+                ])
+            })
+  
+            test("[req-ds-ls-16] boundary condition: includes when modified=before-1", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {before: fileB.modified+1}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'},
+                  {name: dir3+'/b.txt', type: 'file'}
+                ])
+            })
+  
+          })
+
+          describe("filters files created after the given time", () => {
+
+            test("[req-ds-ls-17] boundary condition: excludes when created=createdAfter", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {createdAfter: fileA.created}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/b.txt', type: 'file'},
+                  {name: dir3+'/c.txt', type: 'file'}
+                ])
+            })
+  
+            test("[req-ds-ls-17] boundary condition: includes when created=createdAfter+1", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {createdAfter: fileA.created-1}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'},
+                  {name: dir3+'/b.txt', type: 'file'},
+                  {name: dir3+'/c.txt', type: 'file'}
+                ])
+            })
+  
+          })
+
+          describe("filters files created before the given time", () => {
+
+            test("[req-ds-ls-18] boundary condition: excludes when created=createdBefore", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {createdBefore: fileB.created}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'}
+                ])
+            })
+  
+            test("[req-ds-ls-18] boundary condition: includes when created=createdBefore-1", async () => {
+              await expect(dataServer.list(contractAddress, dir3, {createdBefore: fileB.created+1}))
+                .resolves.toStrictEqual([
+                  {name: dir3+'/a.txt', type: 'file'},
+                  {name: dir3+'/b.txt', type: 'file'}
+                ])
+            })
+  
+          })
+
+          test("[req-ds-ls-20] multiple filters are applied", async () => {
+            await testPoint.writeFile(contractAddress, dir3+'/d.txt', "hello");
+            await sleep(2);
+            await dataServer.append(contractAddress, dir3+'/d.txt', " world");
+            await sleep(2);
+            await testPoint.writeFile(contractAddress, dir3+'/e.txt', "hello");
+            await sleep(2);
+            await dataServer.append(contractAddress, dir3+'/e.txt', " world");
+            const fileE = (await dataServer.list(contractAddress, dir3+'/e.txt', {long: true}))[0];
+            await expect(dataServer.list(contractAddress, dir3, {createdAfter: fileA.created, before: fileE.modified, matches: '[abde].txt'}))
+              .resolves.toStrictEqual([
+                {name: dir3+'/b.txt', type: 'file'},
+                {name: dir3+'/d.txt', type: 'file'}
+              ])
+          })
+  
+        })
 
 
       });
@@ -646,7 +832,29 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
     });
 
 
+    describe("terminate", () => {
+
+      test( "[req-ds-tm-1] [req-ds-tm-2] succeeds when bubble exists", async () => {
+        await expect(dataServer.terminate(contractAddress)).resolves.not.toThrow();
+      });
+
+      test( "[req-ds-tm-3] fails with BUBBLE_DOES_NOT_EXIST error if bubble already exists", async () => {
+        await expect(dataServer.terminate(contractAddress))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      });
+
+      test( "[req-ds-tm-4] does not fail when bubble does not exist but the silent option is given", async () => {
+        await expect(dataServer.terminate(contractAddress, {silent: true})).resolves.not.toThrow();
+      });
+
+    })
 
   });
 
 }
+
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
