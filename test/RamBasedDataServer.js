@@ -169,6 +169,33 @@ export class RamBasedDataServer extends DataServer {
     }
     countFilesIn = countFilesIn.bind(this);
 
+    
+    // Prepare matches option
+
+    var matchesRegex;
+    if (options.matches) {
+      try {
+        matchesRegex = new RegExp(options.matches)
+      }
+      catch(error) {
+        return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION, "invalid matches option"));
+      }
+    }
+
+    // Prepare time options
+
+    if (options.before !== undefined && typeof options.before !== 'number') 
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION, "invalid before option"));
+    if (options.after !== undefined && typeof options.after !== 'number') 
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION, "invalid after option"));
+    if (options.createdBefore !== undefined && typeof options.createdBefore !== 'number') 
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION, "invalid createdBefore option"));
+    if (options.createdAfter !== undefined && typeof options.createdAfter !== 'number') 
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_INVALID_OPTION, "invalid createdAfter option"));
+
+    
+    // Filter files
+
     const results = [];
     files.forEach(f => {
       const meta = this.bubbles[contract][f];
@@ -177,6 +204,7 @@ export class RamBasedDataServer extends DataServer {
       if (options.after !== undefined && meta.modified <= options.after) return;
       if (options.createdBefore !== undefined && meta.created >= options.createdBefore) return;
       if (options.createdAfter !== undefined && meta.created <= options.createdAfter) return;
+      if (options.matches && !matchesRegex.test(f)) return;
       const result = {name: f, type: meta.type};
       if (options.long || options.length) result.length = meta.type === 'dir' ? countFilesIn(f) : meta.data ? meta.data.length : 0;
       if (options.long || options.created) result.created = meta.created;
@@ -187,7 +215,9 @@ export class RamBasedDataServer extends DataServer {
     return Promise.resolve(results);
   }
 
-  terminate(contract) {
+  terminate(contract, options={}) {
+    if (this.bubbles[contract] === undefined && !options.silent) 
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST, "bubble does not exist"));
     delete this.bubbles[contract];
     return Promise.resolve();
   }

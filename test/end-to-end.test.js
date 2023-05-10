@@ -1051,8 +1051,9 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           gasPrice: '30000000000000'
         });
         await expect(ownerBubble.isTerminated()).resolves.toBe(true);
-        await expect(ownerBubble.terminate()).resolves.toBeNull();
-        await expect(requesterBubble.terminate()).resolves.toBeNull(); // anyone can terminate even if no permissions and bubble already deleted
+        await expect(requesterBubble.terminate()).resolves.toBeNull(); // anyone can terminate even if no permissions
+        await expect(ownerBubble.terminate()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        await expect(requesterBubble.terminate({silent: true})).resolves.toBeNull();
       })
 
     })
