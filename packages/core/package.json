@@ -2,11 +2,35 @@
   "name": "@bubble-protocol/core",
   "version": "0.0.1",
   "description": "Bubble Protocol core classes, types and constants",
+  "author": "Bubble Protocol",
+  "license": "MIT",
+  "keywords": [
+    "bubble",
+    "bubble protocol",
+    "access controlled storage",
+    "web3",
+    "decentralized storage",
+    "blockchain",
+    "evm",
+    "data privacy"
+  ],
   "main": "src/index.js",
   "type": "module",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "directories": {
+    "test": "test"
   },
-  "author": "Bubble Protocol",
-  "license": "MIT"
+  "scripts": {
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/Bubble-Protocol/bubble-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Bubble-Protocol/bubble-sdk/issues"
+  },
+  "homepage": "https://github.com/Bubble-Protocol/bubble-sdk/tree/main/packages/core",
+  "devDependencies": {
+    "jest": "^29.5.0"
+  }
 }

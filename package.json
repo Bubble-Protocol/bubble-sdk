@@ -1,11 +1,23 @@
 {
-  "name": "bubble-sdk",
+  "name": "@bubble-protocol/bubble-sdk",
   "version": "0.0.1",
   "description": "Bubble Protocol SDK",
+  "author": "Bubble Protocol",
+  "license": "MIT",
+  "keywords": [
+    "bubble",
+    "bubble protocol",
+    "access controlled storage",
+    "web3",
+    "decentralized storage",
+    "blockchain",
+    "evm",
+    "data privacy",
+    "sdk"
+  ],
   "main": "packages/index.js",
   "type": "module",
   "directories": {
-    "doc": "docs",
     "test": "test"
   },
   "scripts": {
@@ -15,8 +27,6 @@
     "type": "git",
     "url": "git+ssh://git@github.com/Bubble-Protocol/bubble-sdk.git"
   },
-  "author": "Bubble Protocol",
-  "license": "MIT",
   "bugs": {
     "url": "https://github.com/Bubble-Protocol/bubble-sdk/issues"
   },
