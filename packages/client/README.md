@@ -14,11 +14,11 @@ There are two ways to interact with content in a bubble:
 
 Creating a bubble is a 3-step process:
 
-1. **Design** an [`Access Control Contract`](#access-control-contract) suitable for your application (or use one of the [example contracts](https://github.com/Bubble-Protocol/bubble-sdk/tree/main/contracts/examples)).
+1. **Design** an `Access Control Contract` suitable for your application (or use one of the [example contracts](https://github.com/Bubble-Protocol/bubble-sdk/tree/main/contracts/examples)).
 2. **Deploy** the contract to a blockchain of your choice.
 3. **Create** the off-chain bubble on your chosen storage service using the [`Bubble`](#bubble-class) class.
 
-&nbsp;&nbsp; See [Creating A Bubble](#creating-a-bubble-example) for an example.
+&nbsp;&nbsp; See [Creating A Bubble](#creating-a-bubble-example) for an example of this process.
 
 ## Concepts & Definitions
 
@@ -32,7 +32,7 @@ Globally unique identifier for a file, directory or [bubble](#bubble).  A bubble
 
 #### Bubble
 
-A bubble is an off-chain container for files and directories controlled by a smart contract (an [Access Control Contract](#access-control-contract)), and where Bubble Protocol got it's name.  Every piece of content is held in a bubble on an off-chain storage service.  See the [bubble-sdk README](https://github.com/Bubble-Protocol/bubble-sdk#bubbles) for more information about bubbles, or [Bubble Class](#bubble-class) below for how to interact with them.
+A bubble is an off-chain container for files and directories controlled by a smart contract (an [Access Control Contract](#access-control-contract)), and where Bubble Protocol got it's name.  Every piece of content is held in a bubble on an off-chain storage service, protected by the access permissions defined in its contract.  See the [bubble-sdk README](https://github.com/Bubble-Protocol/bubble-sdk#bubbles) for more information about bubbles, or [Bubble Class](#bubble-class) below for how to interact with them.
 
 #### Bubble Provider
 
