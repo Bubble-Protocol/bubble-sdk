@@ -87,12 +87,3 @@ export class TestContract {
 
 }
 
-
-//
-// Sign function
-//
-
-function sign(web3, address, hash) {
-  return web3.eth.sign(hash, address);
-}
-
