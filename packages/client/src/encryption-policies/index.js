@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { AESGCMEncryptionPolicy } from './AESGCMEncryptionPolicy';
+import { AESGCMEncryptionPolicy } from './AESGCMEncryptionPolicy.js';
 
 export const encryptionPolicies = {
   AESGCMEncryptionPolicy: AESGCMEncryptionPolicy

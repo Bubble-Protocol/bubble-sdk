@@ -3,8 +3,10 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 //
 
-import { BlockchainProvider } from '../BlockchainProvider';
-import ABIs from './abi.json';
+import { BlockchainProvider } from '../BlockchainProvider.js';
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const ABIs = require('./abi.json');
 
 export class Web3Provider extends BlockchainProvider {
 

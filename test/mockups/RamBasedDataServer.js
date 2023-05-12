@@ -1,6 +1,6 @@
-import { ROOT_PATH } from '../../packages';
-import {BubbleError, ErrorCodes} from '../../packages/core/src/errors';
-import {DataServer} from '../../packages/server/src/DataServer';
+import { ROOT_PATH } from '../../packages/index.js';
+import {BubbleError, ErrorCodes} from '../../packages/core/src/errors.js';
+import {DataServer} from '../../packages/server/src/DataServer.js';
 
 /**
  * RAM based implementation of a `DataServer`.  Can be used for testing purposes.

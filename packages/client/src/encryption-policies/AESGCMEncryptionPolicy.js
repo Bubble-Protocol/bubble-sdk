@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { assert } from "@bubble-protocol/core";
-import { EncryptionPolicy } from "../EncryptionPolicy";
+import { EncryptionPolicy } from "../EncryptionPolicy.js";
 
 /**
  * Encryption Policy that encrypts all files with AES-GCM encryption.

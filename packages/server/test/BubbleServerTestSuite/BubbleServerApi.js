@@ -1,4 +1,4 @@
-import { DataServer } from '../../src/DataServer';
+import { DataServer } from '../../src/DataServer.js';
 
 export class BubbleServerApi extends DataServer {
 

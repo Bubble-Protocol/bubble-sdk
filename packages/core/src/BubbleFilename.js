@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import * as assert from './assertions';
-import { ROOT_PATH } from './constants';
+import * as assert from './assertions.js';
+import { ROOT_PATH } from './constants.js';
 
 /**
  * Deconstructs a string filename representing a file or directory in a bubble.  Bubble

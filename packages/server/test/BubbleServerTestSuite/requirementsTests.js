@@ -3,10 +3,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { testDataServerRequirements } from '../DataServerTestSuite/requirementsTests';
-import { BubbleTestPoint } from './BubbleTestPoint';
-import { BubbleServerApi } from './BubbleServerApi';
-import { TestContract } from './TestContract';
+import { testDataServerRequirements } from '../DataServerTestSuite/requirementsTests.js';
+import { BubbleTestPoint } from './BubbleTestPoint.js';
+import { BubbleServerApi } from './BubbleServerApi.js';
+import { TestContract } from './TestContract.js';
 import allPermissionsContractSrc from './contracts/AllPermissionsContract.json';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 

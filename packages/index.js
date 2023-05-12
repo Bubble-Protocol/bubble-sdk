@@ -6,6 +6,6 @@
  * Bubble-SDK main entry point
  */
 
-export * from './core/src/index';
-export * from './client/src/index';
-export * from './server/src/index';
+export * from './core/src/index.js';
+export * from './client/src/index.js';
+export * from './server/src/index.js';

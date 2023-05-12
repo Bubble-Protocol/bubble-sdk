@@ -3,8 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import web3 from "web3";
-import { EncryptionPolicy } from "./EncryptionPolicy";
-import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy";
+import { EncryptionPolicy } from "./EncryptionPolicy.js";
+import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
 
 const Crypto = crypto || (window ? window.crypto : undefined);

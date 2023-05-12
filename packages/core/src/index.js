@@ -6,12 +6,12 @@
  * bubble-core main entry point
  */
 
-export {BlockchainProvider} from './BlockchainProvider';
-export {BubbleProvider} from './BubbleProvider';
-export {ContentId} from './ContentId';
-export {BubbleFilename} from './BubbleFilename';
-export {BubblePermissions} from './Permissions';
-export {ROOT_PATH} from './constants';
-export * as assert from './assertions';
-export {BubbleError, ErrorCodes} from './errors';
-export {blockchainProviders} from './blockchain-providers';
+export {BlockchainProvider} from './BlockchainProvider.js';
+export {BubbleProvider} from './BubbleProvider.js';
+export {ContentId} from './ContentId.js';
+export {BubbleFilename} from './BubbleFilename.js';
+export {BubblePermissions} from './Permissions.js';
+export {ROOT_PATH} from './constants.js';
+export * as assert from './assertions.js';
+export {BubbleError, ErrorCodes} from './errors.js';
+export {blockchainProviders} from './blockchain-providers/index.js';

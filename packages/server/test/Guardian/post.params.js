@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { BubbleError } from '@bubble-protocol/core';
-import '@bubble-protocol/core/test/BubbleErrorMatcher';
-import { Guardian } from '../../src/Guardian';
+import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
+import { Guardian } from '../../src/Guardian.js';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
   generateKey, signRPC, publicKeyToEthereumAddress, 

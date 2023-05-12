@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { HTTPBubbleProvider } from './HTTPBubbleProvider';
+import { HTTPBubbleProvider } from './HTTPBubbleProvider.js';
 
 export const bubbleProviders = {
   HTTPBubbleProvider: HTTPBubbleProvider

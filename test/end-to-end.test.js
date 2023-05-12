@@ -1,11 +1,11 @@
-import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies, ErrorCodes } from '../packages/index';
-import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers';
-import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble';
-import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint';
-import { testDataServerRequirements } from '../packages/server/test/DataServerTestSuite/requirementsTests';
-import { RamBasedDataServer } from './mockups/RamBasedDataServer';
-import { constructTestBubble } from './mockups/test-bubble';
-import '../packages/core/test/BubbleErrorMatcher';
+import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies, ErrorCodes } from '../packages/index.js';
+import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
+import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble.js';
+import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint.js';
+import { testDataServerRequirements } from '../packages/server/test/DataServerTestSuite/requirementsTests.js';
+import { RamBasedDataServer } from './mockups/RamBasedDataServer.js';
+import { constructTestBubble } from './mockups/test-bubble.js';
+import '../packages/core/test/BubbleErrorMatcher.js';
 
 
 // Permissions are set to support a variety of tests:

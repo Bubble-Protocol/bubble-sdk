@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { BubbleContentManager } from "./BubbleContentManager";
+import { BubbleContentManager } from "./BubbleContentManager.js";
 
 /**
  * Default content manager.  Requires the user to pass a sign function in every call.

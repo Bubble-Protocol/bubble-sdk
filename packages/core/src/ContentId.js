@@ -3,9 +3,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { BubbleFilename } from './BubbleFilename';
-import * as assert from './assertions';
-import { BubbleError, ErrorCodes } from './errors';
+import { BubbleFilename } from './BubbleFilename.js';
+import * as assert from './assertions.js';
+import { BubbleError, ErrorCodes } from './errors.js';
 
 export class ContentId {
 

@@ -1,9 +1,9 @@
 
-import { startServers, stopServers } from '../mockups/test-servers';
+import { startServers, stopServers } from '../mockups/test-servers.js';
 
 // Imports under test
 import { Bubble, bubbleProviders } from '../../packages/client';
-import { ContentId } from '../../packages';
+import { ContentId } from '../../packages/index.js';
 import Web3 from 'web3';
 
 

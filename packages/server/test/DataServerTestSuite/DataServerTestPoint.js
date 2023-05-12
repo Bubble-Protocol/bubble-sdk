@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { TestPoint } from './TestPoint';
+import { TestPoint } from './TestPoint.js';
 import { ErrorCodes } from '@bubble-protocol/core';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 

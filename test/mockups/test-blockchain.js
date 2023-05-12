@@ -1,4 +1,4 @@
-import { GanacheServer } from "./GanacheServer";
+import { GanacheServer } from "./GanacheServer.js";
 
 //
 // Server

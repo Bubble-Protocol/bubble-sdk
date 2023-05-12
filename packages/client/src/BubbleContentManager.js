@@ -3,10 +3,10 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { ContentId, assert } from "@bubble-protocol/core";
-import { Bubble } from "./Bubble";
-import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider";
-import { EncryptionPolicy } from "./EncryptionPolicy";
-import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy";
+import { Bubble } from "./Bubble.js";
+import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
+import { EncryptionPolicy } from "./EncryptionPolicy.js";
+import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 
 
 /**

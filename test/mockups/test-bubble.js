@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 
-import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers';
-import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index';
+import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
+import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index.js';
 import contractSrc from '../contracts/TestContract.json';
 
 

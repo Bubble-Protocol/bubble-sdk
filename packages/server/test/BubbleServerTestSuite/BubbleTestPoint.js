@@ -1,6 +1,6 @@
 import { ErrorCodes } from "@bubble-protocol/core";
-import { TestPoint } from "../DataServerTestSuite/TestPoint";
-import { TestContract } from "./TestContract";
+import { TestPoint } from "../DataServerTestSuite/TestPoint.js";
+import { TestContract } from "./TestContract.js";
 import contractSrc from './contracts/AllPermissionsContract.json';
 
 /**

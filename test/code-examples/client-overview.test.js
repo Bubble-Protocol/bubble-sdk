@@ -1,8 +1,8 @@
 
-import { pingServerTest, startServers, stopServers } from '../mockups/test-servers';
-import { bubbleAvailableTest, clearTestBubble, constructTestBubble, ownerBubble, ownerSign } from '../mockups/test-bubble';
+import { pingServerTest, startServers, stopServers } from '../mockups/test-servers.js';
+import { bubbleAvailableTest, clearTestBubble, constructTestBubble, ownerBubble, ownerSign } from '../mockups/test-bubble.js';
 
-import { ContentManager } from '../../packages';
+import { ContentManager } from '../../packages/index.js';
 
 
 describe('Client README code examples', () => {

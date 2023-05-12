@@ -1,7 +1,7 @@
 
-import { startBlockchain, stopBlockchain } from '../mockups/test-blockchain';
-import { RamBasedDataServer } from '../mockups/RamBasedDataServer';
-import { ContentManager, bubbleProviders } from '../../packages';
+import { startBlockchain, stopBlockchain } from '../mockups/test-blockchain.js';
+import { RamBasedDataServer } from '../mockups/RamBasedDataServer.js';
+import { ContentManager, bubbleProviders } from '../../packages/index.js';
 import contractSrc from '../contracts/TestContract.json';
 
 // Imports under test
@@ -9,7 +9,7 @@ import { Guardian, DataServer } from '../../packages/server';
 import { blockchainProviders } from '../../packages/core';
 import Web3 from 'web3';
 import http from 'http';
-import { TestContract } from '../mockups/TestContract';
+import { TestContract } from '../mockups/TestContract.js';
 
 
 describe('Server README code examples', () => {
