@@ -163,7 +163,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
         await testPoint.assertNotExists(contractAddress, dir3+'/a.txt');
         await testPoint.assertNotExists(contractAddress, dir3+'/b.txt');
         await testPoint.assertNotExists(contractAddress, dir3+'/c.txt');
-      })
+      }, 20000)
   
       describe("but before a file exists", () => {
 
@@ -829,27 +829,30 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
       });
 
-    });
+      describe("terminate", () => {
 
+        beforeAll( async () => {
+          if (options.terminateContract) await options.terminateContract();
+        })
+  
+        test( "[req-ds-tm-1] [req-ds-tm-2] succeeds when bubble exists", async () => {
+          await expect(dataServer.terminate(contractAddress)).resolves.not.toThrow();
+        });
+  
+        test( "[req-ds-tm-3] fails with BUBBLE_DOES_NOT_EXIST error if bubble does not exist", async () => {
+          await expect(dataServer.terminate(contractAddress))
+            .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        });
+  
+        test( "[req-ds-tm-4] does not fail when bubble does not exist but the silent option is given", async () => {
+          await expect(dataServer.terminate(contractAddress, {silent: true})).resolves.not.toThrow();
+        });
+  
+      })
+  
+    }) // when bubble exists
 
-    describe("terminate", () => {
-
-      test( "[req-ds-tm-1] [req-ds-tm-2] succeeds when bubble exists", async () => {
-        await expect(dataServer.terminate(contractAddress)).resolves.not.toThrow();
-      });
-
-      test( "[req-ds-tm-3] fails with BUBBLE_DOES_NOT_EXIST error if bubble already exists", async () => {
-        await expect(dataServer.terminate(contractAddress))
-          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
-      });
-
-      test( "[req-ds-tm-4] does not fail when bubble does not exist but the silent option is given", async () => {
-        await expect(dataServer.terminate(contractAddress, {silent: true})).resolves.not.toThrow();
-      });
-
-    })
-
-  });
+  })
 
 }
 

@@ -52,7 +52,8 @@ export function testBubbleServerRequirements(web3, chainId, bubbleServerURL, bub
           serverApi.initialise(bubble);
           if (testPoint.initialise) testPoint.initialise(bubble);
           serverOptions.contractAddress = testContract.getAddress();
-          
+          serverOptions.terminateContract = testContract.setTerminated;
+
           return testContract.testContractIsAvailable();
          });
 

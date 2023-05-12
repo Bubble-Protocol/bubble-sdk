@@ -13,6 +13,7 @@ export class TestContract {
   constructor(web3, sourceCode) {
     this.web3 = web3;
     this.sourceCode = sourceCode;
+    this.setTerminated = this.setTerminated.bind(this);
   }
 
   async initialiseAccounts() {
@@ -38,8 +39,16 @@ export class TestContract {
         this.address = receipt.contractAddress;
         this.web3Contract.options.address = receipt.contractAddress;
       })
-      .catch(console.error);
     
+  }
+
+
+  async setTerminated(to=true) {
+    await this.web3Contract.methods.setTerminated(to).send({
+      from: this.accounts[0],
+      gas: 1500000,
+      gasPrice: '30000000000000'
+    })
   }
 
 
