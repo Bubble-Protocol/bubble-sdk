@@ -1,13 +1,11 @@
+import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies, ErrorCodes } from '../packages/index';
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble';
-import '../packages/core/test/BubbleErrorMatcher';
-
-import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies } from '../packages/index';
-import { ErrorCodes } from './common';
-import { constructTestBubble } from './mockups/test-bubble';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint';
-import { RamBasedDataServer } from './mockups/RamBasedDataServer';
 import { testDataServerRequirements } from '../packages/server/test/DataServerTestSuite/requirementsTests';
+import { RamBasedDataServer } from './mockups/RamBasedDataServer';
+import { constructTestBubble } from './mockups/test-bubble';
+import '../packages/core/test/BubbleErrorMatcher';
 
 
 // Permissions are set to support a variety of tests:
@@ -21,7 +19,6 @@ import { testDataServerRequirements } from '../packages/server/test/DataServerTe
 const file0 = "0x0000000000000000000000000000000000000000000000000000000000000000";
 const file1 = "0x0000000000000000000000000000000000000000000000000000000000000001";
 const file2 = "0x0000000000000000000000000000000000000000000000000000000000000002";
-const file3 = "0x0000000000000000000000000000000000000000000000000000000000000003";
 const file4 = "0x0000000000000000000000000000000000000000000000000000000000000004";
 const file5 = "0x0000000000000000000000000000000000000000000000000000000000000005";
 const file6 = "0x0000000000000000000000000000000000000000000000000000000000000006";

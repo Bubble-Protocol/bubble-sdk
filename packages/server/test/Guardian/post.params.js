@@ -1,13 +1,13 @@
 import { jest } from '@jest/globals';
 import { BubbleError } from '@bubble-protocol/core';
-import '../../../core/test/BubbleErrorMatcher';
+import '@bubble-protocol/core/test/BubbleErrorMatcher';
 import { Guardian } from '../../src/Guardian';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
   generateKey, signRPC, publicKeyToEthereumAddress, 
   TestDataServer, TestBlockchainProvider, 
   ErrorCodes, Permissions
-} from '../../../../test/common';
+} from './common';
 
 
 export function testPostParams() {
