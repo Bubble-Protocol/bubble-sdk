@@ -120,7 +120,6 @@ describe('Server README code examples', () => {
       const BUBBLE_SERVER_URL = 'http://127.0.0.1:'+SERVER_PORT;
       const bubbleProvider = new bubbleProviders.HTTPBubbleProvider(BUBBLE_SERVER_URL);
       ownerBubble = testContract.getBubble(CHAIN_ID, BUBBLE_SERVER_URL, bubbleProvider, 0);
-      requesterBubble = testContract.getBubble(CHAIN_ID, BUBBLE_SERVER_URL, bubbleProvider, 1);
 
       // create the bubble on the data server
       dataServer._createBubble(testContract.address);
