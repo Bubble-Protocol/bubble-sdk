@@ -1,48 +1,56 @@
 # Bubble SDK
 
-The Bubble SDK contains the core, client and server side libraries for developers building with Bubble Protocol on EVM-based blockchains.  
+The Bubble SDK contains the core, client and server side libraries for developers building with Bubble Protocol on EVM-based blockchains.
 
-## What is Bubble Protocol?
+&nbsp;&nbsp;[What Is Bubble Protocol?](#what-is-bubble-protocol)  
+&nbsp;&nbsp;[SDK Overview](#sdk-overview)  
+&nbsp;&nbsp;[Concepts & Definitions](#concepts--definitions)
 
-Bubble Protocol lets blockchains control and govern private off-chain data.  It is a blockchain-agnostic standard for access-controlled web3 storage systems, whether deployed on private servers or decentralised storage networks.  It can be used as the data layer for data tokenisation, cross-device DApp storage, web3 privacy compliance solutions, paywalled content, NFT content, and much more.
+## What Is Bubble Protocol?
+
+Bubble Protocol allows blockchains to govern private data, serving as a versatile protocol for managing access-controlled off-chain storage for Web3 applications. It enables Web3 compatibility for any storage system, ensuring enforcement of access controls, regardless of whether the system is a public relay server, decentralized storage network, home server, or private company infrastructure.
+
+Bubble Protocol is blockchain agnostic and is designed to be highly adaptable, providing Web3 developers with an easy to use general purpose global data layer for data tokenisation, cross-device DApp storage, decentralised identity solutions, web3 privacy compliance solutions, paywalled content, NFT content, and much more.
 
 https://bubbleprotocol.com
 
-Access to off-chain content is controlled by a smart contract and enforced by the storage system.  The smart contract identifies content by its [content id](#content-ids) and controls access through POSIX-like permissions, with read, write, append, execute and directory bits currently available.  
+## Who Is This SDK For?
 
-Any smart contract can be modified to control off-chain content.  See [Smart Contract](#smart-contract) below.
 
-Once a contract has been deployed, content can be written to any bubble-compatible storage system that supports your blockchain of choice.  
+* Developers of decentralised applications.
+* Developers of bubble-compatible off-chain storage services.
+* Companies looking to move into Web3.
 
-The set of content controlled by a single smart contract instance is known as a **bubble**, with the bubble's unique ID deriving from the contract address and chain id.  See [Bubbles](#bubbles) below.
+## How Does It Work?
+
+Bubble Protocol adds an access control layer to off-chain storage. Application developers can custom design smart contracts to govern access to content, specifying fine-grained permissions for each file akin to POSIX-style permission bits. The enforcement of these permissions is carried out by the off-chain storage service, which is chosen by the user or developer.  
+
+Custom smart contracts are simple to develop and need only implement a single method interface (see [Smart Contract](#smart-contract) below). Once a contract is deployed, the off-chain content can be saved on any bubble-compatible storage system that supports the user's preferred blockchain.
+
+The set of off-chain content controlled by a smart contract combined with the on-chain logic of the contract itself, is known as a **bubble**, and is where Bubble Protocol gets it's name. For more details, see [Bubbles](#bubbles) below.
+
+### Off-Chain Storage Services
+
+Off-chain storage services can be public or private, centralised or decentralised.
+
+The protocol allows each storage service to essentially function as a generic host for any bubble, allowing a single service to provide off-chain storage for any type of Web3 application.  Service providers can choose whether to provide an open, public service or a private service restricted to specific users, like customers or employees of a company.
+
+### Decentralisation
+
+With all application logic on-chain, public off-chain storage services have few requirements beyond the quality of storage service they provide.  This partitioning, alongside the ability of users to choose which service they trust for each application they use, cultivates a separation of concerns that helps to drive decentralization.
 
 # SDK Overview
 
-## Smart Contract
-
-To use Bubble Protocol, a smart contract just needs to implement the following interface, returning Bubble Protocol's `tdrwax--` access permissions as a bit field:
-
-```solidity
-interface AccessControlledStorage {
-
-  function getAccessPermissions( address user, uint256 contentId ) external view returns (uint256);
-
-}
-```
-
-Details about the interface can be found in [AccessControlledStorage.sol](./contracts/AccessControlledStorage.sol).  Or see [example contracts](./contracts/examples) for implementation examples.
-
-See [AccessControlBits.sol](./contracts/AccessControlBits.sol) for a definition of the bit field returned by this interface.
-
+* [Client Library](#client-library) - client libraries for application developers.
+* [Server Library](#server-library) - server-side libraries for developers of storage services.
+* [Core Library](#core-library) - core classes, types, constants and utilities.
+* [Contracts](#smart-contract) - the smart contract interface and example contracts.
 
 ## Client Library
 
-The client library allows decentralised applications to read and write content to any bubble-compatible storage system.
+The client library allows decentralised applications to read and write content to any bubble-compatible off-chain storage service.
 
-There are two ways to interacting with content:
-
-* the `ContentManager` object can access files directly with their content id.
-* the `Bubble` class encapsulates a bubble allowing it to be managed (created and terminated) and allowing files to be accessed by name.  See [Bubbles](#bubbles).
+There are two ways to interact with content: the `ContentManager` and the `Bubble` class.  See the [Client Library](packages/client) for usage instructions.
 
 Example of reading a file using the `ContentManager`:
 
@@ -58,102 +66,41 @@ function signFunction(hash) {
 const data = await ContentManager.read(contentId, signFunction);
 ```
 
-The `signFunction` signs content requests and identifies the user to the off-chain storage service.  It is a user-defined function and depends on the platform (e.g. browser, Node.js) and on your application's identity strategy (whether you use Metamask, WalletConnect, local blockchain node, local private key, etc).
-
 See [Content IDs](#content-ids) for information on how files and bubbles are identified.
 ## Server Library
 
-The server-side library is used to deploy new off-chain storage services or integrate Bubble Protocol into existing storage servers.  
+The server-side library is used to deploy new off-chain storage services or integrate Bubble Protocol into existing storage servers.
 
-An example of a JSONRPC 2.0 web api can be found below.  The `Guardian` processes a user request and interacts with the content's smart contract to confirm the user's permissions.  Denied requests are rejected while permitted requests are forwarded to the server's data server for handling.
+See [Server Library](packages/server) for instructions.
 
-The server's data server is user-defined allowing content to be served from a source of your choosing, such as a file system, database, CMS, decentralised storage network or other infrastructure.  See [DataServer.js](./packages/server/src/DataServer.js) for details.
+See [Trivial Bubble Server](https://github.com/Bubble-Protocol/trivial-bubble-server) for an example implementation.
 
-```javascript
-import { Guardian, DataServer } from 'bubble-sdk';
-import Web3 from 'web3';
-import http from 'http';
+## Core Library
 
+The [`core`](packages/core) library provides classes, types, constants and utilities common to the client and server libraries.
 
-// User defined data server, e.g. file-based server or an interface to an existing database.
-// See the packages/server/src/DataServer class for more information.
+## Contracts
 
-class MyDataServer extends DataServer {
-  ... 
-}
+Any smart contract that implements the following interface can control off-chain content.  The `getAccessPermissions` method returns the user's access permissions for content identified by its content id.
 
+```solidity
+interface AccessControlledStorage {
 
-// Example HTTP server (no error handling)
-
-class BubbleServer {
-
-  constructor(port, guardian) {
-    this.port = port;
-    this.guardian = guardian;
-    this.server = http.createServer(this._handleRequest.bind(this));
-  }
-
-  _handleRequest(req, res) {
-      
-      req.on('data', (chunk) => {
-        body += chunk.toString();
-      });
-
-      req.on('end', async () => {
-        const request = JSON.parse(body);
-        this.guardian.post(request.method, request.params)
-          .then(result => {
-            this._sendResponse(req, res, {result: result});
-          })
-          .catch(error => {
-            this._sendResponse(req, res, {error: error});
-          })
-      });
-
-  }
-
-  _sendResponse(req, res, result) {
-    const response = {
-      jsonrpc: '2.0',
-      ...result,
-      id: req.id
-    }
-    res.setHeader('Content-Type', 'application/json');
-    res.end(JSON.stringify(response));
-  }
-
-  start() {
-    this.server.listen(this.port, () => {
-      console.log(`Server is listening on port ${this.port}`);
-    });
-  }
-
-  close(callback) {
-    this.server.close(callback);
-  }
+  function getAccessPermissions( address user, uint256 contentId ) external view returns (uint256);
 
 }
-
-
-// Setup blockchain api
-
-const CHAIN_ID = 1;
-const BLOCKCHAIN_API = 'https://ethereum.infura.io/v3/YOUR_PROJECT_ID';
-const blockchainProvider = new Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2')
-
-
-// Construct the Bubble Guardian and launch the server
-
-const dataServer = new MyDataServer();
-const guardian = new Guardian(dataServer, blockchainProvider);
-const bubbleServer = new BubbleServer(8131, guardian);
-
-bubbleServer.start();
 ```
 
+For implementation details see [AccessControlledStorage.sol](./contracts/AccessControlledStorage.sol).  
+
+For examples, including tokenising data with an NFT, see [example contracts](./contracts/examples).
+
+For a definition of the bit field returned by this interface, see [AccessControlBits.sol](./contracts/AccessControlBits.sol).
+
+# Concepts & Definitions
 ## Bubbles
 
-A *bubble* is the name given to the set of content controlled by a smart contract implementing the AccessControlledStorage interface above.
+A **bubble** is the name given to a set of content controlled by a smart contract implementing the `AccessControlledStorage` interface above.
 
 Each Bubble has a unique ID derived from the smart contract (contract address and chain ID) and the storage location of the bubble (normally the URL of the storage system's API).  The bubble ID forms part of the content id of each file the bubble controls.  See [Content IDs](#content-ids) below.
 
@@ -165,60 +112,9 @@ Where supported by the storage system, clients can subscribe to files and direct
 
 The client library provides a `Bubble` class that encapsulates a bubble hosted on a remote storage system.  In addition to providing methods to read, write, append and delete content, it allows directories to be listed and the bubble to be managed.
 
-```javascript
-import { Bubble, bubbleProviders } from 'bubble-sdk';
-
-
-// Identify the bubble (this example assumes the smart contract has already been deployed)
-
-const bubbleId = new ContentID({
-  chain: 1,
-  contract: '0x73eF7A3643aCbC3D616Bd5f7Ee5153Aa5f14DB30',
-  provider: 'http://127.0.0.1:8131'
-};
-
-const filenames = {
-  publicDir: '0x0000000000000000000000000000000000000000000000000000000000000001',
-  welcome: '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
-}
-
-
-// Define a function for signing transactions
-
-function signFunction(hash) {
-  ...
-}
-
-
-// Construct a BubbleProvider for the remote storage system
-const storageProvider = new bubbleProviders.HTTPBubbleProvider(new URL(bubbleId.provider));
-
-
-// Construct the client interface to your bubble
-const bubble = new Bubble(bubbleId, storageProvider, signFunction);
-
-
-// Construct the bubble on the remote storage system
-await bubble.create();
-
-
-// Write some data to a file in your bubble
-await bubble.write(filenames.welcome, 'Hello World!');
-
-
-// List a directory, querying only for files modified in the last hour. Request long format, which includes create times, modify times and file length.
-const listing = await bubble.list(filenames.publicDir, {long: true, since: Date.now()-3600000})
-
-...
-
-// Terminate the bubble.  Forces the storage provider to delete all bubble content if the contract indicates the bubble has been terminated.
-await bubble.terminate();
-```
-
-
 ## Content IDs
 
-Bubble Protocol Content IDs are identifiers that uniquely identify content across storage systems and blockchains.  A Content ID can represent either a file or a bubble.  They are base64-URL encoded strings containing the JSON for a `ContentID` object, i.e.:
+Bubble Protocol Content IDs are identifiers that uniquely identify content across storage systems and blockchains.  A Content ID can represent either a file, a directory or a bubble.  They are base64-URL encoded strings containing the JSON for a `ContentID` object, i.e.:
 
 ```javascript
 const contentId = Base64url.encode(JSON.stringify({
@@ -240,41 +136,3 @@ The `file` field may optionally include a path extension separated by the `/` ch
 
 This indicates it is a file within a directory in the bubble and will derive its access permissions from those of the directory.  A path extension can have any POSIX-compatible name but only one path extension is permitted in the `file` field.
 
-### Constructing Content IDs
-
-Content IDs are easily constructed with the `ContentID` object, as follows:
-
-```javascript
-const contentId = new ContentID({
-  chain: 1,
-  contract: "0x73eF7A3643aCbC3D616Bd5f7Ee5153Aa5f14DB30",
-  provider: "http://127.0.0.1:8131",
-  file: "0x0000000000000000000000000000000000000000000000000000000000000001"
-});
-```
-
-An alternative way of obtaining a `ContentID` object is from a bubble's write, append and mkdir commands:
-
-```javascript
-const contentId = await bubble.write(ContentManager.toFileId(1), 'Hello World');
-```
-
-Or from a bubble's `getContentId` method:
-
-```javascript
-const contentId = bubble.getContentId(ContentManager.toFileId(1));
-```
-
-
-Once constructed, the content's shareable content id can be obtained with the `toString` method.
-```javascript
-console.log(contentId.toString());
-// eyJj...EifQ
-```
-
-Or as a decentralised identifier:
-
-```javascript
-console.log(contentId.toDID());
-// did:bubble:eyJj...EifQ
-```
