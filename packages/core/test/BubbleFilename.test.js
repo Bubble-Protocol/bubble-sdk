@@ -137,6 +137,7 @@ describe('BubbleFilename', () => {
       const filename = new BubbleFilename(path);
       expect(filename.isValid()).toBe(false);
       expect(filename.fullFilename).toBe(path);
+      return filename;
     }
     
     test('with undefined parameter', () => {
@@ -185,6 +186,14 @@ describe('BubbleFilename', () => {
 
     test('with the reserved .. path', () => {
       testInvalidPath(VALID_DIR+'/..');
+    })
+
+    test('throws when invalid and getters are called', () => {
+      const filename = testInvalidPath(VALID_DIR+'/..');
+      expect(() => filename.getPermissionedPart()).toThrow();
+      expect(() => filename.isFile()).toThrow();
+      expect(() => filename.isDirectory()).toThrow();
+      expect(() => filename.isRoot()).toThrow();
     })
 
   })

@@ -40,6 +40,7 @@ export class BubbleFilename {
   }
 
   getPermissionedPart() {
+    if (!this._valid) throw new Error("BubbleFilename.getPermissionedPart: filename is invalid");
     return this._parts[0];
   }
 
@@ -48,10 +49,12 @@ export class BubbleFilename {
   }
 
   isDirectory() {
+    if (!this._valid) throw new Error("BubbleFilename.getPermissionedPart: filename is invalid");
     return this._parts.length === 1 && (!this.permissions || this.permissions.isDirectory());
   }
 
   isRoot() {
+    if (!this._valid) throw new Error("BubbleFilename.getPermissionedPart: filename is invalid");
     return this._parts[0].toLowerCase() === ROOT_PATH;
   }
 
