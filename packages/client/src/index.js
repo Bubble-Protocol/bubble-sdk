@@ -3,7 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 export {Bubble} from './Bubble';
-export {ContentManager, BubbleContentManager} from './ContentManager';
+export {BubbleContentManager} from './BubbleContentManager';
+export {ContentManager} from './ContentManager';
 export {EncryptionPolicy} from './EncryptionPolicy';
 export {bubbleProviders} from './bubble-providers';
 export {encryptionPolicies} from './encryption-policies';

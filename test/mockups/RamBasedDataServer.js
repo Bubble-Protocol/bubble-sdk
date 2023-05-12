@@ -1,8 +1,10 @@
-import { ROOT_PATH } from '../packages';
-import {BubbleError, ErrorCodes} from '../packages/core/src/errors';
-import {DataServer} from '../packages/server/src/DataServer';
+import { ROOT_PATH } from '../../packages';
+import {BubbleError, ErrorCodes} from '../../packages/core/src/errors';
+import {DataServer} from '../../packages/server/src/DataServer';
 
-
+/**
+ * RAM based implementation of a `DataServer`.  Can be used for testing purposes.
+ */
 export class RamBasedDataServer extends DataServer {
 
   constructor() {
@@ -10,18 +12,6 @@ export class RamBasedDataServer extends DataServer {
     this.bubbles = {};
   }
 
-  //
-  // Requirements:
-  //
-  //   [req-ds-cr-1] When called, the data server shall create the bubble uniquely identified by the contract address.
-  //
-  //   [req-ds-cr-2] The data server shall resolve if the creation was successful.
-  //
-  //   [req-ds-cr-3] The data server shall reject with a `BUBBLE_ALREADY_EXISTS` error if the 
-  //                 bubble already exists and the silent option is NOT given.
-  //
-  //   [req-ds-cr-4] The data server shall resolve if the bubble already exists but the silent option is given.
-  //
   create(contract, options={}) {
     if (this.bubbles[contract] !== undefined && !options.silent) {
       return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_ALREADY_EXISTS, "bubble already exists"));

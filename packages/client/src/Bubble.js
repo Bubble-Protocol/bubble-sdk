@@ -3,7 +3,8 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import web3 from "web3";
-import { EncryptionPolicy, NullEncryptionPolicy } from "./EncryptionPolicy";
+import { EncryptionPolicy } from "./EncryptionPolicy";
+import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
 
 const Crypto = crypto || (window ? window.crypto : undefined);
@@ -43,24 +44,26 @@ export class Bubble {
    *   (Buffer: hash) => { return Promise to resolve the signature of the hash as a Buffer }
    * 
    * The type and format of the signature must be appropriate to the blockchain platform.
+   * @param {EncryptionPolicy} encryptionPolicy optional encryption policy
    */
-  constructor(contentId, provider, signFunction ) {
+  constructor(contentId, provider, signFunction, encryptionPolicy ) {
     if (!Crypto) throw new Error('missing crypto object');
     assert.isInstanceOf(provider, BubbleProvider, "provider");
     this.contentId = contentId;
     this.provider = provider;
+    if (encryptionPolicy) this.setEncryptionPolicy(encryptionPolicy);
     this.rpcFactory = new RPCFactory(contentId.chain, contentId.contract, signFunction);
     this.post = this.post.bind(this);
   }
 
   /**
    * Optional function to set an encryption policy.  Encryption policies determine which files in the 
-   * bubble are encrypted and contain the encryption function.
+   * bubble are encrypted, and contain the encryption and decryption functions.
    * 
    * @param {EncryptionPolicy} policy the policy to adopt
    */
   setEncryptionPolicy(policy) {
-    assert.isInstanceOf(policy, EncryptionPolicy, "provider");
+    assert.isInstanceOf(policy, EncryptionPolicy, "encryption policy");
     this.encryptionPolicy = policy;
   }
 
@@ -88,7 +91,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   write(path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path)));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
         return this.rpcFactory.write(path, dataToSend, options);
@@ -109,7 +112,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   append(path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(path));
+    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path)));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
         return this.rpcFactory.append(path, dataToSend, options);
@@ -129,7 +132,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file contents
    */
   read(path = ROOT_PATH, options = {}) {
-    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(path);
+    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path));
     return this.rpcFactory.read(path, options)
       .then(this.post)
       .then(data => {

@@ -1,8 +1,8 @@
 import Web3 from 'web3';
 
 import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers';
-import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../packages/index';
-import contractSrc from './contracts/TestContract.json';
+import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index';
+import contractSrc from '../contracts/TestContract.json';
 
 
 //
@@ -42,8 +42,10 @@ export function requesterSign(hash) {
 export var ownerBubble, requesterBubble, contract;
 
 
-export async function constructTestBubble() {
+export async function constructTestBubble(options={}) {
 
+  if (options.mockBubbleServer) MockBubbleServer = options.mockBubbleServer;
+  
   contract = new web3.eth.Contract(contractSrc.abi);
 
   await contract.deploy({

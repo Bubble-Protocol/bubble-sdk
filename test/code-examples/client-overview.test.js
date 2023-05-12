@@ -1,11 +1,11 @@
 
-import { pingServerTest, startServers, stopServers } from './test-servers';
-import { bubbleAvailableTest, clearTestBubble, constructTestBubble, ownerBubble, ownerSign } from './test-bubble';
+import { pingServerTest, startServers, stopServers } from '../mockups/test-servers';
+import { bubbleAvailableTest, clearTestBubble, constructTestBubble, ownerBubble, ownerSign } from '../mockups/test-bubble';
 
-import { ContentManager } from '../packages';
+import { ContentManager } from '../../packages';
 
 
-describe('Documentation code examples', () => {
+describe('Client README code examples', () => {
 
   beforeAll(async () => {
     await startServers();
@@ -24,7 +24,7 @@ describe('Documentation code examples', () => {
   pingServerTest();
   bubbleAvailableTest();
 
-  test('client overview compiles and runs', async () => {
+  test('Client README overview compiles and runs', async () => {
 
     // Setup test
     await ownerBubble.write('0x0000000000000000000000000000000000000000000000000000000000000001', 'Hello World!');
@@ -62,4 +62,3 @@ describe('Documentation code examples', () => {
 //   file: '0x0000000000000000000000000000000000000000000000000000000000000001'
 // })
 // console.log(contentIdObj.toString());
-

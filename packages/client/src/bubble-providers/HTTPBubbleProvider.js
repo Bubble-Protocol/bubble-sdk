@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { BubbleError, BubbleProvider } from '@bubble-protocol/core';
+import { BubbleError, BubbleProvider, assert } from '@bubble-protocol/core';
 import jayson from 'jayson';
 
 export class HTTPBubbleProvider extends BubbleProvider {
@@ -12,6 +12,8 @@ export class HTTPBubbleProvider extends BubbleProvider {
 
   constructor(_url) {
     super();
+    if (typeof _url === 'string') _url = new URL(_url);
+    assert.isInstanceOf(_url, URL, 'url');
     this.url = _url;
     this.client = this.url.protocol === 'https' ? jayson.Client.https(this.url.href) : jayson.Client.http(this.url.href);
   }

@@ -1,12 +1,12 @@
-import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './test-servers';
-import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './test-bubble';
+import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers';
+import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble';
 import '../packages/core/test/BubbleErrorMatcher';
 
 import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies } from '../packages/index';
 import { ErrorCodes } from './common';
-import { constructTestBubble } from './test-bubble';
+import { constructTestBubble } from './mockups/test-bubble';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint';
-import { RamBasedDataServer } from './RamBasedDataServer';
+import { RamBasedDataServer } from './mockups/RamBasedDataServer';
 import { testDataServerRequirements } from '../packages/server/test/DataServerTestSuite/requirementsTests';
 
 
@@ -504,7 +504,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('writes and reads encrypted data', async () => {
         class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
-          isEncrypted(path) { return path === file1 } 
+          isEncrypted(contentId) { return contentId.file === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
         await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);
@@ -514,7 +514,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
     
       test('appends and reads encrypted data', async () => {
         class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
-          isEncrypted(path) { return path === file1 } 
+          isEncrypted(contentId) { return contentId.file === file1 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
         await expect(ownerBubble.append(file1, "hello")).resolves.toBeInstanceOf(ContentId);
@@ -524,7 +524,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
       test('does not encrypt when policy returns false', async () => {
         class TestEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
-          isEncrypted(path) { return path === file2 } 
+          isEncrypted(contentId) { return contentId.file === file2 } 
         }
         ownerBubble.setEncryptionPolicy(new TestEncryptionPolicy(owner.privateKey));
         await expect(ownerBubble.write(file1, "hello")).resolves.toBeInstanceOf(ContentId);

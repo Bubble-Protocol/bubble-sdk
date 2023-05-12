@@ -2,6 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
+import { ContentId } from "@bubble-protocol/core";
+
 /**
  * An encryption policy informs a Bubble whether a file is encrypted or not.  If encrypted, the
  * Bubble will call the encrypt function when writing or appending data, and will call the
@@ -10,22 +12,23 @@
 export class EncryptionPolicy {
 
   /**
-   * Returns true if the given file should be encrypted
+   * Returns true if the given content should be encrypted
    * 
-   * @param {string} path 
+   * @param {ContentId} contentId 
    */
-  isEncrypted(path) {
+  isEncrypted(contentId) {
     throw new Error('EncryptionPolicy.isEncrypted is a virtual function and must be implemented');
   }
 
   /**
-   * Returns a hex string (with `0x` prefix) containing the encrypted data
+   * Encrypts the given data
    * 
    * @param {ArrayBuffer} data 
-   * @param {string} path the path of the file in the bubble being encrypted (allows the policy
-   * to support encrypting different files with different encryption keys)
+   * @param {ContentId} contentId the id of the content being encrypted (allows the policy to  
+   * support encrypting different files with different encryption keys)
+   * @returns Promise to resolve the encrypted data (hex string with `0x` prefix)
    */
-  encrypt(data, path) {
+  encrypt(data, contentId) {
     throw new Error('EncryptionPolicy.encrypt is a virtual function and must be implemented');
   }
 
@@ -33,18 +36,12 @@ export class EncryptionPolicy {
    * Returns an ArrayBuffer with the decrypted data
    * 
    * @param {hex-string} data
-   * @param {string} path the path of the file in the bubble being encrypted (allows the policy
-   * to support encrypting different files with different encryption keys)
+   * @param {ContentId} contentId the path of the content being decrypted (allows the policy to
+   * support encrypting different files with different encryption keys)
+   * @returns Promise to resolve the decrypted data as an ArrayBuffer
    */
-  decrypt(data, path) {
+  decrypt(data, contentId) {
     throw new Error('EncryptionPolicy.decrypt is a virtual function and must be implemented');
   }
-
-}
-
-
-export class NullEncryptionPolicy extends EncryptionPolicy {
-
-  isEncrypted(_) { return false }
 
 }

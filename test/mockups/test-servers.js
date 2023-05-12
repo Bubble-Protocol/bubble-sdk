@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import jayson from 'jayson';
 
-import { blockchainProviders } from '../packages/index';
+import { blockchainProviders } from '../../packages/index';
 import { RamBasedBubbleServer } from './RamBasedBubbleServer';
 import { GanacheServer } from "./GanacheServer";
 
@@ -20,13 +20,13 @@ export const BUBBLE_SERVER_URL = 'http://127.0.0.1:8131';
 //
 
 export var blockchainProvider, bubbleProvider;
-var ganacheServer, bubbleServer;
+var ganacheServer, bubbleServer, dataServer;
 
 const stats = {
   startStop: 0
 }
 
-export async function startServers() {
+export async function startServers(options={}) {
 
   if (stats.startStop > 0) throw new Error("cannot start a server when it hasn't been stopped");
   stats.startStop++;
@@ -37,9 +37,12 @@ export async function startServers() {
   // Setup a test blockchain and a basic bubble server
   ganacheServer = new GanacheServer(8545, {mnemonic: GANACHE_MNEMONIC});
   blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_SERVER_URL), CONTRACT_ABI_VERSION);
-  bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
+  if(!options.noBubbleServer) {
+    bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
+    dataServer = bubbleServer.dataServer;
+    await bubbleServer.start();
+  }
   await ganacheServer.start();
-  await bubbleServer.start();
 
 }
 
@@ -49,7 +52,7 @@ export function stopServers() {
   if (stats.startStop <= 0) throw new Error("cannot stop a server when it hasn't been started");
 
   return Promise.all([
-    new Promise(resolve => bubbleServer.close(resolve)),
+    new Promise(resolve => { if (bubbleServer) bubbleServer.close(resolve) }),
     new Promise(resolve => ganacheServer.close(resolve))
   ])
   .then(() => {
@@ -58,10 +61,15 @@ export function stopServers() {
 }
 
 
+export function setDataServer(server) {
+  dataServer = server;
+}
+
+
 export const MockBubbleServer = {
-  createBubble: (address) => bubbleServer._createBubble(address),
-  clearBubble: (address) => bubbleServer._resetBubble(address),
-  deleteAllBubbles: () => bubbleServer._reset()
+  createBubble: (address) => dataServer._createBubble(address),
+  clearBubble: (address) => dataServer._resetBubble(address),
+  deleteAllBubbles: () => dataServer._reset()
 }
 
 
