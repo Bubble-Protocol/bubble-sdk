@@ -8,17 +8,17 @@ The client library allows decentralised applications to read and write content t
 
 There are two ways to interact with content in a bubble:
 
-* the `ContentManager` is a quick and easy way to access individual files via their [content id](#content-id) in bubbles that already exist.  See [Content Manager](#content-manager).
+* the [Content Manager](#content-manager) is a quick and easy way to access individual files via their [content id](#content-id) in bubbles that already exist.
 
-* the `Bubble` class is a more convenient way to interact with files and directories in a specific [bubble](#bubble), or to manage the bubble itself (create or terminate it). See [Bubble Class](#bubble-class).
+* the [Bubble](#bubble-class) class is a more convenient way to interact with files and directories in a specific [bubble](#bubble), or to manage the bubble itself (create or terminate it).
 
 Creating a bubble is a 3-step process:
 
 1. **Design** an [`Access Control Contract`](#access-control-contract) suitable for your application (or use one of the [example contracts](https://github.com/Bubble-Protocol/bubble-sdk/tree/main/contracts/examples)).
-1. **Deploy** the contract to a blockchain of your choice.
-2. **Create** the off-chain bubble on your chosen storage service using the [`Bubble`](#bubble-class) class.
+2. **Deploy** the contract to a blockchain of your choice.
+3. **Create** the off-chain bubble on your chosen storage service using the [`Bubble`](#bubble-class) class.
 
-&nbsp;&nbsp; See [Creating A Bubble](#creating-a-bubble).
+&nbsp;&nbsp; See [Creating A Bubble](#creating-a-bubble-example) for an example.
 
 ## Concepts & Definitions
 
@@ -36,9 +36,13 @@ A bubble is an off-chain container for files and directories controlled by a sma
 
 #### Bubble Provider
 
-A `BubbleProvider` is used by a `BubbleContentManager` and `Bubble` class to post requests to a remote bubble using the communications protocol expected by the remote bubble server.  Most servers use JSON RPC 2.0 over HTTP or HTTPS and so the provided [`HTTPBubbleProvider`](src/bubble-providers/HTTPBubbleProvider.js) is used by default.
+A class used by a Content Manager or `Bubble` to post requests to a remote storage service using the service's communications protocol.  Most services use JSON-RPC 2.0 over HTTP or HTTPS and so the provided [`HTTPBubbleProvider`](src/bubble-providers/HTTPBubbleProvider.js) is used by default.
 
 If your bubble server uses a different protocol then you can create your own provider to implement the [`BubbleProvider`](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/packages/core/src/BubbleProvider.js) interface.  This can be passed to a `Bubble` on construction.
+
+#### Encryption Policy
+
+A user-defined policy given to a Content Manager or `Bubble` that describes which content should be encrypted and provides the encryption algorithm.  See [Encryption](#encryption).
 
 #### Sign Function
 

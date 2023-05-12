@@ -18,7 +18,7 @@ The Data Server is responsible for serving the bubble content and processing val
 
 * A file system based implementation can be found in the [Trivial Bubble Server](https://github.com/Bubble-Protocol/trivial-bubble-server).
 
-* A RAM based implementation can be found in the [bubble-sdk](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/test/RamBasedDataServer.js), which may be useful for testing purposes.
+* A RAM based implementation can be found in the [bubble-sdk](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/test/mockups/RamBasedDataServer.js), which may be useful for testing purposes.
 
 A Data Server is an implementation of the [`DataServer`](src/DataServer.js) interface.  Requirements for the interface can be found in that file.  A Data Server must pass the acceptance tests found in the [Data Server Test Suite](./test/DataServerTestSuite/).  See [Testing Your Server](#testing-your-server) for more details.
 
@@ -120,3 +120,7 @@ The [Data Server Test Suite](./test/BubbleServerTestSuite/) is a unit test suite
 The [Bubble Server Test Suite](./test/BubbleServerTestSuite/) is an integration test suite for a deployed bubble server.  It executes the same tests as the Data Server Test Suite but it does so via a client `Bubble` over HTTP (configurable).
 
 See the READMEs in those suites for instructions.
+
+## Dependencies
+
+[`@bubble-protocol/core`](https://github.com/Bubble-Protocol/bubble-sdk/tree/main/packages/core)
