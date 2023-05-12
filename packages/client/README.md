@@ -24,7 +24,7 @@ Creating a bubble is a 3-step process:
 
 #### Access Control Contract
 
-A smart contract that controls the access permissions for a bubble or content.  Implements the [AccessControlledStorage interface](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/AccessControlledStorage.sol). See the [bubble-sdk README](https://github.com/Bubble-Protocol/bubble-sdk#smart-contract) for more information.
+A smart contract that controls the access permissions for a bubble or content.  Implements the [AccessControlledStorage interface](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/AccessControlledStorage.sol). See the [bubble-sdk README](https://github.com/Bubble-Protocol/bubble-sdk#contracts) for more information.
 
 #### Content ID
 
