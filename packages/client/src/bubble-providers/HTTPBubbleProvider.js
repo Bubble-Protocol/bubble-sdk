@@ -15,7 +15,7 @@ export class HTTPBubbleProvider extends BubbleProvider {
     if (typeof _url === 'string') _url = new URL(_url);
     assert.isInstanceOf(_url, URL, 'url');
     this.url = _url;
-    this.client = this.url.protocol === 'https' ? jayson.Client.https(this.url.href) : jayson.Client.http(this.url.href);
+    this.client = this.url.protocol === 'https:' ? jayson.Client.https(this.url.href) : jayson.Client.http(this.url.href);
   }
 
   post(method, params) {
