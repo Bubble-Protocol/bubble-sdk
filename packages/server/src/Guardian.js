@@ -180,6 +180,8 @@ export class Guardian extends BubbleProvider {
      * Service the RPC
      */
 
+    params.contract = params.contract.toLocaleLowerCase();  // always pass lowercase contract to data server
+
     switch (method) {
 
       case "create":
