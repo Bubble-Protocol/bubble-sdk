@@ -6,7 +6,7 @@ function toBeBubbleError(received, expected={}) {
   if (toString.call(expected) !== '[object Object]' && !(expected instanceof BubbleError)) {
     return {
       pass: false, 
-      message: () => `must pass an object as the parameter to the custom Jest matcher 'toThrowBubbleError'.  Object can contain code, message and/or cause fields.`
+      message: () => `must pass an object or BubbleError as the 'expected' parameter to the custom Jest matcher 'toThrowBubbleError'.  Object can contain code, message and/or cause fields.`
     }
   }
 
@@ -17,7 +17,7 @@ function toBeBubbleError(received, expected={}) {
     }
   }
 
-  if (!(received instanceof BubbleError)) {
+  if (!(received instanceof BubbleError)) { console.error(received)
     return {
       pass: false, 
       message: () => `not a BubbleError - ${received ? received.toString() : 'null'}`
