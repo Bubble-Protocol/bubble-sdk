@@ -134,7 +134,10 @@ export class Guardian extends BubbleProvider {
       file.setPermissions(new BubblePermissions(permissionBits));
     }
     catch(error) {
-      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
+      if(error && error.message && error.message.match("execution reverted")) {
+        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_METHOD_FAILED, 'Blockchain reverted. Is this an Access Control Contract?', {cause: error.message});
+      }
+      else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
     }
 
     /**
