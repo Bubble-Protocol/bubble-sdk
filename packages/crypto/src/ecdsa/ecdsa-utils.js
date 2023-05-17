@@ -81,7 +81,6 @@ export function publicKeyToAddress(publicKey) {
     publicKey = _publicKeyConvert(publicKey);
   }
   assert.isUncompressedPublicKey(publicKey, 'publicKey');
-  console.log(publicKey, hash(publicKey.slice(2)))
   return '0x' + hash(publicKey.slice(2), 'hex').slice(-40);
 }
 
