@@ -32,5 +32,9 @@
   "homepage": "https://github.com/Bubble-Protocol/bubble-sdk/tree/main/packages/core",
   "devDependencies": {
     "jest": "^29.5.0"
+  },
+  "dependencies": {
+    "@bubble-protocol/crypto": "^0.0.x",
+    "secp256k1": "^5.0.0"
   }
 }

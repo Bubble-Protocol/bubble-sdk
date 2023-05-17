@@ -41,4 +41,20 @@ export class BlockchainProvider {
     throw new Error('BlockchainProvider.recoverSignature is a virtual function and must be implemented');
   }
 
+  /**
+   * Returns true if the given contract id (address) is valid for this blockchain.
+   * 
+   * EVM blockchains use a 20-byte address.  Override this function if your blockchain uses a 
+   * different format.
+   * 
+   * @param {string} contract the contract id to validate
+   * @returns `true` if valid, `false` otherwise
+   */
+  validateContract(contract) {
+    return VALID_EVM_CONTRACT_ADDRESS_REGEX.test(contract);
+  }
+
 }
+
+
+const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)?[0-9a-fA-F]{40}$/;

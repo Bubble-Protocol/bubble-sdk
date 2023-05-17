@@ -3,7 +3,7 @@ import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian.js';
 import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress } from './common.js';
 import { testPostParams } from './post.params.js';
-import '../../../core/test/BubbleErrorMatcher.js';
+import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
 describe("Guardian", () => {
 

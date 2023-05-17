@@ -6,9 +6,8 @@
  * bubble-sdk assertions.  Used to encourage strong typing of parameters during runtime.
  */
 
-const VALID_BLOCKCHAIN_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 const VALID_HEX_STRING_REGEX = /^(0x)?[0-9a-fA-F]+$/;
-const VALID_HASH_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
+const VALID_HEX32_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
 const VALID_POSIX_FILENAME_REGEX = /^[^\0\/]{1,255}$/;  // POSIX files can be any string between 1 and 255 chars but must not contain null or '/'
 const VALID_BASE64_REGEX = /^[a-zA-Z0-9+/=]+$/;
 const VALID_BASE64URL_REGEX = /^[a-zA-Z0-9_-]+$/;
@@ -92,21 +91,9 @@ export function isHexString(value, name) {
   else return result;
 };
 
-export function isHash(value, name) {
-  const result = isNotEmpty(value, name) && VALID_HASH_REGEX.test(value);
+export function isHex32(value, name) {
+  const result = isNotEmpty(value, name) && VALID_HEX32_REGEX.test(value);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected hex string of length 64");
-  else return result;
-};
-
-export function isPrivateKey(value, name) {
-  const result = isNotEmpty(value, name) && VALID_HASH_REGEX.test(value);
-  if (name !== undefined && !result) throw new TypeError(name + " type. Expected hex string of length 64");
-  else return result;
-};
-
-export function isAddress(value, name) {
-  const result = isNotEmpty(value, name) && VALID_BLOCKCHAIN_ADDRESS_REGEX.test(value);
-  if (name !== undefined && !result) throw new TypeError(name + " type. Expected address");
   else return result;
 };
 

@@ -2,7 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { assert } from "@bubble-protocol/core";
 import { EncryptionPolicy } from "../EncryptionPolicy.js";
 
 /**
@@ -17,7 +16,7 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
 
   constructor(privateKey) {
     super();
-    assert.isPrivateKey(privateKey, 'private key');
+    isAesKey(privateKey, 'private key');
     if (!Crypto.subtle) throw new Error('missing crypto.subtle');
     this.privateKey = Buffer.from(privateKey, 'hex');
   }
@@ -60,6 +59,18 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
 
 }
 
+
+//
+// Internal functions
+//
+
+const VALID_KEY_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
+
+function isAesKey(value, name) {
+  const result = isNotEmpty(value, name) && VALID_KEY_REGEX.test(value);
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected hex string of length 64");
+  else return result;
+};
 
 
 function buf2hex(buffer, prefix0x=true) {

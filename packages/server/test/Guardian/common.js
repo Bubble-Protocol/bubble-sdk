@@ -1,6 +1,7 @@
 import { jest } from '@jest/globals';
 import { BlockchainProvider } from '@bubble-protocol/core';
 import { DataServer } from '../../src/DataServer.js';
+import { ecdsa } from '@bubble-protocol/crypto';
 
 /**
  * Errors
@@ -133,6 +134,7 @@ export class TestBlockchainProvider extends BlockchainProvider {
     this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
     this.getChainId = jest.fn(() => { throw new Error('unexpected stub call: getChainId') });
     this.recoverSignatory = jest.fn(() => Promise.reject(new Error('unexpected stub call: recoverSignature')));
+    this.validateContract = contract => ecdsa.assert.isAddress(contract);
   }
 
 }

@@ -5,6 +5,7 @@
 
 import { BlockchainProvider } from '../BlockchainProvider.js';
 import { createRequire } from "module";
+import { ecdsa } from '@bubble-protocol/crypto';
 const require = createRequire(import.meta.url);
 const ABIs = require('./abi.json');
 
@@ -39,7 +40,7 @@ export class Web3Provider extends BlockchainProvider {
 
 
   recoverSignatory(message, signature) {
-    return this.web3.eth.accounts.recover(message, signature);
+    return ecdsa.recover(message, signature);
   }
 
 }

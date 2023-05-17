@@ -68,7 +68,7 @@ export class Guardian extends BubbleProvider {
     if (!assert.isNumber(params.chainId)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed chainId');
 
-    if (!assert.isAddress(params.contract)) 
+    if (!this.blockchainProvider.validateContract(params.contract)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract');
 
     if (!assert.isHexString(params.signature)) 
@@ -113,7 +113,7 @@ export class Guardian extends BubbleProvider {
     catch(error) {
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
     }
-    if (!assert.isAddress(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
+    if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
 
 
     /** 

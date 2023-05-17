@@ -309,7 +309,7 @@ export class RPCFactory {
    */
   constructor(_chainId, _contract, _signFunction ) {
     assert.isNumber(_chainId, "chainId");
-    assert.isAddress(_contract, "contract");
+    assert.isHexString(_contract, "contract");
     assert.isFunction(_signFunction, "signFunction");
     this.chainId = _chainId;
     this.contract = _contract;

@@ -55,7 +55,7 @@ export class ContentId {
     // Validate id fields
     const error = 
       !assert.isNumber(id.chain) || 
-      !assert.isAddress(id.contract) || 
+      !assert.isHexString(id.contract) || 
       !assert.isString(id.provider) || 
       id.file ? !(new BubbleFilename(id.file)).isValid() : false;
     if (error) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INVALID_CONTENT_ID, "Invalid content id", {cause: "invalid object field(s)"});
