@@ -44,8 +44,8 @@ export class BlockchainProvider {
   /**
    * Returns true if the given contract id (address) is valid for this blockchain.
    * 
-   * EVM blockchains use a 20-byte address.  Override this function if your blockchain uses a 
-   * different format.
+   * Bubble for EVM blockchains uses a 20-byte lowercase address starting with '0x'.  
+   * Override this function if your blockchain uses a different format.
    * 
    * @param {string} contract the contract id to validate
    * @returns `true` if valid, `false` otherwise
@@ -57,4 +57,4 @@ export class BlockchainProvider {
 }
 
 
-const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)?[0-9a-fA-F]{40}$/;
+const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)[0-9a-f]{40}$/;

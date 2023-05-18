@@ -198,4 +198,45 @@ describe('BubbleFilename', () => {
 
   })
 
+
+  describe("converts permissioned part to lowercase", () => {
+
+    const UPPERCASE_DIR = '0x'+VALID_DIR.slice(2).toUpperCase();
+    const LOWERCASE_DIR = '0x'+VALID_DIR.slice(2).toLowerCase();
+
+    test("when a directory", () => {
+      const filename = new BubbleFilename(UPPERCASE_DIR);
+      expect(filename.isValid()).toBe(true);
+      expect(filename.getPermissionedPart()).toBe(LOWERCASE_DIR);
+      expect(filename.fullFilename).toBe(LOWERCASE_DIR);
+    })
+  
+    test("when a file in a directory (and does not convert path extension)", () => {
+      const filename = new BubbleFilename(UPPERCASE_DIR+'/MyFile.txt');
+      expect(filename.isValid()).toBe(true);
+      expect(filename.getPermissionedPart()).toBe(LOWERCASE_DIR);
+      expect(filename.fullFilename).toBe(LOWERCASE_DIR+'/MyFile.txt');
+    })
+  
+  })
+
+
+  describe("adds leading '0x'", () => {
+
+    test("when a directory", () => {
+      const filename = new BubbleFilename(VALID_DIR.slice(2));
+      expect(filename.isValid()).toBe(true);
+      expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.fullFilename).toBe(VALID_DIR);
+    })
+  
+    test("when a file in a directory (and does not convert path extension)", () => {
+      const filename = new BubbleFilename(VALID_DIR.slice(2)+'/MyFile.txt');
+      expect(filename.isValid()).toBe(true);
+      expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.fullFilename).toBe(VALID_DIR+'/MyFile.txt');
+    })
+  
+  })
+
 })

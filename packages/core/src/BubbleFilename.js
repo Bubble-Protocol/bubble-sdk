@@ -30,7 +30,11 @@ export class BubbleFilename {
         this._parts.length === 1 ? assert.isHex32(this._parts[0]) :
         this._parts.length === 2 ? assert.isHex32(this._parts[0]) && assert.isPOSIXFilename(this._parts[1]) :
         false;
-      if (!this._valid) this.fullFilename = filenameStr;
+      if (this._valid) {
+        this._parts[0] = this._parts[0].toLowerCase();
+        this.fullFilename = this._parts.length === 1 ? this._parts[0] : this._parts[0]+'/'+this._parts[1];
+      }
+      else this.fullFilename = filenameStr;
     }
   }
 
