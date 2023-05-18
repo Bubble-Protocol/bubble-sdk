@@ -51,14 +51,29 @@ export class Key {
     this.privateKeyBuf = hexToUint8Array(this.privateKey);
     [this.uPublicKey, this.cPublicKey] = _generatePublicKeys(this.privateKeyBuf);
     this.address = publicKeyToAddress(this.uPublicKey);
+    this.sign = this.sign.bind(this);
+    this.promiseToSign = this.promiseToSign.bind(this);
   }
 
 
   /**
    * Signs the given hash with this key
+   * 
+   * @param {hash} hash 32-byte hex string
+   * @returns the signature as a hex string
    */
   sign(hash) {
     return sign(hash, this.privateKey);
+  }
+
+  /**
+   * Promise to sign the given hash
+   * 
+   * @param {hash} hash 32-byte hex string
+   * @returns Promise to resolve the signature as a hex string
+   */
+  promiseToSign(hash) {
+    return Promise.resolve(this.sign(hash));
   }
 
 }

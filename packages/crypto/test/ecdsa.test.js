@@ -67,6 +67,11 @@ describe("Crypto", function() {
       expect(signature).toMatch(/^[0-9a-f]+$/);
     });
 
+    test("returns a hex signature string for hash with a leading '0x'", function() {
+      var signature = sign('0x'+randomHash, account.privateKey);
+      expect(signature).toMatch(/^[0-9a-f]+$/);
+    });
+
   });
 
 
@@ -153,6 +158,18 @@ describe("Crypto", function() {
       expect(
         recover(randomHash, account.signatures.random.sig, true)
       ).toBe(account.uPublicKey);
+    });
+
+    test("returns the correct signer's address when hash has leading '0x'", function() {
+      expect(
+        recover('0x'+randomHash, account.signatures.random.sig)
+      ).toBe(account.address);
+    });
+
+    test("returns the correct signer's address when signature has leading '0x'", function() {
+      expect(
+        recover(randomHash, '0x'+account.signatures.random.sig)
+      ).toBe(account.address);
     });
 
   });
@@ -298,6 +315,10 @@ describe("Crypto", function() {
       expect(publicKeyToAddress(account.cPublicKey)).toBe(account.address);
     })
 
+    test("successfully converts a key with leading '0x'", () => {
+      expect(publicKeyToAddress('0x'+account.cPublicKey)).toBe(account.address);
+    })
+
   })
 
 
@@ -433,5 +454,56 @@ describe("Crypto", function() {
     });
 
   });
+
+
+  describe("end-to-end", () => {
+
+    test("recover verifies sign", () => {
+      const signature = sign(randomHash, account.privateKey);
+      expect(recover(randomHash, signature)).toBe(account.address);
+    })
+
+    test("verify verifies sign", () => {
+      const signature = sign(randomHash, account.privateKey);
+      expect(verify(randomHash, signature, account.address)).toBe(true);
+    })
+
+    test("recover verifies Key.sign", () => {
+      const key = new Key(account.privateKey);
+      const signature = key.sign(randomHash);
+      expect(recover(randomHash, signature)).toBe(account.address);
+    })
+
+    test("recover verifies Key.promiseToSign", async () => {
+      const key = new Key(account.privateKey);
+      const signature = await key.promiseToSign(randomHash);
+      expect(recover(randomHash, signature)).toBe(account.address);
+    })
+
+    test("Key.sign can be used in a different class scope", () => {
+      class OtherScope {
+        constructor(signFunction) {
+          this.signFunction = signFunction;
+        }
+      }
+      const key = new Key(account.privateKey);
+      const scope = new OtherScope(key.sign);
+      const signature = scope.signFunction(randomHash);
+      expect(recover(randomHash, signature)).toBe(account.address);
+    })
+
+    test("Key.promiseToSign can be used in a different class scope", async () => {
+      class OtherScope {
+        constructor(signFunction) {
+          this.signFunction = signFunction;
+        }
+      }
+      const key = new Key(account.privateKey);
+      const scope = new OtherScope(key.promiseToSign);
+      const signature = await scope.signFunction(randomHash);
+      expect(recover(randomHash, signature)).toBe(account.address);
+    })
+
+  })
 
 });
