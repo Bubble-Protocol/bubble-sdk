@@ -55,7 +55,7 @@ describe('Server README code examples', () => {
                   this._sendResponse(req, res, {result: result});
                 })
                 .catch(error => {
-                  this._sendResponse(req, res, error.toObject());
+                  this._sendResponse(req, res, {error: error.toObject()});
                 })
             });
       
@@ -89,7 +89,7 @@ describe('Server README code examples', () => {
 
 
       // Setup blockchain api
-      const blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2')
+      const blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2', {ethereumSignatures: true})
 
 
       // Construct the Bubble Guardian and launch the server

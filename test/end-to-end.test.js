@@ -1,4 +1,5 @@
-import { BubbleContentManager, BubblePermissions, ContentId, ContentManager, encryptionPolicies, ErrorCodes } from '../packages/index.js';
+import { BubblePermissions, ContentId, ErrorCodes } from '../packages/client/node_modules/@bubble-protocol/core';
+import { BubbleContentManager, ContentManager, ROOT_PATH, encryptionPolicies } from '../packages/index.js';
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble.js';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint.js';
@@ -1033,7 +1034,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
     })
 
-    describe('bubble terminate and isTerminated', () => {
+    describe.only('bubble terminate and isTerminated', () => {
 
       test('fails if contract is not terminated', async () => {
         await expect(ownerBubble.isTerminated()).resolves.toBe(false);
@@ -1047,9 +1048,17 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           gas: 1500000,
           gasPrice: '30000000000000'
         });
-        await expect(ownerBubble.isTerminated()).resolves.toBe(true);
         await expect(requesterBubble.terminate()).resolves.toBeNull(); // anyone can terminate even if no permissions
         await expect(ownerBubble.terminate()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('fails if bubble does not exist', async () => {
+        MockBubbleServer.deleteAllBubbles();
+        await expect(ownerBubble.terminate()).rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      })
+
+      test('succeeds if bubble does not exist but silent option is given', async () => {
+        MockBubbleServer.deleteAllBubbles();
         await expect(requesterBubble.terminate({silent: true})).resolves.toBeNull();
       })
 

@@ -3,6 +3,7 @@ import Web3 from 'web3';
 import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
 import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index.js';
 import contractSrc from '../contracts/TestContract.json';
+import { Key } from '../../packages/crypto/src/ecdsa/Key.js';
 
 
 //
@@ -20,19 +21,17 @@ export const owner = {
   privateKey: "24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063",
   address: "0xc16a409a39EDe3F38E212900f8d3afe6aa6A8929"
 };
+owner.key = new Key(owner.privateKey);
 
 export const requester = {
   privateKey: "e68e40257cfee330038c49637fcffff82fae04b9c563f4ea071c20f2eb55063c",
   address: "0x41A60F71063CD7c9e5247d3E7d551f91f94b5C3b"
 };
+requester.key = new Key(requester.privateKey);
 
-export function ownerSign(hash) {
-  return web3.eth.sign(hash, owner.address);
-}
+export const ownerSign = owner.key.promiseToSign;
 
-export function requesterSign(hash) {
-  return web3.eth.sign(hash, requester.address);
-}
+export const requesterSign = requester.key.promiseToSign;
 
 
 //

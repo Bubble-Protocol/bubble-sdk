@@ -24,7 +24,7 @@ export class HTTPBubbleProvider extends BubbleProvider {
         if (err) reject(err);
         else {
           if (response.error) {
-            if (response.error.code) reject(new BubbleError(response.error.code, response.error.message, {cause: response.error.cause}));
+            if (response.error.code !== undefined) reject(new BubbleError(response.error.code, response.error.message, {cause: response.error.cause}));
             else reject(new Error(response.error.message, {cause: response.error.cause}))
           }
           else resolve(response.result);

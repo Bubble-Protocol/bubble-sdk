@@ -67,7 +67,7 @@ class BubbleServer {
             this._sendResponse(req, res, {result: result});
           })
           .catch(error => {
-            this._sendResponse(req, res, error.toObject());
+            this._sendResponse(req, res, {error: error.toObject()});
           })
       });
 

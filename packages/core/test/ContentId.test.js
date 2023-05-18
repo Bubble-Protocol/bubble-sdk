@@ -77,7 +77,7 @@ describe('ContentId', () => {
     test('when passed an object with an invalid contract field', () => {
       const cid = {
         chain: VALID_CHAIN,
-        contract: '0x010203',
+        contract: '0x010203xyz',
         provider: VALID_URL
       };
       expect(() => {new ContentId(cid)})

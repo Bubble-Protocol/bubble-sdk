@@ -67,7 +67,7 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
 const VALID_KEY_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
 
 function isAesKey(value, name) {
-  const result = isNotEmpty(value, name) && VALID_KEY_REGEX.test(value);
+  const result = VALID_KEY_REGEX.test(value);
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected hex string of length 64");
   else return result;
 };

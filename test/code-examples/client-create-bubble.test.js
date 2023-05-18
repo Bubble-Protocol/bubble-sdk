@@ -13,7 +13,7 @@ describe('Client README Create Bubble section', () => {
   var testState = {};
 
   beforeAll(async () => {
-    await startServers();
+    await startServers({ethereumSignatures: true});
   }, 20000)
 
 

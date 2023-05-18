@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
-import web3 from "web3";
+import { ecdsa } from '@bubble-protocol/crypto';
 
 
 /**
@@ -108,7 +108,7 @@ export class Guardian extends BubbleProvider {
     delete packet.params.signature;
     let signatory;
     try {
-      signatory = await this.blockchainProvider.recoverSignatory(web3.utils.keccak256(JSON.stringify(packet)), params.signature);
+      signatory = await this.blockchainProvider.recoverSignatory(ecdsa.hash(JSON.stringify(packet)), params.signature);
     }
     catch(error) {
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
@@ -179,8 +179,6 @@ export class Guardian extends BubbleProvider {
     /**
      * Service the RPC
      */
-
-    params.contract = params.contract.toLocaleLowerCase();  // always pass lowercase contract to data server
 
     switch (method) {
 

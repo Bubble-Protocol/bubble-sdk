@@ -2,10 +2,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import web3 from "web3";
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
+import { ecdsa } from "@bubble-protocol/crypto";
+
 
 const Crypto = crypto || (window ? window.crypto : undefined);
 
@@ -542,7 +543,7 @@ export class RPCFactory {
    */
   sign(rpc) {
     if (rpc.options === undefined) delete rpc.options;
-    return this.signFunction(web3.utils.keccak256(JSON.stringify(rpc)))
+    return this.signFunction(ecdsa.hash(JSON.stringify(rpc)))
       .then(signature => {
         rpc.params.signature = signature;
         return rpc;

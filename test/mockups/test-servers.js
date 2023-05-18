@@ -36,7 +36,10 @@ export async function startServers(options={}) {
 
   // Setup a test blockchain and a basic bubble server
   ganacheServer = new GanacheServer(8545, {mnemonic: GANACHE_MNEMONIC});
-  blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_SERVER_URL), CONTRACT_ABI_VERSION);
+  const web3ProviderOpts = {
+    ethereumSignatures: options.ethereumSignatures
+  }
+  blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_SERVER_URL), CONTRACT_ABI_VERSION, web3ProviderOpts);
   if(!options.noBubbleServer) {
     bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
     dataServer = bubbleServer.dataServer;

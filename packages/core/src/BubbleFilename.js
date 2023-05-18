@@ -27,8 +27,8 @@ export class BubbleFilename {
       this.fullFilename = filenameStr.slice(0,2) !== '0x' ? '0x' + filenameStr : filenameStr;
       this._parts = this.fullFilename.split('/');
       this._valid = 
-        this._parts.length === 1 ? assert.isHash(this._parts[0]) :
-        this._parts.length === 2 ? assert.isHash(this._parts[0]) && assert.isPOSIXFilename(this._parts[1]) :
+        this._parts.length === 1 ? assert.isHex32(this._parts[0]) :
+        this._parts.length === 2 ? assert.isHex32(this._parts[0]) && assert.isPOSIXFilename(this._parts[1]) :
         false;
       if (!this._valid) this.fullFilename = filenameStr;
     }
