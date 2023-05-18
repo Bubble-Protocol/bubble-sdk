@@ -148,6 +148,13 @@ export class Guardian extends BubbleProvider {
 
 
     /**
+     * Enforce form of contract as lowercase.  Filename enforcement is performed by BubbleFilename.
+     */
+    
+    params.contract = params.contract.toLowerCase();
+
+
+    /**
      * Throw if the bubble has been terminated. Since the ACC is the bubble's master and we now 
      * know it has been terminated, instruct the data server to delete the bubble.  If the data
      * server fails to delete the bubble then instruct the client to send a terminate request

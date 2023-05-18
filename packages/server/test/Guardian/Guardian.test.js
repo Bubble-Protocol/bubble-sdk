@@ -139,6 +139,48 @@ describe("Guardian", () => {
         })
       })
 
+      test('enforces lowercase contract', async () => {
+        const contractIn = '0x'+'1234ABCDEF'.repeat(4);
+        const expectedContract = '0x'+'1234abcdef'.repeat(4);
+        const newParams = {...params, contract: contractIn};
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockResolvedValueOnce();
+        return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+        .then(() => {
+          expect(dataServer[method].mock.calls[0][0]).toBe(expectedContract);
+        })
+      })
+
+      if (params.file) {
+
+        test('enforces lowercase filename hex', async () => {
+          const isDirectory = params.file.indexOf('/') < 0;
+          var filenameIn = '0x'+'0123456789ABCDEF'.repeat(4);
+          var expectedFilename = '0x'+'0123456789abcdef'.repeat(4);
+          filenameIn += isDirectory ? '' : '/MyFile.txt';
+          expectedFilename += isDirectory ? '' : '/MyFile.txt';
+          const newParams = {...params, file: filenameIn};
+          const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+          dataServer[method].mockResolvedValueOnce();
+          return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+          .then(() => {
+            expect(dataServer[method].mock.calls[0][1]).toBe(expectedFilename);
+          })
+        })
+
+        test(`enforces leading '0x' in filename`, async () => {
+          const newParams = {...params, file: params.file.slice(2)};
+          const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+          dataServer[method].mockResolvedValueOnce();
+          return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+          .then(() => {
+            expect(dataServer[method].mock.calls[0][0]).toBe(params.contract);
+            expect(dataServer[method].mock.calls[0][1]).toBe(params.file);
+          })
+        })
+
+      }
+
     }
   
 

@@ -72,13 +72,13 @@ export async function constructTestBubble(options={}) {
   requesterBubble = new Bubble(bubbleId, bubbleProvider, requesterSign);
 
   // Mock a bubble created on the bubble server
-  await MockBubbleServer.createBubble(contract.options.address);
+  await MockBubbleServer.createBubble(contract.options.address.toLowerCase());
 
 }
 
 
 export function clearTestBubble() {
-  MockBubbleServer.clearBubble(contract.options.address);
+  MockBubbleServer.clearBubble(contract.options.address.toLowerCase());
 }
 
 

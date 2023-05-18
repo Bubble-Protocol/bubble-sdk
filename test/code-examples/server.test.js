@@ -122,7 +122,7 @@ describe('Server README code examples', () => {
       ownerBubble = testContract.getBubble(CHAIN_ID, BUBBLE_SERVER_URL, bubbleProvider, 0);
 
       // create the bubble on the data server
-      dataServer._createBubble(testContract.address);
+      dataServer._createBubble(testContract.address.toLowerCase());
 
     }
     catch(err) {

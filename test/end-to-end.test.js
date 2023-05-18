@@ -67,7 +67,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       })
 
       afterEach(() => {
-        MockBubbleServer.createBubble(contract.options.address);
+        MockBubbleServer.createBubble(contract.options.address.toLowerCase());
       })
 
       test('write rejects with a Bubble Does Not Exist error', async () => {
@@ -556,7 +556,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
 
         afterEach(() => {
-          MockBubbleServer.createBubble(contract.options.address);
+          MockBubbleServer.createBubble(contract.options.address.toLowerCase());
         })
 
         test('write rejects with a Bubble Does Not Exist error', async () => {
@@ -1034,7 +1034,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
 
     })
 
-    describe.only('bubble terminate and isTerminated', () => {
+    describe('bubble terminate and isTerminated', () => {
 
       test('fails if contract is not terminated', async () => {
         await expect(ownerBubble.isTerminated()).resolves.toBe(false);

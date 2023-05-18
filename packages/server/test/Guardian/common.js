@@ -134,7 +134,6 @@ export class TestBlockchainProvider extends BlockchainProvider {
     this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
     this.getChainId = jest.fn(() => { throw new Error('unexpected stub call: getChainId') });
     this.recoverSignatory = jest.fn(() => Promise.reject(new Error('unexpected stub call: recoverSignature')));
-    this.validateContract = contract => ecdsa.assert.isAddress(contract);
   }
 
 }

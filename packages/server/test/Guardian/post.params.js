@@ -138,6 +138,13 @@ export function testPostParams() {
       return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
 
+    test("is missing leading '0x'", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      params.contract = params.contract.slice(2);
+      await signRPC('write', params, key1);
+      return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
+    });
+
   });
 
 
