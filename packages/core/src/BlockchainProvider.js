@@ -57,4 +57,4 @@ export class BlockchainProvider {
 }
 
 
-const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)[0-9a-f]{40}$/;
+const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)[0-9a-fA-F]{40}$/;
