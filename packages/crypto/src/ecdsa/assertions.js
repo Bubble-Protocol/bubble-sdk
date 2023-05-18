@@ -10,7 +10,7 @@ const VALID_BLOCKCHAIN_ADDRESS_REGEX = /^0x[0-9a-fA-F]{40}$/;
 const VALID_HASH_REGEX = /^(0x)?[0-9a-fA-F]{64}$/;
 const VALID_U_PUBLIC_KEY_REGEX = /^(0x)?04[0-9a-fA-F]{128}$/;
 const VALID_C_PUBLIC_KEY_REGEX = /^(0x)?(02|03)[0-9a-fA-F]{64}$/;
-const VALID_SIGNATURE_REGEX = /^(0x)?[0-9a-fA-F]{128}(01|02|03)$/;
+const VALID_SIGNATURE_REGEX = /^(0x)?[0-9a-fA-F]{130}$/;
 
 
 function isNotEmpty(value, name) {
