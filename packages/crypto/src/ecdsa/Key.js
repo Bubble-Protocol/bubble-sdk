@@ -2,9 +2,9 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { getCrypto, hexToUint8Array, uint8ArrayToHex, strip0x } from '../utils';
-import { publicKeyToAddress, sign } from './ecdsa-utils';
-import * as assert from './assertions';
+import { getCrypto, hexToUint8Array, uint8ArrayToHex, strip0x } from '../utils.js';
+import { publicKeyToAddress, sign } from './ecdsa-utils.js';
+import * as assert from './assertions.js';
 import secp256k1 from 'secp256k1';
 
 /**

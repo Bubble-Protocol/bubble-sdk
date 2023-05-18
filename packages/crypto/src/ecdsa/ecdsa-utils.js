@@ -2,8 +2,8 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { hexToUint8Array, uint8ArrayToHex, strip0x } from '../utils';
-import * as assert from './assertions';
+import { hexToUint8Array, uint8ArrayToHex, strip0x } from '../utils.js';
+import * as assert from './assertions.js';
 import secp256k1 from 'secp256k1';
 import Web3 from 'web3';
 
