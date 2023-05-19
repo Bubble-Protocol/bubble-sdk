@@ -9,3 +9,4 @@
 export * from './core/src/index.js';
 export * from './client/src/index.js';
 export * from './server/src/index.js';
+export * as crypto from './crypto/src/index.js';
