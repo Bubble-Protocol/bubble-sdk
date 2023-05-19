@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { BlockchainProvider } from '@bubble-protocol/core';
 import { DataServer } from '../../src/DataServer.js';
-import { ecdsa } from '@bubble-protocol/crypto';
+import Web3 from 'web3';
 
 /**
  * Errors
@@ -76,15 +76,26 @@ export async function generateKey(usages) {
   return await crypto.subtle.generateKey(ECDSA_KEYGEN_PARAMS, true, usages)
 }
 
-export function signRPC(method, params, key) {
+export function signRPC(method, params, key, prefix='') {
   const packet = {
     method: method,
     params: params
   }
-  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(JSON.stringify(packet)))
+  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(prefix+JSON.stringify(packet)))
     .then(signature => {
       packet.params.signature = uint8ArrayToHex(signature);
+      if (prefix !== '') packet.params.signaturePrefix = prefix;
     })
+}
+
+export function hashRPC(method, params, prefix='') {
+  const packet = {
+    method: method,
+    params: params
+  } 
+  const hash = Web3.utils.sha3(JSON.stringify(packet)).slice(2);
+  if (prefix !== '') return Web3.utils.sha3(prefix+hash).slice(2)
+  else return hash;
 }
 
 export async function publicKeyToEthereumAddress(publicKey) {

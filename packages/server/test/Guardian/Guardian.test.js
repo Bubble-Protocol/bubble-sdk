@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian.js';
-import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress } from './common.js';
+import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress, hashRPC } from './common.js';
 import { testPostParams } from './post.params.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
@@ -31,10 +31,10 @@ describe("Guardian", () => {
     });
   
   
-    function post(method, params, mockPermissions, stubs = () => {}, key = key1) {
+    function post(method, params, mockPermissions, stubs = () => {}, key = key1, signaturePrefix) {
       const newParams = {...params};
       stubs();
-      return signRPC(method, newParams, key).then(() => {
+      return signRPC(method, newParams, key, signaturePrefix).then(() => {
         blockchainProvider.recoverSignatory.mockResolvedValueOnce(key.address);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
@@ -110,7 +110,7 @@ describe("Guardian", () => {
             delete expectedSignedPacket.params.signature;
             expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
             expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toMatch(/^[0-9a-fA-F]{64}$/);
+            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, params));
             expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
             expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
             expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
@@ -621,6 +621,48 @@ describe("Guardian", () => {
           expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+        });
+      })
+  
+    })
+  
+
+    describe("signature prefix", () => {
+
+      test('is not hashed with packet when not present', async () => {
+        const method = 'create';
+        const params = {...COMMON_RPC_PARAMS};
+        const expectedHash = hashRPC(method, params);
+        await signRPC(method, params, key1);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
+        return expect(guardian.post(method, params))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
+          expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
+          expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(expectedHash);
+          expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(params.signature);
+        });
+      })
+  
+      test('is hashed with packet when present', async () => {
+        const prefix = "\x19Ethereum Signed Message:\n64";
+        const method = 'create';
+        const params = {...COMMON_RPC_PARAMS};
+        const expectedHash = hashRPC(method, params, prefix);
+        await signRPC(method, params, key1, prefix);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
+        return expect(guardian.post(method, params))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
+          expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
+          expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(expectedHash);
+          expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(params.signature);
         });
       })
   

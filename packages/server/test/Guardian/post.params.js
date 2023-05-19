@@ -269,4 +269,16 @@ export function testPostParams() {
 
   });
 
+
+  describe("signaturePrefix", () => {
+
+    test("is not a string", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      params.signaturePrefix = {};
+      await signRPC('write', params, key1);
+      return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signaturePrefix'));
+    });
+
+  })
+
 }

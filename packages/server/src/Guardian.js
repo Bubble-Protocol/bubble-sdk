@@ -3,8 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
-import { ecdsa } from '@bubble-protocol/crypto';
-
+import Web3 from 'web3';
 
 /**
  * JSON RPC 2.0 error codes
@@ -74,6 +73,9 @@ export class Guardian extends BubbleProvider {
     if (!assert.isHexString(params.signature)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature');
 
+    if (params.signaturePrefix && !assert.isString(params.signaturePrefix)) 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signaturePrefix');
+
     if (params.file !== undefined && (!assert.isString(params.file) || !assert.isNotEmpty(params.file))) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
 
@@ -98,17 +100,24 @@ export class Guardian extends BubbleProvider {
 
 
     /**
-     * Recover signatory from signature
+     * Recover signatory from signature.  Allow for optional signature prefix.
      */
+
+    const signaturePrefix = params.signaturePrefix;
 
     const packet = {
       method: method,
       params: {...params}
     }
     delete packet.params.signature;
+    delete packet.params.signaturePrefix;
+
+    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
+    if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
+
     let signatory;
     try {
-      signatory = await this.blockchainProvider.recoverSignatory(ecdsa.hash(JSON.stringify(packet)), params.signature);
+      signatory = await this.blockchainProvider.recoverSignatory(hash, params.signature);
     }
     catch(error) {
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
