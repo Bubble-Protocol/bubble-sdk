@@ -5,7 +5,7 @@
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
-import { ecdsa } from "@bubble-protocol/crypto";
+import Web3 from 'web3';
 
 
 const Crypto = crypto || (window ? window.crypto : undefined);
@@ -543,9 +543,13 @@ export class RPCFactory {
    */
   sign(rpc) {
     if (rpc.options === undefined) delete rpc.options;
-    return this.signFunction(ecdsa.hash(JSON.stringify(rpc)))
+    return this.signFunction(Web3.utils.keccak256(JSON.stringify(rpc)))
       .then(signature => {
-        rpc.params.signature = signature;
+        if (typeof signature === 'object') {
+          rpc.params.signaturePrefix = signature.prefix;
+          rpc.params.signature = signature.signature;
+        }
+        else rpc.params.signature = signature;
         return rpc;
       })
   }

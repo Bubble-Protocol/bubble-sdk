@@ -8,3 +8,4 @@ export {ContentManager} from './ContentManager.js';
 export {EncryptionPolicy} from './EncryptionPolicy.js';
 export {bubbleProviders} from './bubble-providers/index.js';
 export {encryptionPolicies} from './encryption-policies/index.js';
+export * from './utils.js';
