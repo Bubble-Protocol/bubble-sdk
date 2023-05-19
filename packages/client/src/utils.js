@@ -6,6 +6,17 @@ import { assert } from "@bubble-protocol/core";
 
 
 /**
+ * Largest file id (2^256-1)
+ */
+const MAX_FILE_ID = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
+
+/**
+ * Null file id (64 zeros)
+ */
+const file0 = "0000000000000000000000000000000000000000000000000000000000000000";
+
+
+/**
  * Takes a signature produced by an Ethereum wallet and prepares it for adding to a request.
  * 
  * Ethereum wallets always prefix signed messages to ensure a user can't be manipulated into

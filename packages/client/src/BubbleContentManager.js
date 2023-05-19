@@ -11,18 +11,6 @@ import { toFileId } from "./utils.js";
 
 
 /**
- * Largest file id (2^256-1)
- */
-const MAX_FILE_ID = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
-
-/**
- * Null file id (64 zeros)
- */
-const file0 = "0000000000000000000000000000000000000000000000000000000000000000";
-
-
-
-/**
  * A wrapper around a Bubble that allows file and directory content to be accessed directly with
  * a content id.
  */
@@ -171,7 +159,7 @@ export class BubbleContentManager {
   }
 
   toFileId = toFileId;
-  
+
 }
 
 
