@@ -5,6 +5,7 @@
 export {Bubble} from './Bubble.js';
 export {BubbleContentManager} from './BubbleContentManager.js';
 export {ContentManager} from './ContentManager.js';
+export {PublicContentManager} from './PublicContentManager.js';
 export {EncryptionPolicy} from './EncryptionPolicy.js';
 export {bubbleProviders} from './bubble-providers/index.js';
 export {encryptionPolicies} from './encryption-policies/index.js';
