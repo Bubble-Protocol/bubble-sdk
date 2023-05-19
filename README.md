@@ -50,11 +50,21 @@ With all application logic on-chain, public off-chain storage services have few 
 
 ## Bubbles
 
-A **bubble** is the name given to a set of content controlled by a smart contract implementing the `AccessControlledStorage` interface above.  It is where Bubble Protocol got it's name.
+A **bubble** is the name given to a set of content controlled and protected by a smart contract implementing the [`AccessControlledStorage`](./contracts/AccessControlledStorage.sol) interface.  
 
-Each Bubble has a unique ID derived from the smart contract (contract address and chain ID) and the storage location of the bubble (normally the URL of the storage system's API).  The bubble ID forms part of the content id of each file the bubble controls.
+A bubble is an off-chain container holding files and directories with access control handled by it's on-chain smart contract.  Any smart contract can act as the controller for a bubble, it just needs to implement the interface's single `getAccessPermissions` method.
 
-A bubble extends the concept of individual content to that of a container holding files and directories.  A bubble has a life cycle that follows it's smart contract, allowing it to be *created* and, more importantly, *terminated*. When a bubble's smart contract indicates it has been terminated (by setting the Bubble Terminated bit in all calls to it's `getAccessPermissions` method), the storage system is required to *pop* the bubble, deleting all bubble data. 
+Each Bubble has a globally unique ID derived from the smart contract (it's address and chain ID) and the storage location of the bubble (normally the URL of the storage system's API).  The bubble ID forms part of the content id of each file the bubble holds.
+
+### Data Life Cycle
+
+A bubble has a life cycle that follows it's smart contract, allowing it to be *created*, *transitioned* and *terminated*. 
+
+Using Bubble Protocol, a smart contract's innate state and transaction capabilities can be harnessed to transition access to specific bubble content as the life cycle progresses.  In essence, the data life cycle is encoded in the smart contract. For data protection use cases this means the smart contract can act as a service-level agreement, one that is public, immutable and irrefutable.
+
+When a bubble's smart contract indicates it has been terminated (by returning the Bubble Terminated bit in the `getAccessPermissions` method), the storage system is required to *pop* the bubble, deleting all bubble content.
+
+### DApp Support
 
 Files within a directory inherit their access permissions from their parent directory. Directories and files in a bubble can be listed (if the user has read permissions) to obtain such properties as length and modify time. These features can be useful to decentralised applications, enabling such features as device synchronisation and data backup.
 
