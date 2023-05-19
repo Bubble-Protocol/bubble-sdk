@@ -7,6 +7,7 @@ import { Bubble } from "./Bubble.js";
 import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
+import { toFileId } from "./utils.js";
 
 
 /**
@@ -169,32 +170,7 @@ export class BubbleContentManager {
     return _getBubble(id, signFunction || this.signFunction, this.encryptionPolicy).getPermissions(id.file, options);
   }
 
-  /**
-   * Converts a number, BigInt, ArrayBuffer or hex string (with or without 0x prefix) to a valid file id part of
-   * a content id.
-   * 
-   * @param {Number|BigInt|ArrayBuffer|hex string} value the value to convert
-   * @param {string} extension optional path extension to append to the converted value
-   * @returns String containing the 32-byte hex filename prefixed with 0x
-   * @throws if the parameter is an invalid type of is out of range
-   */
-  toFileId(value, extension) {
-    const pathExtension = extension ? '/'+extension : '';
-    // Numbers
-    if (assert.isNumber(value) || assert.isBigInt(value)) {
-      if (value < 0 || assert.isBigInt(value) && value > MAX_FILE_ID) throw new Error('parameter out of range');
-      return '0x' + (file0 + value.toString(16)).slice(-64) + pathExtension;
-    }
-    // Buffers and hex strings
-    if (assert.isBuffer(value)) value = value.toString('hex');
-    if (assert.isHexString(value)) {
-      if (value.slice(0,2) === '0x') value = value.slice(2);
-      if (value.length > 64) throw new Error('parameter out of range');
-      return '0x' + (file0 + value).slice(-64) + pathExtension;
-    }
-    // Invalid type
-    throw new TypeError('Invalid parameter. Must be a number, BigInt or hex string');
-  }
+  toFileId = toFileId;
   
 }
 

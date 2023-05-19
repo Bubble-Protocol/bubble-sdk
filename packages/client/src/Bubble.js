@@ -5,6 +5,7 @@
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
+import { toFileId } from "./utils.js";
 import Web3 from 'web3';
 
 
@@ -275,6 +276,8 @@ export class Bubble {
     return id;
   }
 
+  toFileId = toFileId;
+  
 }
 
 
