@@ -6,6 +6,8 @@ Part of the [Bubble Protocol SDK](https://github.com/Bubble-Protocol/bubble-sdk)
 
 This client library allows decentralised applications to read and write content to any bubble-compatible storage system.
 
+See also the [Bubble Tools](https://github.com/Bubble-Protocol/bubble-tools) command line utility for developers.
+
 ## Installation
 
 ```shell
@@ -47,7 +49,7 @@ ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>')).then
 const accounts = await window.ethereum.getAccounts();
 
 const signFunction = (hash) => {
-  return ethereum.request({
+  return window.ethereum.request({
     method: 'personal_sign',
     params: [hash, accounts[0], 'Bubble content request'],
   })
@@ -97,7 +99,7 @@ const bubbleId = new ContentID({
 
 const bubble = new Bubble(
   bubbleId,
-  new bubbleProviders.HTTPBubbleProvider('<storage-provider-url>'),
+  new bubbleProviders.HTTPBubbleProvider(bubbleId.provider),
   ecdsa.getSignFunction('<private-key>')
 );
 
@@ -108,7 +110,7 @@ await bubble.write('<file_id>', 'Hello World!');
 
 ## Access Control Contracts
 
-Any smart contract that implements the following interface can control off-chain content.  The `getAccessPermissions` method returns the given user's `tdlrwax--` access permissions for the given content identified by its content id.
+Any smart contract that implements the following interface can control off-chain content.  The `getAccessPermissions` method returns the given user's `tdrwax--` access permissions for the given content identified by its content id.
 
 ```solidity
 interface AccessControlledStorage {
@@ -120,9 +122,9 @@ interface AccessControlledStorage {
 
 A smart contract that implements this interface is known generally as an *Access Control Contract*.
 
-For implementation details see [AccessControlledStorage.sol](./contracts/AccessControlledStorage.sol).  
+For implementation details see [AccessControlledStorage.sol](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/AccessControlledStorage.sol).  
 
-For examples, including tokenising data with an NFT, see [example contracts](./contracts/examples) or the [Creating A Bubble Example](#1-design-an-access-control-contract) section below.
+For examples, including tokenising data with an NFT, see [example contracts](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/examples) or the [Creating A Bubble Example](#creating-a-bubble-example) section below.
 
 
 
@@ -148,7 +150,14 @@ The `file` field may optionally include a path extension separated by the `/` ch
 0x0000000000000000000000000000000000000000000000000000000000000001/hello-world.txt
 ```
 
-This indicates it is a file within a directory in the bubble and will derive its access permissions from those of the directory.  A path extension can have any POSIX-compatible name but only one path extension is permitted in the `file` field.
+This indicates it is a file within a directory in the bubble and will derive its access permissions from those of the directory.  A path extension can have any POSIX-compatible name but only one path extension is permitted per `file` field.
+
+File zero is reserved and means the root of the bubble itself.  Only users with write permissions to file `0` can create the bubble on an off-chain storage service.  Listing file `0` will return a list of all files and directories in the bubble.
+```javascript
+import { ROOT_PATH } from '@bubble-protocol/core';
+
+bubble.list(ROOT_PATH).then(console.log);
+``` 
 
 ### Constructing Content IDs
 
@@ -170,13 +179,13 @@ const contentId2 = new ContentID('ef3...87c');
 An alternative way of obtaining a `ContentID` object is from a bubble's `write`, `append` and `mkdir` commands:
 
 ```javascript
-const contentId = await bubble.write(ContentManager.toFileId(1), 'Hello World');
+const contentId = await bubble.write(bubble.toFileId(1), 'Hello World');
 ```
 
 Or from a bubble's `getContentId` method:
 
 ```javascript
-const contentId = bubble.getContentId(ContentManager.toFileId(1));
+const contentId = bubble.getContentId(bubble.toFileId(1));
 ```
 
 
@@ -236,7 +245,7 @@ The [`Bubble`](./src/Bubble.js) class encapsulates a bubble hosted on a remote s
 Example of using the `Bubble` class to create a bubble, write a file, list a directory and terminate the bubble.  Assumes the bubble's smart contract is already deployed to the blockchain and that you have access permissions.
 
 ```javascript
-import { Bubble, bubbleProviders } from '@bubble-protocol/client';
+import { Bubble, bubbleProviders, toFileId } from '@bubble-protocol/client';
 import { ContentId } from '@bubble-protocol/core';
 
 
@@ -249,8 +258,8 @@ const bubbleId = new ContentID({
 });
 
 const filenames = {
-  publicDir: ContentManager.toFileId(1),          // '0x0000000000000000000000000000000000000000000000000000000000000001'
-  welcome: ContentManager.toFileId(1, 'welcome')  // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
+  publicDir: toFileId(1),          // '0x0000000000000000000000000000000000000000000000000000000000000001'
+  welcome: toFileId(1, 'welcome')  // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
 }
 
 
@@ -300,12 +309,12 @@ An encryption policy can be used on its own or can be passed to the `ContentMana
 
 ```javascript
 import { BubbleFilename } from "@bubble-protocol/core";
-import { encryptionPolicies, ContentManager } from '@bubble-protocol/client';
+import { encryptionPolicies, ContentManager, toFileId } from '@bubble-protocol/client';
 
 const filenames = {
-  publicDir: ContentManager.toFileId(1),          // '0x0000000000000000000000000000000000000000000000000000000000000001'
-  welcome: ContentManager.toFileId(1, 'welcome'), // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
-  privateDir: ContentManager.toFileId(2)          // '0x0000000000000000000000000000000000000000000000000000000000000002'
+  publicDir: toFileId(1),           // '0x0000000000000000000000000000000000000000000000000000000000000001'
+  welcome: toFileId(1, 'welcome'),  // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
+  privateDir: toFileId(2)           // '0x0000000000000000000000000000000000000000000000000000000000000002'
 }
 
 class MyEncryptionPolicy extends encryptionPolicies.AESGCMEncryptionPolicy {
@@ -398,21 +407,22 @@ contract ExampleBubble is AccessControlledStorage {
 ```
 
 ### 2) Deploy The Contract
-Use one of the following options to deploy the contract to your blockchain of choice.
 
-a) Use an online service like [remix](https://remix.ethereum.org).
+Use one of the following options to deploy the contract to your blockchain of choice:
 
-... or: 
+a) use an online service like [remix](https://remix.ethereum.org)
+
+... or
 
 b) use `solc` and [Bubble Tools](https://github.com/Bubble-Protocol/bubble-tools)
 
 ```shell
 solc ExampleBubble.sol --combined-json abi,bin | jq -r '.contracts["ExampleBubble.sol:ExampleBubble"]' > ExampleBubble.json
 
-bubble contract deploy -f ExampleBubble.json
+bubble contract deploy -f ExampleBubble.json --save example-bubble
 ```
 
-... or: 
+... or
 
 c) use `solc` and deploy using `web3js` via your blockchain provider, e.g.:
 
@@ -461,18 +471,18 @@ const contract = await deploy(accounts[0], contractSrc.abi, contractSrc.bytecode
 
 ### 3) Create The Off-Chain Bubble
 
-Use the `Bubble` class to create the off-chain bubble.
+Either: 
+
+a) use the `Bubble` class to create the off-chain bubble.
 
 ```javascript
 import { Bubble, bubbleProviders } from '@bubble-protocol/client';
 import { ContentId } from '@bubble-protocol/core';
-import { Web3 } from web3;
+import { ecdsa } from '@bubble-protocol/crypto';
 
 
 // Define a function for signing transactions
-const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url
-const accounts = await web3.eth.getAccounts();
-const signFunction = (hash) => web3.eth.sign(hash, accounts[0]);
+const signFunction = ecdsa.getSignFunction('<private_key>')
 
 
 // Setup your bubble
@@ -483,9 +493,7 @@ const bubbleId = new ContentId({
 });
 
 
-// Construct a `BubbleProvider` for the remote storage system.  Use a suitable provider
-// type for your provider's protocol or create your own, e.g. to interface with your 
-// local company infrastructure.
+// Construct a `BubbleProvider` appropriate to the API of the remote storage system.
 const storageProvider = new bubbleProviders.HTTPBubbleProvider(bubbleId.provider);
 
 
@@ -495,6 +503,16 @@ const bubble = new Bubble(bubbleId, storageProvider, signFunction);
 
 // Create the bubble on the off-chain storage service.
 await bubble.create();
+```
+
+... or
+
+b) use bubble tools
+
+```shell
+bubble servers add bubble-private-cloud https://vault.bubbleprotocol.com/v2
+
+bubble content create-bubble bubble-private-cloud example-bubble --chain 1
 ```
 
 ## Glossary
@@ -535,16 +553,21 @@ const signFunction = key.promiseToSign;
 Example using the Crypto Library `sign` function:
 
 ```javascript
-const signFunction = (hash) => Promise.resolve(ecdsa.sign(hash, '<private_key>'));
+const signFunction1 = ecdsa.getSignFunction('<private_key>');
+
+// is equivalent to
+
+const signFunction2 = (hash) => Promise.resolve(ecdsa.sign(hash, '<private_key>'));
 ```
 
 Example of a web3.js sign function:
 
 ```javascript
 const accounts = await web3.eth.getAccounts();
+
 const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
 ```
-**NB**: observe the `.then(toEthereumSignature)` extension in the example above.  Since Ethereum wallets prefix signed messages with the string `"\x19Ethereum Signed Message:\n"+message.length`, any sign function that uses an Ethereum-type wallet must pass its output to the `toEthereumSignature` function defined in the Crypto Library.  This prepares the signature so that the storage server's Guardian software will recognise it as having a prefix and handle it accordingly.
+**NB**: observe the `.then(toEthereumSignature)` chain in the example above.  Since Ethereum wallets prefix signed messages with the string `"\x19Ethereum Signed Message:\n"+message.length`, any sign function that uses an Ethereum-type wallet must pass its output to the `toEthereumSignature` function defined in the Crypto Library.  This prepares the signature so that the storage server's Guardian software will recognise it as having a prefix and handle it accordingly.
 
 ## Dependencies
 
