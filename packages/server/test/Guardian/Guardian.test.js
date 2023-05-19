@@ -139,6 +139,35 @@ describe("Guardian", () => {
         })
       })
 
+      test("resolves when 'public' signature is given", async () => {
+        const newParams = {...params, signature: 'public'};
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
+        dataServer[method].mockResolvedValueOnce();
+        return expect(guardian.post(method, newParams))
+        .resolves.not.toThrow()
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
+          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
+          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
+        });
+      })
+
+      test("rejects with permission denied error if the 'public' signature is given but has no permissions", async () => {
+        const newParams = {...params, signature: 'public'};
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.ALL_PERMISSIONS & ~requiredPermissions);
+        return expect(guardian.post(method, newParams))
+        .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED})
+        .then(() => {
+          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
+          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+          expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
+          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
+        });
+      })
+  
       test('enforces lowercase contract', async () => {
         const contractIn = '0x'+'1234ABCDEF'.repeat(4);
         const expectedContract = '0x'+'1234abcdef'.repeat(4);
@@ -667,6 +696,7 @@ describe("Guardian", () => {
       })
   
     })
+    
   
   })
 

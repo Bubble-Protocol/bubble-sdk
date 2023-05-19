@@ -5,6 +5,15 @@
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
 import Web3 from 'web3';
 
+
+/**
+ * Signatory used to get permissions if the request is a public request.
+ * (Account address of a private key generated from the hash of '<Bubble Protocol Public Signatory>')
+ */
+
+const PUBLIC_SIGNATORY = "0x99e2c875341d1cbb70432e35f5350f29bf20aa52";
+
+
 /**
  * JSON RPC 2.0 error codes
  */
@@ -70,7 +79,7 @@ export class Guardian extends BubbleProvider {
     if (!this.blockchainProvider.validateContract(params.contract)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract');
 
-    if (!assert.isHexString(params.signature)) 
+    if (params.signature !== 'public' && !assert.isHexString(params.signature)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature');
 
     if (params.signaturePrefix && !assert.isString(params.signaturePrefix)) 
@@ -100,29 +109,36 @@ export class Guardian extends BubbleProvider {
 
 
     /**
-     * Recover signatory from signature.  Allow for optional signature prefix.
+     * Recover signatory from signature.  Allow for a public request and an optional signature prefix.
      */
 
-    const signaturePrefix = params.signaturePrefix;
-
-    const packet = {
-      method: method,
-      params: {...params}
-    }
-    delete packet.params.signature;
-    delete packet.params.signaturePrefix;
-
-    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
-    if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
-
     let signatory;
-    try {
-      signatory = await this.blockchainProvider.recoverSignatory(hash, params.signature);
+
+    if (params.signature === 'public') signatory = PUBLIC_SIGNATORY;
+
+    else {
+      
+      const signaturePrefix = params.signaturePrefix;
+
+      const packet = {
+        method: method,
+        params: {...params}
+      }
+      delete packet.params.signature;
+      delete packet.params.signaturePrefix;
+
+      let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
+      if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
+
+      try {
+        signatory = await this.blockchainProvider.recoverSignatory(hash, params.signature);
+      }
+      catch(error) {
+        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
+      }
+      if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
+
     }
-    catch(error) {
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
-    }
-    if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
 
 
     /** 
