@@ -28,7 +28,7 @@ const file0 = "0000000000000000000000000000000000000000000000000000000000000000"
  */
 export function toEthereumSignature(sig) {
   return {
-    signaturePrefix: "\x19Ethereum Signed Message:\n64",
+    prefix: "\x19Ethereum Signed Message:\n64",
     signature: sig
   }
 }
