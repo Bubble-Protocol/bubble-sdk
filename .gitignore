@@ -28,3 +28,4 @@ remixd.sh
 .deps
 contracts/artifacts
 contracts/examples/artifacts
+.vscode
