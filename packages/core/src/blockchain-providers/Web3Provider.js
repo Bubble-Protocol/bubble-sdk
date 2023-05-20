@@ -5,7 +5,7 @@
 
 import { BlockchainProvider } from '../BlockchainProvider.js';
 import { createRequire } from "module";
-import { ecdsa } from '../../../crypto/src/index.js'; // '@bubble-protocol/crypto';
+import { ecdsa } from '@bubble-protocol/crypto';
 const require = createRequire(import.meta.url);
 const ABIs = require('./abi.json');
 
@@ -16,12 +16,11 @@ export class Web3Provider extends BlockchainProvider {
   chainId;
 
 
-  constructor(chainId, web3, abiVersion, options={}) {
+  constructor(chainId, web3, abiVersion) {
     super();
     this.chainId = chainId;
     this.web3 = web3;
     this.abi = ABIs[abiVersion];
-    this.options = options;
     if (!this.abi) throw new Error(`Web3Provider error: abi version ${abiVersion} does not exist`);
   }
 
@@ -41,7 +40,6 @@ export class Web3Provider extends BlockchainProvider {
 
 
   recoverSignatory(message, signature) {
-    if (this.options.ethereumSignatures) message = ecdsa.hash("\x19Ethereum Signed Message:\n64"+message);
     return Promise.resolve(ecdsa.recover(message, signature));
   }
 
