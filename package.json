@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/bubble-sdk",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Bubble Protocol SDK",
   "author": "Bubble Protocol",
   "license": "MIT",
@@ -15,8 +15,6 @@
     "data privacy",
     "sdk"
   ],
-  "main": "packages/index.js",
-  "type": "module",
   "directories": {
     "test": "test"
   },
