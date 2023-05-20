@@ -4,6 +4,7 @@ import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, b
 import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index.js';
 import contractSrc from '../contracts/TestContract.json';
 import { Key } from '../../packages/crypto/src/ecdsa/Key.js';
+import { ecdsa } from '../../packages/crypto/src/index.js';
 
 
 //
@@ -96,4 +97,24 @@ export function bubbleAvailableTest() {
     expect(permissions.canExecute()).toBe(true);
   }, 20000)
 
+}
+
+
+export async function testSignFunction(signFunction, accountAddress) {
+  expect(['Function', 'AsyncFunction', 'Promise']).toContain(signFunction.constructor.name);
+  const message = 'hello world!';
+  const hash = ecdsa.hash(message);
+  let recoveryHash = hash;
+  let sig = await signFunction(hash);
+  expect(['string', 'object']).toContain(typeof sig);
+  if (typeof sig === 'object') {
+    expect(sig.signature).not.toBeUndefined();
+    expect(sig.prefix).not.toBeUndefined();
+    expect(typeof sig.signature).toBe('string');
+    expect(typeof sig.prefix).toBe('string');
+    recoveryHash = ecdsa.hash(sig.prefix+hash);
+    sig = sig.signature;
+  }
+  const recoveredAddress = ecdsa.recover(recoveryHash, sig);
+  expect(recoveredAddress.toLowerCase()).toBe(accountAddress.toLowerCase());
 }

@@ -89,7 +89,7 @@ describe('Server README code examples', () => {
 
 
       // Setup blockchain api
-      const blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2', {ethereumSignatures: true})
+      const blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2')
 
 
       // Construct the Bubble Guardian and launch the server

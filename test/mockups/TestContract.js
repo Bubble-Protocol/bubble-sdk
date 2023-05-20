@@ -1,5 +1,5 @@
 import { BubblePermissions, ContentId } from '../../packages/core';
-import { Bubble } from '../../packages/client';
+import { Bubble, toEthereumSignFunction } from '../../packages/client';
 
 
 //
@@ -53,7 +53,7 @@ export class TestContract {
       provider: bubbleServerURL
     });
 
-    return new Bubble(bubbleId, bubbleProvider, (hash) => this.web3.eth.sign(hash, this.accounts[accountIndex]));
+    return new Bubble(bubbleId, bubbleProvider, toEthereumSignFunction((hash) => this.web3.eth.sign(hash, this.accounts[accountIndex])));
   }
 
 

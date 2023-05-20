@@ -2,9 +2,10 @@
 import { startServers, stopServers } from '../mockups/test-servers.js';
 
 // Imports under test
-import { Bubble, bubbleProviders } from '../../packages/client';
+import { Bubble, bubbleProviders, toEthereumSignature } from '../../packages/client';
 import { ContentId } from '../../packages/index.js';
 import Web3 from 'web3';
+import { testSignFunction } from '../mockups/test-bubble.js';
 
 
 
@@ -79,7 +80,15 @@ describe('Client README Create Bubble section', () => {
 
   })
 
+
+  test('sign function', async () => {
+    const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
+    const accounts = await web3.eth.getAccounts();
+    const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
+    await testSignFunction(signFunction, accounts[0]);
+  })
   
+
   test("create bubble", async () => {
 
     async function codeUnderTest() {
@@ -90,7 +99,7 @@ describe('Client README Create Bubble section', () => {
       // Define a function for signing transactions
       const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
       const accounts = await web3.eth.getAccounts();
-      const signFunction = (hash) => web3.eth.sign(hash, accounts[0]);
+      const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
 
       // Setup your bubble
       const bubbleId = new ContentId({
