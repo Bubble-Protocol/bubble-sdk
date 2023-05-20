@@ -476,13 +476,15 @@ Either:
 a) use the `Bubble` class to create the off-chain bubble.
 
 ```javascript
-import { Bubble, bubbleProviders } from '@bubble-protocol/client';
+import { Bubble, bubbleProviders, toEthereumSignature } from '@bubble-protocol/client';
 import { ContentId } from '@bubble-protocol/core';
 import { ecdsa } from '@bubble-protocol/crypto';
 
 
 // Define a function for signing transactions
-const signFunction = ecdsa.getSignFunction('<private_key>')
+const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
+const accounts = await web3.eth.getAccounts();
+const signFunction = (hash) => web3.eth.sign(hash, accounts[0]);
 
 
 // Setup your bubble
