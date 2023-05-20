@@ -130,8 +130,10 @@ export class Guardian extends BubbleProvider {
       let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
       if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
 
+      const signature = params.signature.slice(0,2) === '0x' ? params.signature.slice(2) : params.signature;
+
       try {
-        signatory = await this.blockchainProvider.recoverSignatory(hash, params.signature);
+        signatory = await this.blockchainProvider.recoverSignatory(hash, signature);
       }
       catch(error) {
         throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
