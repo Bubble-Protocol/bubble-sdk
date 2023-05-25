@@ -33,7 +33,7 @@ Assumes a bubble has already been created on an off-chain storage service.
 ```javascript
 import { PublicContentManager } from '@bubble-protocol/client';
 
-const data = await PublicContentManager.read('<content-id>');
+PublicContentManager.read('<content-id>').then(console.log);
 ```
 
 ### Read A Private File
@@ -41,7 +41,7 @@ const data = await PublicContentManager.read('<content-id>');
 import { ContentManager } from '@bubble-protocol/client';
 import { ecdsa } from '@bubble-protocol/crypto';
 
-const data = await ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>'));
+ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>')).then(console.log);
 ```
 
 ### Read A Private File Using Metamask
