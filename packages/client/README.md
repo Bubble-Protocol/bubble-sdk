@@ -33,7 +33,7 @@ Assumes a bubble has already been created on an off-chain storage service.
 ```javascript
 import { PublicContentManager } from '@bubble-protocol/client';
 
-PublicContentManager.read('<content-id>').then(console.log);
+const data = await PublicContentManager.read('<content-id>');
 ```
 
 ### Read A Private File
@@ -41,7 +41,7 @@ PublicContentManager.read('<content-id>').then(console.log);
 import { ContentManager } from '@bubble-protocol/client';
 import { ecdsa } from '@bubble-protocol/crypto';
 
-ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>')).then(console.log);
+const data = await ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>'));
 ```
 
 ### Read A Private File Using Metamask
@@ -88,7 +88,8 @@ Assumes a smart contract implementing the `AccessControlledStorage` interface ha
 
 ### Create A New Bubble
 ```javascript
-import { Bubble, toFileId, bubbleProviders } from '@bubble-protocol/client';
+import { Bubble, bubbleProviders } from '@bubble-protocol/client';
+import { ContentID } from '@bubble-protocol/core';
 import { ecdsa } from '@bubble-protocol/crypto';
 
 const bubbleId = new ContentID({
