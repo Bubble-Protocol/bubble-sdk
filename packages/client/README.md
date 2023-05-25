@@ -59,7 +59,7 @@ const signFunction = (hash) => {
 ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
 
-### Read, Write, Append and List Encrypted Private Files
+### Read, Write and List Encrypted Private Files
 ```javascript
 import { BubbleContentManager, encryptionPolicies } from '@bubble-protocol/client';
 import { ecdsa } from '@bubble-protocol/crypto';
@@ -73,9 +73,7 @@ const manager = new BubbleContentManager(
   encryptionPolicy
 );
 
-await manager.write('<content-id>', 'Hello');
-
-await manager.append('<content-id>', ' World!');
+await manager.write('<content-id>', 'Hello World!');
 
 manager.read('<content-id>').then(console.log);
 
