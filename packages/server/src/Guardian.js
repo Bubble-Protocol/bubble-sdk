@@ -4,6 +4,7 @@
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
 import Web3 from 'web3';
+import { parseDelegation } from './Delegation';
 
 
 /**
@@ -40,10 +41,12 @@ export class Guardian extends BubbleProvider {
    * @param _dataServer the data server that handles permitted RPCs
    * @param _blockchainProvider web3 provider for access to the blockchain
    */
-  constructor(_dataServer, _blockchainProvider) {
+  constructor(_dataServer, _blockchainProvider, _id) {
     super();
+    assert.isString(_id, 'id');
     this.dataServer = _dataServer;
     this.blockchainProvider = _blockchainProvider;
+    this.id = _id;
   }
 
 
@@ -97,6 +100,9 @@ export class Guardian extends BubbleProvider {
     if (params.options && !assert.isObject(params.options)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options');
 
+    if (params.delegate && !assert.isObject(params.delegate)) 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed delegate');
+
 
     // TODO validate timestamp
 
@@ -126,6 +132,7 @@ export class Guardian extends BubbleProvider {
       }
       delete packet.params.signature;
       delete packet.params.signaturePrefix;
+      delete packet.params.delegate;
 
       let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
       if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
@@ -149,6 +156,26 @@ export class Guardian extends BubbleProvider {
 
     if (params.chainId !== this.blockchainProvider.getChainId()) 
       throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED, 'blockchain not supported');
+
+
+    /**
+     * Recover delegate signatory, if present, and set as this requests signatory
+     */
+
+    if (params.delegate) {
+
+      const delegate = await parseDelegation(params.delegate, this.blockchainProvider);
+      if (!delegate.isValid()) 
+        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode delegate', {cause: delegate.error.message || delegate.error});
+
+      const revoked = await this.blockchainProvider.hasBeenRevoked(delegate.hash);
+      const contentId = {chain: params.chainId, contract: params.contract, provider: this.id};
+      if (revoked || !delegate.canAccessContent(signatory, contentId)) 
+        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+
+      signatory = delegate.signatory;
+
+    }
 
 
     /** 

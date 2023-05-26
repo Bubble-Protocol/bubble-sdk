@@ -15,3 +15,4 @@ export {ROOT_PATH} from './constants.js';
 export * as assert from './assertions.js';
 export {BubbleError, ErrorCodes} from './errors.js';
 export {blockchainProviders} from './blockchain-providers/index.js';
+export {Delegation} from './Delegation.js';

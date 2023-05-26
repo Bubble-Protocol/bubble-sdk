@@ -33,6 +33,9 @@ export class Web3Provider extends BlockchainProvider {
       })
   }
 
+  hasBeenRevoked() {
+    return false;  // revocation service not yet available
+  }
 
   getChainId() {
     return this.chainId;

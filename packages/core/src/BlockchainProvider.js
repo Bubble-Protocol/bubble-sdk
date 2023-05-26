@@ -13,14 +13,24 @@ export class BlockchainProvider {
   /**
    * Calls the getPermissions function of the given contract and returns the permission bits.
    * 
-   * @param {20-byte hex string} contract address of the contract
-   * @param {20-byte hex string} account address to pass to the contract's getPermissions function
-   * @param {32-byte hex string} file bytes32 (as hex string) to pass to the contract's 
+   * @param {hex string} contract address of the contract
+   * @param {hex string} account address to pass to the contract's getPermissions function
+   * @param {hex string} file bytes32 (as hex string) to pass to the contract's 
    * getPermissions function
    * @returns Promise to return a BigInt containing the 256-bit uint returned by the contract
    */
   getPermissions(contract, account, file) {
     throw new Error('BlockchainProvider.getPermissions is a virtual function and must be implemented');
+  }
+
+  /**
+   * Calls the blockchain's delegate revocation contract to check if the given hash has been 
+   * revoked.
+   * 
+   * @param {32-byte hex string} delegateHash the hash to check if revoked
+   */
+  hasBeenRevoked(delegateHash) {
+    throw new Error('BlockchainProvider.hasBeenRevoked is a virtual function and must be implemented');
   }
 
   /**

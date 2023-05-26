@@ -94,7 +94,7 @@ describe('Server README code examples', () => {
 
       // Construct the Bubble Guardian and launch the server
       const dataServer = new MyDataServer();
-      const guardian = new Guardian(dataServer, blockchainProvider);
+      const guardian = new Guardian(dataServer, blockchainProvider, 'http://127.0.0.1:'+SERVER_PORT);
       const bubbleServer = new BubbleServer(SERVER_PORT, guardian);
 
       // Launch the server

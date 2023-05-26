@@ -24,13 +24,16 @@ const file0 = "0000000000000000000000000000000000000000000000000000000000000000"
  * recovering the signatory from a signed request.
  * 
  * @param {string} sig signature
+ * @param {Delegation} delegate optional delegate to include in the signature
  * @returns signature object
  */
-export function toEthereumSignature(sig) {
-  return {
+export function toEthereumSignature(sig, delegate) {
+  const result = {
     prefix: "\x19Ethereum Signed Message:\n64",
-    signature: sig
-  }
+    signature: sig,
+  };
+  if (delegate) result.delegate = delegate;
+  return result;
 }
 
 
@@ -39,10 +42,11 @@ export function toEthereumSignature(sig) {
  * (@see `toEthereumSignature`).
  * 
  * @param {function} signFunction sign function whose signature must be converted
+ * @param {Delegation} delegate optional delegate to include in the signature
  * @returns the same signFunction
  */
-export function toEthereumSignFunction(signFunction) {
-  return (hash) => signFunction(hash).then(toEthereumSignature);
+export function toEthereumSignFunction(signFunction, delegate) {
+  return (hash) => signFunction(hash).then(sig => toEthereumSignature(sig, delegate));
 }
 
 
