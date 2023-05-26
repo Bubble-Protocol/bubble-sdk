@@ -1,7 +1,7 @@
 
 import { startBlockchain, stopBlockchain } from '../mockups/test-blockchain.js';
 import { RamBasedDataServer } from '../mockups/RamBasedDataServer.js';
-import { ContentManager, bubbleProviders } from '../../packages/index.js';
+import { ContentManager, bubbleProviders } from '../../packages/client';
 import contractSrc from '../contracts/TestContract.json';
 
 // Imports under test

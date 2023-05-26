@@ -1,7 +1,7 @@
 import Web3 from 'web3';
 import jayson from 'jayson';
 
-import { blockchainProviders } from '../../packages/index.js';
+import { blockchainProviders } from '../../packages/core';
 import { RamBasedBubbleServer } from './RamBasedBubbleServer.js';
 import { GanacheServer } from "./GanacheServer.js";
 

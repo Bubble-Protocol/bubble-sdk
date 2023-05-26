@@ -2,7 +2,7 @@ import express from 'express';
 import jayson from 'jayson';
 import jsonParser from 'body-parser';
 import {RamBasedDataServer} from './RamBasedDataServer.js';
-import {Guardian} from '../../packages/server/src/Guardian.js';
+import {Guardian} from '../../packages/server';
 
 
 export class RamBasedBubbleServer {

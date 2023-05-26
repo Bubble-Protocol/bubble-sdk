@@ -3,7 +3,7 @@ import { startServers, stopServers } from '../mockups/test-servers.js';
 
 // Imports under test
 import { Bubble, bubbleProviders, toEthereumSignature } from '../../packages/client';
-import { ContentId } from '../../packages/index.js';
+import { ContentId } from '../../packages/core';
 import Web3 from 'web3';
 import { testSignFunction } from '../mockups/test-bubble.js';
 

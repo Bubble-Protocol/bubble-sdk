@@ -1,7 +1,8 @@
 import Web3 from 'web3';
 
 import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
-import { Bubble, BubblePermissions, ContentId, bubbleProviders } from '../../packages/index.js';
+import { Bubble, bubbleProviders } from '../../packages/client';
+import { BubblePermissions, ContentId } from '../../packages/core';
 import contractSrc from '../contracts/TestContract.json';
 import { Key } from '../../packages/crypto/src/ecdsa/Key.js';
 import { ecdsa } from '../../packages/crypto/src/index.js';

@@ -1,5 +1,5 @@
 import { BubblePermissions, ContentId, ErrorCodes } from '../packages/client/node_modules/@bubble-protocol/core';
-import { BubbleContentManager, ContentManager, ROOT_PATH, encryptionPolicies } from '../packages/index.js';
+import { BubbleContentManager, ContentManager, encryptionPolicies } from '../packages/client';
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requesterBubble, requesterSign } from './mockups/test-bubble.js';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint.js';

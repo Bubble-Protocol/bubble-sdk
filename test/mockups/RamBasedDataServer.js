@@ -1,4 +1,4 @@
-import { ROOT_PATH } from '../../packages/index.js';
+import { ROOT_PATH } from '../../packages/core';
 import {BubbleError, ErrorCodes} from '../../packages/core/src/errors.js';
 import {DataServer} from '../../packages/server/src/DataServer.js';
 

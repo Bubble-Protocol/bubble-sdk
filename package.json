@@ -15,6 +15,7 @@
     "data privacy",
     "sdk"
   ],
+  "type": "module",
   "directories": {
     "test": "test"
   },
