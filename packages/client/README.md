@@ -339,6 +339,56 @@ console.log(Buffer.from(decryptedDataBuf).toString());
 ContentManager.setEncryptionPolicy(encryptionPolicy);
 ```
 
+## Delegation
+
+Bubble Protocol supports key delegation, which allows a different private key to be used to access a bubble on behalf of the delegation signer.  This is designed primarily to allow applications to access bubble content without requesting a signature from the user's wallet each time.
+
+By default, delegations have an expiry time and are restricted to a specific bubble.  Multiple permissions can be given to a delegate.
+
+### Constructing Delegations
+
+A Delegation is created using the `Delegation` class and is signed by the private key that is delegating the permission:
+
+```javascript
+const signFunction = ...
+
+const delegation = new Delegation('<delegate-address>', <expiry-time>);
+
+delegation.permitAccessToBubble(<bubble-id>);
+
+await delegation.sign(signFunction);
+```
+
+The sign function has the same form as the sign function passed to the `ContentManager`.
+
+### Using Delegations
+
+To use a signed delegation, it must be returned by the sign function passed to the `ContentManager` or `Bubble`, since it forms part of a request's signature, not part of the request itself.
+
+```javascript
+const signFunction = 
+  ecdsa.getSignFunction('<private-key>')
+  .then(sig => { signature: sig, delegate: delegation })
+```
+
+Or, if using Metamask or another third party wallet:
+
+```javascript
+const accounts = await window.ethereum.getAccounts();
+
+const signFunction = (hash) => {
+  return window.ethereum.request({
+    method: 'personal_sign',
+    params: [hash, accounts[0], 'Bubble content request'],
+  })
+  .then(sig => toEthereumSignature(sig, delegation));
+}
+```
+
+### Revoking Delegations
+
+Support for revoking delegations on-chain is in development.
+
 ## Creating a Bubble (Example)
 
 Creating a bubble is a 3-step process:

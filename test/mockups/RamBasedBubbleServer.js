@@ -7,10 +7,10 @@ import {Guardian} from '../../packages/server';
 
 export class RamBasedBubbleServer {
 
-  constructor(port, blockchainProvider) {
+  constructor(host, port, blockchainProvider) {
     this.port = port;
     this.dataServer = new RamBasedDataServer();
-    this.guardian = new Guardian(this.dataServer, blockchainProvider);
+    this.guardian = new Guardian(this.dataServer, blockchainProvider, host+':'+port);
     const guardian = this.guardian;
 
     function post(method, params, callback) {

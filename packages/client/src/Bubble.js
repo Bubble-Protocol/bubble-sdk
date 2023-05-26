@@ -549,7 +549,8 @@ export class RPCFactory {
     return this.signFunction(Web3.utils.keccak256(JSON.stringify(rpc)).slice(2))
       .then(signature => {
         if (typeof signature === 'object') {
-          rpc.params.signaturePrefix = signature.prefix;
+          if (signature.prefix) rpc.params.signaturePrefix = signature.prefix;
+          if (signature.delegate) rpc.params.delegate = signature.delegate;
           rpc.params.signature = signature.signature;
         }
         else rpc.params.signature = signature;

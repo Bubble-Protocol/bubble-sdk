@@ -41,7 +41,7 @@ export async function startServers(options={}) {
   }
   blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_SERVER_URL), CONTRACT_ABI_VERSION, web3ProviderOpts);
   if(!options.noBubbleServer) {
-    bubbleServer = new RamBasedBubbleServer(8131, blockchainProvider);
+    bubbleServer = new RamBasedBubbleServer('http://127.0.0.1', 8131, blockchainProvider);
     dataServer = bubbleServer.dataServer;
     await bubbleServer.start();
   }

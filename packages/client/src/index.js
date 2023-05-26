@@ -9,4 +9,6 @@ export {PublicContentManager} from './PublicContentManager.js';
 export {EncryptionPolicy} from './EncryptionPolicy.js';
 export {bubbleProviders} from './bubble-providers/index.js';
 export {encryptionPolicies} from './encryption-policies/index.js';
+export {Delegation} from './Delegation.js';
+export * from '@bubble-protocol/core';
 export * from './utils.js';

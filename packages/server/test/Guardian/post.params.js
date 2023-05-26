@@ -21,7 +21,7 @@ export function testPostParams() {
     key2.address = await publicKeyToEthereumAddress(key2.publicKey);
     dataServer = new TestDataServer();
     blockchainProvider = new TestBlockchainProvider();
-    guardian = new Guardian(dataServer, blockchainProvider);
+    guardian = new Guardian(dataServer, blockchainProvider, '');
   })
 
   beforeEach( () => {
@@ -277,6 +277,17 @@ export function testPostParams() {
       params.signaturePrefix = {};
       await signRPC('write', params, key1);
       return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signaturePrefix'));
+    });
+
+  })
+
+  describe("delegate", () => {
+
+    test("is not an object", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      params.delegate = "a delegate";
+      await signRPC('write', params, key1);
+      return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed delegate'));
     });
 
   })

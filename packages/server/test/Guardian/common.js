@@ -83,8 +83,16 @@ export function signRPC(method, params, key, prefix='') {
   }
   return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(prefix+JSON.stringify(packet)))
     .then(signature => {
-      packet.params.signature = uint8ArrayToHex(signature);
-      if (prefix !== '') packet.params.signaturePrefix = prefix;
+      params.signature = uint8ArrayToHex(signature);
+      if (prefix !== '') params.signaturePrefix = prefix;
+    })
+}
+
+export function signDelegate(delegate, key, prefix='') {
+  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(prefix+JSON.stringify(delegate)))
+    .then(signature => {
+      delegate.signature = uint8ArrayToHex(signature);
+      if (prefix !== '') delegate.signaturePrefix = prefix;
     })
 }
 
@@ -94,6 +102,12 @@ export function hashRPC(method, params, prefix='') {
     params: params
   } 
   const hash = Web3.utils.sha3(JSON.stringify(packet)).slice(2);
+  if (prefix !== '') return Web3.utils.sha3(prefix+hash).slice(2)
+  else return hash;
+}
+
+export function hashDelegate(delegate, prefix='') {
+  const hash = Web3.utils.sha3(JSON.stringify(delegate)).slice(2);
   if (prefix !== '') return Web3.utils.sha3(prefix+hash).slice(2)
   else return hash;
 }
@@ -145,6 +159,7 @@ export class TestBlockchainProvider extends BlockchainProvider {
     this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
     this.getChainId = jest.fn(() => { throw new Error('unexpected stub call: getChainId') });
     this.recoverSignatory = jest.fn(() => Promise.reject(new Error('unexpected stub call: recoverSignature')));
+    this.hasBeenRevoked = jest.fn(() => Promise.reject(new Error('unexpected stub call: hasBeenRevoked')));
   }
 
 }
