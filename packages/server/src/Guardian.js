@@ -4,7 +4,7 @@
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
 import Web3 from 'web3';
-import { parseDelegation } from './Delegation';
+import { parseDelegation } from './Delegation.js';
 
 
 /**
