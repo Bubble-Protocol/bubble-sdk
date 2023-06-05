@@ -399,7 +399,9 @@ Creating a bubble is a 3-step process:
 
 ### 1) Design an Access Control Contract
 
-Example contract that defines a public directory accessible to everyone, and a private directory accessible only to the contract owner and friends.
+For this example contract we'll define a contract that contains two private directories:
+1. Read/writable by the contract owner and readable by friends.
+2. Read/writable by the contract owner only.
 
 `AccessControlledStorage.sol` and `AccessControlBits.sol` are found in the [bubble-sdk](https://github.com/Bubble-Protocol/bubble-sdk/tree/main/contracts).
 
