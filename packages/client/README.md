@@ -21,9 +21,9 @@ There are two ways to interact with content in a bubble:
 
 * the [Content Manager](#content-manager) is a quick and easy way to access individual files via their [content id](#content-id) in bubbles that already exist.
 
-* the [Bubble](#bubble-class) class is a more convenient way to interact with files and directories in a specific [bubble](#bubble), or to manage the bubble itself (create or delete it).
+* the [Bubble](#bubble-class) class is a more powerful way to interact with files and directories in a specific [bubble](#bubble), or to manage the bubble itself (create or delete it). The [BubbleFactory](#bubblefactory) provides an easy way to construct common Bubble patterns, like those with encryption and multiple users.
 
-
+Data encryption is achieved via [Encryption Policies](#encryption), optionally passed to the Content Manager or Bubble class.
 
 ## Quick Start - Content Manager
 
@@ -105,6 +105,76 @@ const bubble = new Bubble(
 await bubble.create();
 
 await bubble.write('<file_id>', 'Hello World!');
+```
+
+## Quick Start - BubbleFactory
+
+Examples of creating Bubbles using the `BubbleFactory`.
+
+### Create an Encrypted Bubble
+
+```javascript
+const bubbleId = new ContentID({
+  chain: <chain_id>,
+  contract: '<contract_address>',
+  provider: '<storage_service_url>'
+});
+
+const bubbleFactory = new BubbleFactory(ecdsa.getSignFunction('<private-key>'));
+
+const bubble = bubbleFactory.createAESGCMEncryptedBubble(bubbleId);
+
+await bubble.create();
+
+await bubble.write('<file-id>', 'Hello World!');
+```
+
+### Create a Multi-User Encrypted Bubble
+
+A multi-user bubble is an encrypted bubble with a metadata file for each user. Each metadata file contains the bubble's encryption key plus any custom metadata, and is ECIES encrypted with the user's public key.  This prevents the need to pre-share encryption keys with users.
+
+Assumes a smart contract implementing the `AccessControlledStorage` interface has already been deployed to a blockchain giving all users access to at least their metadata file.  See [Access Control Contracts](#access-control-contracts).
+
+```javascript
+const key = new Key('<private-key>');
+
+const bubbleId = new ContentID({
+  chain: <chain_id>,
+  contract: '<contract_address>',
+  provider: '<storage_service_url>'
+});
+
+const bubbleFactory = new BubbleFactory(ecdsa.getSignFunction(key.privateKey), key);
+
+const bubble = bubbleFactory.createAESGCMEncryptedMultiUserBubble(bubbleId);
+
+await bubble.create();
+
+await bubble.addUser('<user-address>', '<user-public-key>', {<optional-metadata>});
+```
+
+### Use any User-Encrypted Bubble
+
+A user encrypted bubble holds a metadata file for the user containing the bubble's encryption key, ECIES encrypted with the user's public key.  This prevents the need to store the encryption key locally.
+
+Assumes a smart contract implementing the `AccessControlledStorage` interface has already been deployed to a blockchain and the user has access to at least their metadata file.  See [Access Control Contracts](#access-control-contracts).
+
+```javascript
+const key = new Key('<user-private-key>');
+
+const bubbleId = new ContentID({
+  chain: <chain_id>,
+  contract: '<contract_address>',
+  provider: '<storage_service_url>'
+});
+
+const bubbleFactory = new BubbleFactory(ecdsa.getSignFunction(key.privateKey), key);
+
+const bubble = bubbleFactory.createAESGCMEncryptedUserBubble(bubbleId);
+
+await bubble.initialise();
+
+await bubble.write('<file-id>', 'Hello World!');
 ```
 
 ## Access Control Contracts
@@ -298,13 +368,21 @@ const listing = await bubble.list(filenames.publicDir, {long: true, since: Date.
 await bubble.terminate();
 ```
 
+## BubbleFactory
+
+The `BubbleFactory` can be used to construct common instances of the `Bubble` class with features such as encryption or multiple users.
+
+See [`BubbleFactory.js`](./src/bubbles/BubbleFactory.js) for the complete list of construction patterns.
+
 ## Encryption
 
 By default neither the `ContentManager` nor the `Bubble` class encrypt data.  However, encrypting data in your bubble is easy with an [`EncryptionPolicy`](src/EncryptionPolicy.js).
 
 An `EncryptionPolicy` provides the encryption functions and determines which content to encrypt/decrypt.  Content managers and `Bubble` instances call their policy's `isEncrypted()` function when reading from or writing to a file.  If that call returns true then the policy's  `encrypt()` or `decrypt()` function will be called as appropriate.
 
-An encryption policy can be used on its own or can be passed to the `ContentManager` or `Bubble`, either in the constructor or via the `setEncryptionPolicy` method.
+Multiple policies can be merged into a single policy using the [`MultiEncryptionPolicy`](./src/encryption-policies/MultiEncryptionPolicy.js) class.
+
+An encryption policy can be used on its own or can be passed to the `ContentManager` or `Bubble`, either in the constructor or via the `setEncryptionPolicy` method.  The `BubbleFactory` uses encryption policies to provide common patterns for encrypted bubbles, which can be overridden via the options parameter.
 
 ```javascript
 import { BubbleFilename } from "@bubble-protocol/core";
@@ -590,7 +668,7 @@ If your bubble server uses a different protocol then you can create your own pro
 
 #### Encryption Policy
 
-A user-defined policy given to a Content Manager or `Bubble` that describes which content should be encrypted and provides the encryption algorithm.  See [Encryption](#encryption).
+A user-defined policy given to a Content Manager or `Bubble` that describes which content should be encrypted and provides the encryption algorithm(s).  See [Encryption](#encryption).
 
 #### Sign Function
 

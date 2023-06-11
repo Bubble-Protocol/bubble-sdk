@@ -5,6 +5,8 @@
 import { UserEncryptedBubble } from "./UserEncryptedBubble.js";
 import { MultiUserEncryptedBubble } from "./MultiUserEncryptedBubble.js";
 
+export { BubbleFactory } from "./BubbleFactory.js"
+
 export const bubbles = {
   UserEncryptedBubble: UserEncryptedBubble,
   MultiUserEncryptedBubble: MultiUserEncryptedBubble

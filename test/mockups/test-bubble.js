@@ -3,7 +3,7 @@ import Web3 from 'web3';
 import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
 import { Bubble, bubbleProviders } from '../../packages/client';
 import { BubblePermissions, ContentId } from '../../packages/core';
-import contractSrc from '../contracts/TestContract.json';
+import defaultContractSrc from '../contracts/TestContract.json';
 import { Key } from '../../packages/crypto/src/ecdsa/Key.js';
 import { ecdsa } from '../../packages/crypto/src/index.js';
 
@@ -47,10 +47,12 @@ export async function constructTestBubble(options={}) {
 
   if (options.mockBubbleServer) MockBubbleServer = options.mockBubbleServer;
   
+  const contractSrc = options.contractSrc || defaultContractSrc;
+
   contract = new web3.eth.Contract(contractSrc.abi);
 
   await contract.deploy({
-      data: contractSrc.bytecode,
+      data: contractSrc.bytecode || contractSrc.bin,
       arguments: [owner.address, requester.address]
     })
     .send({
@@ -74,13 +76,17 @@ export async function constructTestBubble(options={}) {
   requesterBubble = new Bubble(bubbleId, bubbleProvider, requesterSign);
 
   // Mock a bubble created on the bubble server
-  await MockBubbleServer.createBubble(contract.options.address.toLowerCase());
+  if (!options.noBubble) await MockBubbleServer.createBubble(contract.options.address.toLowerCase());
 
 }
 
 
 export function clearTestBubble() {
   MockBubbleServer.clearBubble(contract.options.address.toLowerCase());
+}
+
+export function deleteAllBubbles() {
+  MockBubbleServer.deleteAllBubbles();
 }
 
 
