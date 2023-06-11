@@ -4,7 +4,6 @@
 
 import { ContentId, assert } from "@bubble-protocol/core";
 import { Bubble } from "./Bubble.js";
-import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { toFileId } from "./utils.js";
@@ -172,7 +171,7 @@ function _getBubble(contentId, signFunction, encryptionPolicy) {
   if (!assert.isFunction(signFunction)) throw new TypeError("invalid signFunction");
   return new Bubble(
     contentId, 
-    new HTTPBubbleProvider(new URL(contentId.provider)),
+    contentId.provider,
     signFunction,
     encryptionPolicy)
 }

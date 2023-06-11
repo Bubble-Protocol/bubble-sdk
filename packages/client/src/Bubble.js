@@ -7,6 +7,7 @@ import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
 import { toFileId } from "./utils.js";
 import Web3 from 'web3';
+import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
 
 
 const Crypto = crypto || (window ? window.crypto : undefined);
@@ -50,6 +51,7 @@ export class Bubble {
    */
   constructor(contentId, provider, signFunction, encryptionPolicy ) {
     if (!Crypto) throw new Error('missing crypto object');
+    if (assert.isString(provider)) provider = new HTTPBubbleProvider(provider);
     assert.isInstanceOf(provider, BubbleProvider, "provider");
     this.contentId = contentId;
     this.provider = provider;
