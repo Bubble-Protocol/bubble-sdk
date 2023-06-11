@@ -2,6 +2,5 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-export * as ecdsa from './ecdsa/index.js';
-export * as ecies from './ecies/index.js';
-export * as utils from './utils.js';
+export * as assert from './assertions.js';
+export * from './ecies-utils.js';

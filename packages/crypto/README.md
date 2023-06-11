@@ -2,7 +2,9 @@
 
 Cryptographic functions for the [Bubble Protocol SDK](https://github.com/Bubble-Protocol/bubble-sdk).
 
-Currently provides ECDSA (secp256k1) key management, sign, verify and recovery functions for EVM blockchains.
+Currently provides:
+* ECDSA (secp256k1) key management, sign, verify and recovery functions for EVM blockchains.
+* ECIES encrypt and decrypt functions
 
 ## Dependencies
 

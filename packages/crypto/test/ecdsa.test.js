@@ -1,7 +1,7 @@
 import { Key, sign, verify, recover, hash, publicKeyToAddress } from '../src/ecdsa';
 import { uint8ArrayToHex, hexToUint8Array } from '../src/utils.js';
 
-describe("Crypto", function() {
+describe("ECDSA", function() {
 
   const randomHash = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f"; // random hash
 
