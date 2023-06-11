@@ -3,7 +3,11 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { AESGCMEncryptionPolicy } from './AESGCMEncryptionPolicy.js';
+import { ECIESEncryptionPolicy } from './ECIESEncryptionPolicy.js';
+import { MultiEncryptionPolicy } from './MultiEncryptionPolicy.js';
 
 export const encryptionPolicies = {
-  AESGCMEncryptionPolicy: AESGCMEncryptionPolicy
+  AESGCMEncryptionPolicy: AESGCMEncryptionPolicy,
+  ECIESEncryptionPolicy: ECIESEncryptionPolicy,
+  MultiEncryptionPolicy: MultiEncryptionPolicy
 }
