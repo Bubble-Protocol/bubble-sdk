@@ -40,7 +40,8 @@ export class Bubble {
    * Represents a Bubble hosted on an external Bubble server.
    * 
    * @param {ContentId} contentId the id of this bubble
-   * @param {BubbleProvider} provider the interface to the storage service
+   * @param {String|BubbleProvider} provider the interface to the storage service. If a string,
+   * an HTTPBubbleProvider will be constructed.
    * @param {Function} signFunction function that signs all transactions. (The storage service
    * identifies the user from the transaction signature). Takes the form:
    * 
