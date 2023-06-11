@@ -27,7 +27,7 @@ https://bubbleprotocol.com
 
 ## How Does Bubble Protocol Work?
 
-Bubble Protocol adds an access control layer to off-chain storage. Application developers can custom design smart contracts to govern access to content for specific users, specifying fine-grained permissions akin to POSIX-style permission bits. Enforcement of these permissions is carried out by the off-chain storage service, which is chosen by the user or developer.  
+Bubble Protocol adds on-chain access control to any off-chain storage system. By integrating our Guardian software, any storage system can become a host for web3 applications.  DApp developers can custom design smart contracts to govern access to content for specific users, specifying fine-grained permissions akin to POSIX-style permission bits. Identification of users is via their public key and enforcement of the permissions is carried out by the off-chain storage service, which is chosen by the user or developer.  
 
 Custom smart contracts are simple to develop and need only implement a single method. Once a contract is deployed, the off-chain content can be saved on any bubble-compatible storage system that supports the user's preferred blockchain.  See [Access Control Contracts](./packages/client#access-control-contracts) in the Client Library for more information.
 
@@ -46,7 +46,7 @@ Off-chain storage services can be implemented easily using the [Server Library](
 
 ### Decentralisation
 
-With all application logic on-chain, public off-chain storage services have few requirements beyond the quality of storage service they provide.  This partitioning, alongside cross-chain functionality and the ability of users to choose which service they trust for each application they use, cultivates a separation of concerns that helps to drive decentralization.
+With all application logic on-chain, public off-chain storage services have few requirements beyond the quality of storage service they provide.  This partitioning, alongside cross-chain functionality and the ability of users to choose which service they trust for each application they use, cultivates a separation of concerns that helps to drive decentralisation.
 
 ## Bubbles
 
@@ -68,7 +68,7 @@ When a bubble's smart contract indicates it has been terminated (by returning th
 
 Files within a directory inherit their access permissions from their parent directory. Directories and files in a bubble can be listed (if the user has read permissions) to obtain such properties as length and modify time. These features can be useful to decentralised applications, enabling such features as device synchronisation and data backup.
 
-Where supported by the storage system, clients can subscribe to files and directories to receive near real-time notifications when they are updated.  This allows bubbles to be used as basic back end servers for certain types of decentralised applications, such as messaging dapps and social media dapps.
+Where supported by the storage system, clients can subscribe to files and directories to receive near real-time notifications when they are updated.  This allows bubbles to be used as basic back-end servers for certain types of decentralised applications, such as messaging dapps and social media dapps.
 
 The client library provides a `Bubble` class that encapsulates a bubble hosted on a remote storage system.  In addition to providing methods to read, write, append and delete content, it allows directories to be listed and the bubble to be managed.
 
