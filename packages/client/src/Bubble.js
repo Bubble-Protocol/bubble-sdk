@@ -93,7 +93,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   write(path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path)));
+    const encrypt = data && (options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path))));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
         return this.rpcFactory.write(path, dataToSend, options);
@@ -114,7 +114,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
   append(path, data, options = {}) {
-    const encrypt = data && (options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path)));
+    const encrypt = data && (options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path))));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
         return this.rpcFactory.append(path, dataToSend, options);
@@ -134,7 +134,7 @@ export class Bubble {
    * @returns {Promise} Promise to resolve with the file contents
    */
   read(path = ROOT_PATH, options = {}) {
-    const decrypt = options.encrypted || this.encryptionPolicy.isEncrypted(this.getContentId(path));
+    const decrypt = options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path)));
     return this.rpcFactory.read(path, options)
       .then(this.post)
       .then(data => {
