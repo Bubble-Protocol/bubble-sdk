@@ -54,7 +54,7 @@ export class MultiEncryptionPolicy extends EncryptionPolicy {
 
   deserialize(data) {
     if (!assert.isObject(data)) return Promise.reject('cannot deserialize MultiEncryptionPolicy: policy data is invalid - expected object');
-    if (data.type !== 'UserEncryptionPolicy') return Promise.reject('cannot deserialize policy: not a MultiEncryptionPolicy');
+    if (data.type !== 'MultiEncryptionPolicy') return Promise.reject('cannot deserialize policy: not a MultiEncryptionPolicy');
     if (!assert.isArray(data.policies)) return Promise.reject('cannot deserialize MultiEncryptionPolicy: policies field is missing or invalid');
     if (data.policies.length !== this.policies.length) return Promise.reject('cannot deserialize MultiEncryptionPolicy: not enough or too many policies');
     return Promise.all(this.policies.map((policy, index) => policy.deserialize(data.policies[index])));
