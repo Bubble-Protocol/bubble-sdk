@@ -2,10 +2,11 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
+import { assert } from "@bubble-protocol/core";
 import { EncryptionPolicy } from "../EncryptionPolicy.js";
 
 /**
- * Encryption Policy that encrypts all files with AES-GCM encryption.
+ * Encryption Policy that encrypts all files with AES-GCM encryption using a single private key.
  * Override `isEncrypted()` to change the policy.
  */
 
@@ -16,6 +17,11 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
 
   constructor(privateKey) {
     super();
+    if (privateKey === undefined) privateKey = Buffer.from(Crypto.getRandomValues(new Uint8Array(32))).toString('hex');
+    this.setKey(privateKey);
+  }
+
+  setKey(privateKey) {
     isAesKey(privateKey, 'private key');
     if (!Crypto.subtle) throw new Error('missing crypto.subtle');
     this.privateKey = Buffer.from(privateKey, 'hex');
@@ -46,9 +52,29 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
       });
   }
 
+  serialize() {
+    return Promise.resolve({
+      type: 'AESGCMEncryptionPolicy',
+      privateKey: this.privateKey.toString('hex')
+    })
+  }
+
+  deserialize(data) {
+    if (!assert.isObject(data)) return Promise.reject('cannot deserialize AESGCMEncryptionPolicy: policy data is invalid - expected object');
+    if (data.type !== 'AESGCMEncryptionPolicy') return Promise.reject('cannot deserialize policy: not a AESGCMEncryptionPolicy');
+    try {
+      this.setKey(data.privateKey);
+      return Promise.resolve();
+    }
+    catch(error) {
+      return Promise.reject(error);
+    }
+  }
+
   _getKey() {
     if (this.key) return Promise.resolve(this.key);
     else {
+      if (!this.privateKey) throw new Error('private key has not been set');
       return Crypto.subtle.importKey("raw", this.privateKey, {name: 'AES-GCM'}, true, ['encrypt', 'decrypt'])
         .then(key => {
           this.key = key;
