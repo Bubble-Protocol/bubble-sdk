@@ -11,4 +11,5 @@ export {bubbleProviders} from './bubble-providers/index.js';
 export {encryptionPolicies} from './encryption-policies/index.js';
 export {Delegation} from './Delegation.js';
 export * from '@bubble-protocol/core';
+export * from './bubbles/index.js';
 export * from './utils.js';
