@@ -44,4 +44,23 @@ export class EncryptionPolicy {
     throw new Error('EncryptionPolicy.decrypt is a virtual function and must be implemented');
   }
 
+  /**
+   * Creates a representation of this policy that can be passed to the deserialize method
+   * 
+   * @returns Promise to serialize this policy
+   */
+  serialize() {
+    throw new Error('EncryptionPolicy.serialize is a virtual function and must be implemented');
+  }
+
+  /**
+   * Reconstructs this policy from the given serialized data
+   * 
+   * @param {any} data data from which to reconstruct this policy
+   * @returns Promise to reconstruct this policy
+   */
+  deserialize(data) {
+    throw new Error('EncryptionPolicy.deserialize is a virtual function and must be implemented');
+  }
+
 }

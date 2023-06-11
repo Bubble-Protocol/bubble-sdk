@@ -11,4 +11,11 @@ export class NullEncryptionPolicy extends EncryptionPolicy {
 
   isEncrypted(_) { return false }
 
+  serialize() { return Promise.resolve('NullEncryptionPolicy') }
+
+  deserialize(data) { 
+    if (data !== 'NullEncryptionPolicy') return Promise.reject('invalid NullEncryptionPolicy deserialization data')
+    return Promise.resolve() 
+  }
+
 }
