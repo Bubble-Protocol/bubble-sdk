@@ -256,6 +256,7 @@ export function testPostParams() {
     test("cannot be decoded (blockchain provider recoverSignatory throws)", async () => {
       const params = {...VALID_RPC_PARAMS};
       await signRPC('write', params, key1);
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.recoverSignatory.mockImplementation(() => { throw new Error('failed') });
       return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
     });
@@ -263,6 +264,7 @@ export function testPostParams() {
     test("cannot be decoded (blockchain provider recoverSignatory rejects)", async () => {
       const params = {...VALID_RPC_PARAMS};
       await signRPC('write', params, key1);
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.recoverSignatory.mockRejectedValueOnce(new Error('failed'));
       return expect(guardian.post('write', params)).rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
     });
