@@ -97,6 +97,15 @@ export class Guardian extends BubbleProvider {
     if (params.data !== undefined && !assert.isString(params.data)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed data');
 
+    if (params.listener !== undefined && !assert.isFunction(params.listener)) 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed listener');
+
+    if (params.listener === undefined && method === 'subscribe') 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing listener param');
+
+    if (params.subscriptionId === undefined && method === 'unsubscribe') 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing subscriptionId param');
+
     if (params.options && !assert.isObject(params.options)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options');
 
@@ -119,6 +128,16 @@ export class Guardian extends BubbleProvider {
 
 
     /**
+     * Service an unsubscribe request regardless of the sender
+     */
+
+    if (method === 'unsubscribe') {
+      return this.dataServer.unsubscribe(params.subscriptionId, params.options)
+        .catch(_validateDataServerError);
+    }
+
+
+    /**
      * Recover signatory
      */
 
@@ -130,7 +149,7 @@ export class Guardian extends BubbleProvider {
      */
 
     const permissionBits = await this._getPermissions(params.contract, file.getPermissionedPart(), signatory);
-    file.setPermissions(new BubblePermissions(permissionBits));
+    file.setPermissions(new BubblePermissions(permissionBits)); 
 
 
     /**
@@ -224,6 +243,14 @@ export class Guardian extends BubbleProvider {
         if (file.permissions.canRead())
           return this.dataServer.list(params.contract, file.fullFilename, params.options)
             .catch(_validateDataServerError);
+        else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
+
+      case "subscribe":
+        if (file.permissions.canRead()) {
+          const subscription = new ProtectedSubscription(this.blockchainProvider, params.contract, file, signatory, params.listener);
+          return this.dataServer.subscribe(params.contract, file.fullFilename, subscription.listener, params.options)
+            .catch(_validateDataServerError);
+        }
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "terminate": // terminate is handled above if ACC has been terminated
@@ -357,4 +384,44 @@ async function getPermissions(blockchainProvider, contract, file, signatory) {
     }
     else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
   }
+}
+
+
+/**
+ * A ProtectedSubsciption listener is designed to be called by the data server to serve notice of a
+ * subscription event to a client. It wraps a client subscription listener with a permission check
+ * to ensure the client is still permitted to access the subscribed file when a notification from
+ * the data server is received. If permitted, the notification is forwarded to the client listener.
+ * If not, the data server is instructed to terminate the subscription by returning the permission
+ * error, and an error is passed to the client listener informing it that permission is denied and
+ * that the subscription has been terminated.
+ * 
+ * @returns an error if permission is denied or the blockchain cannot be reached.  The data server
+ * must check for a permission denied error and unsubscribe the client.
+ */
+class ProtectedSubscription {
+
+  constructor(blockchainProvider, contract, file, signatory, clientListener) {
+    this.blockchainProvider = blockchainProvider;
+    this.contract = contract;
+    this.file = file;
+    this.signatory = signatory;
+    this.clientListener = clientListener;
+    this.listener = this.listener.bind(this);
+  }
+
+  async listener(subscriptionId, result, error) {
+    assert.isNotNull(subscriptionId, 'subscriptionId');
+    const permissionBits = await getPermissions(this.blockchainProvider, this.contract, this.file, this.signatory);
+    const permissions = new BubblePermissions(permissionBits);
+    if (!permissions.canRead()) {
+      const terminatedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_SUBSCRIPTION_TERMINATED, 'permission denied - subscription terminated');
+      this.clientListener(subscriptionId, undefined, terminatedError);
+      return error;
+    }
+    else {
+      this.clientListener(subscriptionId, result, error)
+    }
+  }
+
 }

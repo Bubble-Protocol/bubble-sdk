@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
+import { jest } from '@jest/globals';
 import { ErrorCodes, ROOT_PATH } from '@bubble-protocol/core';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
@@ -16,6 +17,7 @@ import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
  * @param {TestPoint} testPoint the TestPoint implementation that bypasses the dataServer api
  * @param {Object} options with the following:
  *   {string} contractAddress: smart contract address to override the default.
+ *   {boolean} noSubscriptions: do not run the subscribe and unsubscribe tests
  */
 export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
@@ -113,6 +115,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
       });
 
+      test( "[req-ds-sub-4] subscribe fails with BUBBLE_DOES_NOT_EXIST error even if silent option is given", async () => {
+        await expect(dataServer.subscribe(contractAddress, root, {silent: true}))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+      });
+
     })
 
 
@@ -195,6 +202,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
         test( "[req-ds-dl-5] delete resolves when silent option is given", async () => {
           await expect(dataServer.delete(contractAddress, file1, {silent: true}))
             .resolves.not.toThrow();
+        });
+
+        test( "[req-ds-sub-3] subscribe fails with FILE_DOES_NOT_EXIST error", async () => {
+          await expect(dataServer.subscribe(contractAddress, file1))
+            .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST});
         });
 
       })
@@ -828,6 +840,390 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
 
       });
+
+
+      if (options.noSubscriptions !== true) {
+
+        describe("subscribe", () => {
+
+          function checkLongFormListEntry(received, expected) {
+            expect(typeof received).toBe('object');
+            if (expected.event) expect(received.event).toBe(expected.event);
+            expect(received.name).toBe(expected.name);
+            expect(received.type).toBe(expected.type);
+            // notifications of delete event type don't have any file metadata
+            if (expected.event !== 'delete') {
+              expect(received.length).toBe(expected.length);  
+              expect(typeof received.created).toBe('number');   
+              expect(typeof received.modified).toBe('number');
+            }
+          }
+
+          function checkLongFormList(received, expected) {
+            expect(received).toHaveLength(expected.length);
+            received.forEach((entry, i) => {
+              checkLongFormListEntry(entry, expected[i])
+            })
+          }
+
+          function checkSubscriptionResponse(subscription, expectedFile) {  // [req-ds-sub-2]
+            expect(typeof subscription).toBe('object');  // [req-ds-sub-2] plain object
+            expect(subscription.subscriptionId).not.toBeUndefined();  // [req-ds-sub-2] subscriptionId
+            checkLongFormListEntry(subscription.file, expectedFile);  // [req-ds-sub-2] file
+            expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - file)
+            expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - file)
+          }
+
+          describe('basic subscribe functions', () => {
+
+            beforeEach(async () => {
+              await clearBubble();
+            })
+            
+            test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to a file when the file exists", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello world");
+              const subscription = await dataServer.subscribe(contractAddress, file1, () => {});
+              checkSubscriptionResponse(subscription, {name: file1, type: 'file', length: 11})
+            });
+
+            test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to a directory when it exists", async () => {
+              await testPoint.mkdir(contractAddress, dir3);
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {});
+              checkSubscriptionResponse(subscription, {name: dir3, type: 'dir', length: 0})
+              expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - directory)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - directory)
+            });
+
+            test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to the root directory", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, () => {});
+              checkSubscriptionResponse(subscription, {name: ROOT_PATH, type: 'dir', length: 0})
+              expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - root)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - root)
+            });
+
+            test( "[req-ds-sub-5] includes the directory listing if the `list` option is given", async () => {
+              await testPoint.mkdir(contractAddress, dir3);
+              await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello a");
+              await testPoint.writeFile(contractAddress, dir3+'/b.pdf', "hello b");
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {list: true});
+              expect(typeof subscription).toBe('object');
+              expect(subscription.subscriptionId).not.toBeUndefined();
+              checkLongFormList(subscription.list, [  // [req-ds-sub-5]
+                {name: dir3+'/a.txt', type: 'file', length: 7},
+                {name: dir3+'/b.pdf', type: 'file', length: 7}
+              ])
+            });
+
+          })
+
+
+          describe("includes the directory listing if the `since` option is given", () => {
+
+            let fileA;
+
+            beforeEach(() => {})
+
+            beforeAll(async () => {
+              await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello");
+              await sleep(2); // ensure create and modified times are different
+              await dataServer.append(contractAddress, dir3+'/a.txt', " world");
+              await sleep(2);
+              await testPoint.writeFile(contractAddress, dir3+'/b.txt', "hello");
+              fileA = (await dataServer.list(contractAddress, dir3+'/a.txt', {long: true}))[0];
+            })
+                
+            test( "[req-ds-sub-7] boundary condition: includes when created=since but modified=since+1", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.created});
+              expect(typeof subscription).toBe('object');
+              expect(subscription.subscriptionId).not.toBeUndefined();
+              checkLongFormList(subscription.list, [
+                {name: dir3+'/a.txt', type: 'file', length: 11},
+                {name: dir3+'/b.txt', type: 'file', length: 5}
+              ])
+            });
+        
+            test( "[req-ds-sub-7] boundary condition: includes when modified=since+1", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.modified-1});
+              expect(typeof subscription).toBe('object');
+              expect(subscription.subscriptionId).not.toBeUndefined();
+              checkLongFormList(subscription.list, [
+                {name: dir3+'/a.txt', type: 'file', length: 11},
+                {name: dir3+'/b.txt', type: 'file', length: 5}
+              ])
+            });
+        
+            test( "[req-ds-sub-7] boundary condition: excludes when modified=since", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.modified});
+              expect(typeof subscription).toBe('object');
+              expect(subscription.subscriptionId).not.toBeUndefined();
+              checkLongFormList(subscription.list, [
+                {name: dir3+'/b.txt', type: 'file', length: 5}
+              ])
+            });
+        
+          })
+
+          test( "[req-ds-sub-8] includes file contents when the `read` option is given", async () => {
+            await testPoint.writeFile(contractAddress, file1, "hello world");
+            const subscription = await dataServer.subscribe(contractAddress, file1, () => {}, {read: true});
+            expect(typeof subscription).toBe('object');
+            expect(subscription.subscriptionId).not.toBeUndefined();
+            expect(subscription.data).toBe('hello world');
+          });
+
+          describe('[req-ds-sub-9] notifications', () => {
+
+            function checkNotification(received, expected) {
+              expect(typeof received).toBe('object');  // [req-ds-sub-17]
+              expect(received.subscriptionId).toBe(expected.subscriptionId);  // [req-ds-sub-18]
+              expect(received.event).toBe(expected.event);  // [req-ds-sub-19]
+              if (expected.event === 'delete') expect(JSON.stringify(received.file)).toBe(JSON.stringify(expected.file));  // [req-ds-sub-21]
+              else checkLongFormListEntry(received.file, expected.file);  // [req-ds-sub-20]
+              if (Array.isArray(expected.data)) checkLongFormList(received.data, expected.data);  // [req-ds-sub-23]
+              else expect(received.data).toBe(expected.data);   // [req-ds-sub-22]
+            }
+        
+            beforeEach(async () => {
+              await clearBubble();
+            })
+            
+            test( "[req-ds-sub-10] the client is notified of a file write", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, file1, listener);
+              await dataServer.write(contractAddress, file1, "hello world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'write', 
+                  file: {name: file1, type: 'file', length: 11}, 
+                  data: 'hello world'
+                })
+            });
+
+            test( "[req-ds-sub-6] the data field is omitted from a write event if the list option is given", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
+              await dataServer.write(contractAddress, file1, "hello world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'write', 
+                  file: {name: file1, type: 'file', length: 11}, 
+                  data: undefined
+                })
+            });
+
+            test( "[req-ds-sub-11] the client is notified of a file append", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, file1, listener);
+              await dataServer.append(contractAddress, file1, " world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'append', 
+                  file: {name: file1, type: 'file', length: 11}, 
+                  data: ' world'
+                })
+            });
+
+            test( "[req-ds-sub-6] the data field is omitted from an append event if the list option is given", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
+              await dataServer.append(contractAddress, file1, " world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'append', 
+                  file: {name: file1, type: 'file', length: 11}, 
+                  data: undefined
+                })
+            });
+
+            test( "[req-ds-sub-12] the client is notified of a file delete", async () => {
+              await testPoint.writeFile(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, file1, listener);
+              await dataServer.delete(contractAddress, file1);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'delete', 
+                  file: {name: file1, type: 'file'}, 
+                  data: undefined
+                })
+              });
+
+            test( "[req-ds-sub-13] the client is notified of an update to a subscribed root due to an mkdir", async () => {
+              await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
+              await dataServer.mkdir(contractAddress, dir3);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: ROOT_PATH, type: 'dir', length: 2}, 
+                  data: [{event: 'mkdir', name: dir3, type: 'dir', length: 0}]  // [req-ds-sub-13]
+                })
+            });
+
+            test( "[req-ds-sub-14] the client is notified of an update to the ROOT_PATH due to a file write", async () => {
+              await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
+              await dataServer.write(contractAddress, file1, 'Hello World');
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: ROOT_PATH, type: 'dir', length: 1}, 
+                  data: [{event: 'write', name: file1, type: 'file', length: 11}]  // [req-ds-sub-14] ROOT_PATH
+                })
+            });
+
+            test( "[req-ds-sub-14] the client is notified of an update to a subscribed directory due to a file write", async () => {
+              await dataServer.mkdir(contractAddress, dir3);
+              await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.write(contractAddress, fileInDir3, "hello world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: dir3, type: 'dir', length: 2}, 
+                  data: [{event: 'write', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-14] Directory
+                })
+            });
+
+            test( "[req-ds-sub-15] the client is notified of an update to the ROOT_PATH due to a file append", async () => {
+              await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
+              await dataServer.write(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
+              await dataServer.append(contractAddress, file1, " world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: ROOT_PATH, type: 'dir', length: 2}, 
+                  data: [{event: 'append', name: file1, type: 'file', length: 11}]  // [req-ds-sub-15] ROOT_PATH
+                })
+            });
+
+            test( "[req-ds-sub-15] the client is notified of an update to a subscribed directory due to a file append", async () => {
+              await dataServer.mkdir(contractAddress, dir3);
+              await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
+              await dataServer.write(contractAddress, fileInDir3, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.append(contractAddress, fileInDir3, " world");
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: dir3, type: 'dir', length: 2}, 
+                  data: [{event: 'append', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-15] Directory
+                })
+            });
+
+            test( "[req-ds-sub-16] the client is notified of an update to the ROOT_PATH due to a file delete", async () => {
+              await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
+              await dataServer.write(contractAddress, file1, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
+              await dataServer.delete(contractAddress, file1);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: ROOT_PATH, type: 'dir', length: 1}, 
+                  data: [{event: 'delete', name: file1, type: 'file'}]  // [req-ds-sub-16] ROOT_PATH
+                })
+            });
+
+            test( "[req-ds-sub-16] the client is notified of an update to a subscribed directory due to a file delete", async () => {
+              await dataServer.mkdir(contractAddress, dir3);
+              await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
+              await dataServer.write(contractAddress, fileInDir3, "hello");
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.delete(contractAddress, fileInDir3);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'update', 
+                  file: {name: dir3, type: 'dir', length: 1}, 
+                  data: [{event: 'delete', name: fileInDir3, type: 'file'}]  // [req-ds-sub-16] Directory
+                })
+            });
+
+            test( "[req-ds-sub-9] basic negative test: check notifications are not sent when not expected", async () => {
+              await dataServer.write(contractAddress, file1, "hello world");
+              await dataServer.mkdir(contractAddress, dir3);
+              const listener = jest.fn();
+              await dataServer.subscribe(contractAddress, file1, listener);
+              await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.write(contractAddress, file2, "hello world");
+              expect(listener.mock.calls).toHaveLength(0);
+            });
+
+          })
+
+        })
+
+
+  //
+  // Requirements:
+  //
+  //   [req-ds-sub-1] When called, the data server shall unsubscribe the given subscription id.
+  //              
+  //   [req-ds-sub-2] The data server shall resolve if the unsubscribe was successful.
+  //
+  //   [req-ds-sub-3] The data server shall resolve even if the subscription does not exist.
+  //
+      describe('unsubscribe', () => {
+
+        beforeEach(async () => {
+          await clearBubble();
+        })
+        
+        test( "[req-ds-unsub-1] [req-ds-unsub-2] unsubscribe resolves when the subscription is open and stops notifying the listener", async () => {
+          const listener = jest.fn();
+          await dataServer.write(contractAddress, file1, "hello");
+          const subscription = await dataServer.subscribe(contractAddress, file1, listener);
+          expect(listener.mock.calls).toHaveLength(0);
+          await dataServer.write(contractAddress, file1, "hello world");
+          expect(listener.mock.calls).toHaveLength(1);
+          expect(dataServer.unsubscribe(subscription.subscriptionId)).resolves.not.toThrow();
+          await dataServer.write(contractAddress, file1, "hello world again");
+          expect(listener.mock.calls).toHaveLength(1);
+        });
+
+        test( "[req-ds-unsub-3] resolves even if subscription does not exist", async () => {
+          expect(dataServer.unsubscribe('non-existent subscription')).resolves.not.toThrow();
+        });
+
+      })
+
+      }
+
 
       describe("terminate", () => {
 

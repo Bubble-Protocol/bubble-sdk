@@ -147,6 +147,8 @@ export class TestDataServer extends DataServer {
     this.mkdir = jest.fn(() => Promise.reject(new Error('unexpected stub call: mkdir')));
     this.list = jest.fn(() => Promise.reject(new Error('unexpected stub call: list')));
     this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
+    this.subscribe = jest.fn(() => Promise.reject(new Error('unexpected stub call: subscribe')));
+    this.unsubscribe = jest.fn(() => Promise.reject(new Error('unexpected stub call: unsubscribe')));
     this.terminate = jest.fn(() => Promise.reject(new Error('unexpected stub call: terminate')));
   }
 
