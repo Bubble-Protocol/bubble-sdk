@@ -22,6 +22,11 @@ The Data Server is responsible for serving the bubble content and processing val
 
 A Data Server is an implementation of the [`DataServer`](src/DataServer.js) interface.  Requirements for the interface can be found in that file.  A Data Server must pass the acceptance tests found in the [Data Server Test Suite](./test/DataServerTestSuite/).  See [Testing Your Server](#testing-your-server) for more details.
 
+#### Optional Features
+
+Not all features of a Data Server are mandated.  Implementation of the following features is optional:
+
+- *Subscriptions* - the `subscribe` and `unsubscribe` methods.
 
 ## Example Server
 

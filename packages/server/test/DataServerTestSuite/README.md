@@ -24,14 +24,18 @@ Add Jest as the test method in your `package.json`.
 
 ### Example Test Script
 
-The test entry point takes two parameters: the [DataServer.js](../../src/DataServer.js) under test and your test point implementation.  
+The test entry point takes three parameters: the [DataServer.js](../../src/DataServer.js) under test, your test point implementation and any test options.  
 
 
 ```javascript
 import { testDataServerRequirements } from '@bubble-protocol/server/test/DataServerTestSuite/requirementsTests.js';
 
-testDataServerRequirements(myDataServer, myTestPoint);
+testDataServerRequirements(myDataServer, myTestPoint, {noSubscriptions: true});
 ```
+
+Options:
+
+- `noSubscriptions: <boolean>` set to true if your data server does not support the subscriptions feature.
 
 ### Test Point
 

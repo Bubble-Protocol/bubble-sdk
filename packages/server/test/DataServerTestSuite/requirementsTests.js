@@ -115,7 +115,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
       });
 
-      test( "[req-ds-sub-4] subscribe fails with BUBBLE_DOES_NOT_EXIST error even if silent option is given", async () => {
+      test( "[req-ds-sub-3] subscribe fails with BUBBLE_DOES_NOT_EXIST error even if silent option is given", async () => {
         await expect(dataServer.subscribe(contractAddress, root, {silent: true}))
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
       });
@@ -202,11 +202,6 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
         test( "[req-ds-dl-5] delete resolves when silent option is given", async () => {
           await expect(dataServer.delete(contractAddress, file1, {silent: true}))
             .resolves.not.toThrow();
-        });
-
-        test( "[req-ds-sub-3] subscribe fails with FILE_DOES_NOT_EXIST error", async () => {
-          await expect(dataServer.subscribe(contractAddress, file1))
-            .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST});
         });
 
       })
@@ -851,9 +846,9 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             if (expected.event) expect(received.event).toBe(expected.event);
             expect(received.name).toBe(expected.name);
             expect(received.type).toBe(expected.type);
-            // notifications of delete event type don't have any file metadata
-            if (expected.event !== 'delete') {
-              expect(received.length).toBe(expected.length);  
+            expect(received.length).toBe(expected.length);  
+            // notifications of non-existent files/dirs and those of a delete event type don't have any file metadata
+            if (expected.type && expected.event !== 'delete') {
               expect(typeof received.created).toBe('number');   
               expect(typeof received.modified).toBe('number');
             }
@@ -868,10 +863,9 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
           function checkSubscriptionResponse(subscription, expectedFile) {  // [req-ds-sub-2]
             expect(typeof subscription).toBe('object');  // [req-ds-sub-2] plain object
-            expect(subscription.subscriptionId).not.toBeUndefined();  // [req-ds-sub-2] subscriptionId
+            expect(subscription.subscriptionId).not.toBeUndefined();  // [req-ds-sub-2] id
             checkLongFormListEntry(subscription.file, expectedFile);  // [req-ds-sub-2] file
-            expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - file)
-            expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - file)
+            expect(subscription.data).toBeUndefined(); // [req-ds-sub-7] (negative test - field not included when option not given - file)
           }
 
           describe('basic subscribe functions', () => {
@@ -884,31 +878,43 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               await testPoint.writeFile(contractAddress, file1, "hello world");
               const subscription = await dataServer.subscribe(contractAddress, file1, () => {});
               checkSubscriptionResponse(subscription, {name: file1, type: 'file', length: 11})
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-7] (negative test - field not included when option not given - directory)
+            });
+
+            test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to a file when the file does not exist", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, file1, () => {});
+              checkSubscriptionResponse(subscription, {name: file1, type: undefined, length: undefined}) // [req-ds-sub-2] (no long-form listing when the file does not exist)
+              expect(subscription.type).toBeUndefined(); // [req-ds-sub-2] (no long-form listing when the file does not exist)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-7] (negative test - field not included when option not given - directory)
             });
 
             test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to a directory when it exists", async () => {
               await testPoint.mkdir(contractAddress, dir3);
               const subscription = await dataServer.subscribe(contractAddress, dir3, () => {});
               checkSubscriptionResponse(subscription, {name: dir3, type: 'dir', length: 0})
-              expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - directory)
-              expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - directory)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-4] [req-ds-sub-6] (negative test - field not included when option not given - directory)
+            });
+
+            test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to a directory when it does not exist", async () => {
+              const subscription = await dataServer.subscribe(contractAddress, dir3, () => {});
+              checkSubscriptionResponse(subscription, {name: dir3, type: undefined, length: undefined}) // [req-ds-sub-2] (no long-form listing when the file does not exist)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-4] [req-ds-sub-6] (negative test - field not included when option not given - directory)
             });
 
             test( "[req-ds-sub-1] [req-ds-sub-2] can subscribe to the root directory", async () => {
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, () => {});
               checkSubscriptionResponse(subscription, {name: ROOT_PATH, type: 'dir', length: 0})
-              expect(subscription.list).toBeUndefined(); // [req-ds-sub-5] [req-ds-sub-7] (negative test - field not included when option not given - root)
-              expect(subscription.data).toBeUndefined(); // [req-ds-sub-8] (negative test - field not included when option not given - root)
+              expect(subscription.data).toBeUndefined(); // [req-ds-sub-4] [req-ds-sub-6] (negative test - field not included when option not given - root)
             });
 
-            test( "[req-ds-sub-5] includes the directory listing if the `list` option is given", async () => {
+            test( "[req-ds-sub-4] includes the directory listing if the `list` option is given", async () => {
               await testPoint.mkdir(contractAddress, dir3);
               await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello a");
               await testPoint.writeFile(contractAddress, dir3+'/b.pdf', "hello b");
               const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {list: true});
               expect(typeof subscription).toBe('object');
               expect(subscription.subscriptionId).not.toBeUndefined();
-              checkLongFormList(subscription.list, [  // [req-ds-sub-5]
+              checkLongFormList(subscription.data, [  // [req-ds-sub-4]
                 {name: dir3+'/a.txt', type: 'file', length: 7},
                 {name: dir3+'/b.pdf', type: 'file', length: 7}
               ])
@@ -932,38 +938,38 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               fileA = (await dataServer.list(contractAddress, dir3+'/a.txt', {long: true}))[0];
             })
                 
-            test( "[req-ds-sub-7] boundary condition: includes when created=since but modified=since+1", async () => {
+            test( "[req-ds-sub-6] boundary condition: includes when created=since but modified=since+1", async () => {
               const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.created});
               expect(typeof subscription).toBe('object');
               expect(subscription.subscriptionId).not.toBeUndefined();
-              checkLongFormList(subscription.list, [
+              checkLongFormList(subscription.data, [
                 {name: dir3+'/a.txt', type: 'file', length: 11},
                 {name: dir3+'/b.txt', type: 'file', length: 5}
               ])
             });
         
-            test( "[req-ds-sub-7] boundary condition: includes when modified=since+1", async () => {
+            test( "[req-ds-sub-6] boundary condition: includes when modified=since+1", async () => {
               const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.modified-1});
               expect(typeof subscription).toBe('object');
               expect(subscription.subscriptionId).not.toBeUndefined();
-              checkLongFormList(subscription.list, [
+              checkLongFormList(subscription.data, [
                 {name: dir3+'/a.txt', type: 'file', length: 11},
                 {name: dir3+'/b.txt', type: 'file', length: 5}
               ])
             });
         
-            test( "[req-ds-sub-7] boundary condition: excludes when modified=since", async () => {
+            test( "[req-ds-sub-6] boundary condition: excludes when modified=since", async () => {
               const subscription = await dataServer.subscribe(contractAddress, dir3, () => {}, {since: fileA.modified});
               expect(typeof subscription).toBe('object');
               expect(subscription.subscriptionId).not.toBeUndefined();
-              checkLongFormList(subscription.list, [
+              checkLongFormList(subscription.data, [
                 {name: dir3+'/b.txt', type: 'file', length: 5}
               ])
             });
         
           })
 
-          test( "[req-ds-sub-8] includes file contents when the `read` option is given", async () => {
+          test( "[req-ds-sub-7] includes file contents when the `read` option is given", async () => {
             await testPoint.writeFile(contractAddress, file1, "hello world");
             const subscription = await dataServer.subscribe(contractAddress, file1, () => {}, {read: true});
             expect(typeof subscription).toBe('object');
@@ -971,23 +977,23 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             expect(subscription.data).toBe('hello world');
           });
 
-          describe('[req-ds-sub-9] notifications', () => {
+          describe('[req-ds-sub-8] notifications', () => {
 
             function checkNotification(received, expected) {
-              expect(typeof received).toBe('object');  // [req-ds-sub-17]
-              expect(received.subscriptionId).toBe(expected.subscriptionId);  // [req-ds-sub-18]
-              expect(received.event).toBe(expected.event);  // [req-ds-sub-19]
-              if (expected.event === 'delete') expect(JSON.stringify(received.file)).toBe(JSON.stringify(expected.file));  // [req-ds-sub-21]
-              else checkLongFormListEntry(received.file, expected.file);  // [req-ds-sub-20]
-              if (Array.isArray(expected.data)) checkLongFormList(received.data, expected.data);  // [req-ds-sub-23]
-              else expect(received.data).toBe(expected.data);   // [req-ds-sub-22]
+              expect(typeof received).toBe('object');  // [req-ds-sub-18]
+              expect(received.subscriptionId).toBe(expected.subscriptionId);  // [req-ds-sub-19]
+              expect(received.event).toBe(expected.event);  // [req-ds-sub-20]
+              if (expected.event === 'delete') expect(JSON.stringify(received.file)).toBe(JSON.stringify(expected.file));  // [req-ds-sub-22]
+              else checkLongFormListEntry(received.file, expected.file);  // [req-ds-sub-21]
+              if (Array.isArray(expected.data)) checkLongFormList(received.data, expected.data);  // [req-ds-sub-24]
+              else expect(received.data).toBe(expected.data);   // [req-ds-sub-23]
             }
         
             beforeEach(async () => {
               await clearBubble();
             })
             
-            test( "[req-ds-sub-10] the client is notified of a file write", async () => {
+            test( "[req-ds-sub-9] the client is notified of a file write", async () => {
               await testPoint.writeFile(contractAddress, file1, "hello");
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
@@ -1002,7 +1008,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                 })
             });
 
-            test( "[req-ds-sub-6] the data field is omitted from a write event if the list option is given", async () => {
+            test( "[req-ds-sub-5] the data field is omitted from a write event if the list option is given", async () => {
               await testPoint.writeFile(contractAddress, file1, "hello");
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
@@ -1017,7 +1023,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                 })
             });
 
-            test( "[req-ds-sub-11] the client is notified of a file append", async () => {
+            test( "[req-ds-sub-10] the client is notified of a file append", async () => {
               await testPoint.writeFile(contractAddress, file1, "hello");
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
@@ -1032,7 +1038,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                 })
             });
 
-            test( "[req-ds-sub-6] the data field is omitted from an append event if the list option is given", async () => {
+            test( "[req-ds-sub-5] the data field is omitted from an append event if the list option is given", async () => {
               await testPoint.writeFile(contractAddress, file1, "hello");
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
@@ -1047,7 +1053,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                 })
             });
 
-            test( "[req-ds-sub-12] the client is notified of a file delete", async () => {
+            test( "[req-ds-sub-11] the client is notified of a file delete", async () => {
               await testPoint.writeFile(contractAddress, file1, "hello");
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
@@ -1062,7 +1068,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                 })
               });
 
-            test( "[req-ds-sub-13] the client is notified of an update to a subscribed root due to an mkdir", async () => {
+            test( "[req-ds-sub-12] the client is notified of an update to a subscribed root due to an mkdir", async () => {
               await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
@@ -1073,11 +1079,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: ROOT_PATH, type: 'dir', length: 2}, 
-                  data: [{event: 'mkdir', name: dir3, type: 'dir', length: 0}]  // [req-ds-sub-13]
+                  data: [{event: 'mkdir', name: dir3, type: 'dir', length: 0}]  // [req-ds-sub-12]
                 })
             });
 
-            test( "[req-ds-sub-14] the client is notified of an update to the ROOT_PATH due to a file write", async () => {
+            test( "[req-ds-sub-13] the client is notified of an update to the ROOT_PATH due to a file write", async () => {
               await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
@@ -1088,11 +1094,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: ROOT_PATH, type: 'dir', length: 1}, 
-                  data: [{event: 'write', name: file1, type: 'file', length: 11}]  // [req-ds-sub-14] ROOT_PATH
+                  data: [{event: 'write', name: file1, type: 'file', length: 11}]  // [req-ds-sub-13] ROOT_PATH
                 })
             });
 
-            test( "[req-ds-sub-14] the client is notified of an update to a subscribed directory due to a file write", async () => {
+            test( "[req-ds-sub-13] the client is notified of an update to a subscribed directory due to a file write", async () => {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
               const listener = jest.fn();
@@ -1104,11 +1110,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: dir3, type: 'dir', length: 2}, 
-                  data: [{event: 'write', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-14] Directory
+                  data: [{event: 'write', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-13] Directory
                 })
             });
 
-            test( "[req-ds-sub-15] the client is notified of an update to the ROOT_PATH due to a file append", async () => {
+            test( "[req-ds-sub-14] the client is notified of an update to the ROOT_PATH due to a file append", async () => {
               await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, file1, "hello");
               const listener = jest.fn();
@@ -1120,11 +1126,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: ROOT_PATH, type: 'dir', length: 2}, 
-                  data: [{event: 'append', name: file1, type: 'file', length: 11}]  // [req-ds-sub-15] ROOT_PATH
+                  data: [{event: 'append', name: file1, type: 'file', length: 11}]  // [req-ds-sub-14] ROOT_PATH
                 })
             });
 
-            test( "[req-ds-sub-15] the client is notified of an update to a subscribed directory due to a file append", async () => {
+            test( "[req-ds-sub-14] the client is notified of an update to a subscribed directory due to a file append", async () => {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, fileInDir3, "hello");
@@ -1137,11 +1143,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: dir3, type: 'dir', length: 2}, 
-                  data: [{event: 'append', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-15] Directory
+                  data: [{event: 'append', name: fileInDir3, type: 'file', length: 11}]  // [req-ds-sub-14] Directory
                 })
             });
 
-            test( "[req-ds-sub-16] the client is notified of an update to the ROOT_PATH due to a file delete", async () => {
+            test( "[req-ds-sub-15] the client is notified of an update to the ROOT_PATH due to a file delete", async () => {
               await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, file1, "hello");
               const listener = jest.fn();
@@ -1153,11 +1159,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: ROOT_PATH, type: 'dir', length: 1}, 
-                  data: [{event: 'delete', name: file1, type: 'file'}]  // [req-ds-sub-16] ROOT_PATH
+                  data: [{event: 'delete', name: file1, type: 'file'}]  // [req-ds-sub-15] ROOT_PATH
                 })
             });
 
-            test( "[req-ds-sub-16] the client is notified of an update to a subscribed directory due to a file delete", async () => {
+            test( "[req-ds-sub-15] the client is notified of an update to a subscribed directory due to a file delete", async () => {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, fileInDir3, "hello");
@@ -1170,11 +1176,38 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
                   subscriptionId: subscription.subscriptionId, 
                   event: 'update', 
                   file: {name: dir3, type: 'dir', length: 1}, 
-                  data: [{event: 'delete', name: fileInDir3, type: 'file'}]  // [req-ds-sub-16] Directory
+                  data: [{event: 'delete', name: fileInDir3, type: 'file'}]  // [req-ds-sub-15] Directory
                 })
             });
 
-            test( "[req-ds-sub-9] basic negative test: check notifications are not sent when not expected", async () => {
+            test( "[req-ds-sub-16] the client is notified of an mkdir event when a subscribed directory is created", async () => {
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.mkdir(contractAddress, dir3);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'mkdir', 
+                  file: {name: dir3, type: 'dir', length: 0}, 
+                })
+            });
+
+            test( "[req-ds-sub-17] the client is notified of a delete event when a subscribed directory is deleted", async () => {
+              await dataServer.mkdir(contractAddress, dir3);
+              const listener = jest.fn();
+              const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
+              await dataServer.delete(contractAddress, dir3);
+              expect(listener.mock.calls).toHaveLength(1);
+              checkNotification(listener.mock.calls[0][0], 
+                {
+                  subscriptionId: subscription.subscriptionId, 
+                  event: 'delete', 
+                  file: {name: dir3, type: 'dir'}, 
+                })
+            });
+
+            test( "[req-ds-sub-8] basic negative test: check notifications are not sent when not expected", async () => {
               await dataServer.write(contractAddress, file1, "hello world");
               await dataServer.mkdir(contractAddress, dir3);
               const listener = jest.fn();
@@ -1189,15 +1222,6 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
         })
 
 
-  //
-  // Requirements:
-  //
-  //   [req-ds-sub-1] When called, the data server shall unsubscribe the given subscription id.
-  //              
-  //   [req-ds-sub-2] The data server shall resolve if the unsubscribe was successful.
-  //
-  //   [req-ds-sub-3] The data server shall resolve even if the subscription does not exist.
-  //
       describe('unsubscribe', () => {
 
         beforeEach(async () => {

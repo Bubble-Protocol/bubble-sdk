@@ -24,7 +24,7 @@ import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
  *   the BubbleTestPoint class will be used, which requires minimal read, write, list and 
  *   delete functions to be working on the server.
  */
-export function testBubbleServerRequirements(web3, chainId, bubbleServerURL, bubbleProvider, testPoint) {
+export function testBubbleServerRequirements(web3, chainId, bubbleServerURL, bubbleProvider, testPoint, options={}) {
 
   /**
    * Bubble Server Requirements Tests
@@ -33,7 +33,7 @@ export function testBubbleServerRequirements(web3, chainId, bubbleServerURL, bub
 
     testPoint = testPoint || new BubbleTestPoint(web3, chainId, bubbleServerURL, bubbleProvider);
     const serverApi = new BubbleServerApi();
-    const serverOptions = {}
+    const serverOptions = {...options};
 
 
     beforeAll( async () => {

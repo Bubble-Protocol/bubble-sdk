@@ -2,8 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-// TODO Make sure all requirements on the implementator are given for each method.
-
 /**
  * Interface for a Bubble server.
  * 
@@ -390,90 +388,94 @@ export class DataServer {
   //                  root directory).
   //              
   //   [req-ds-sub-2] If the subscription was successful, the data server shall resolve with a 
-  //                  plain object containing a unique subscriptionId field (any type) and the
-  //                  long form listing of the file/directory (not directory contents).
+  //                  plain object containing a unique subscriptionId field (any type) and, if 
+  //                  the file/directory exists, the long form listing of the file/directory 
+  //                  (not directory contents).
   //
-  //   [req-ds-sub-3] The data server shall reject with a FILE_DOES_NOT_EXIST error if the 
-  //                  file does not exist.
-  //
-  //   [req-ds-sub-4] The data server shall reject with a BUBBLE_DOES_NOT_EXIST error if the 
+  //   [req-ds-sub-3] The data server shall reject with a BUBBLE_DOES_NOT_EXIST error if the 
   //                  bubble does not exist on the server.
   //
   // Options:
   //
-  //   [req-ds-sub-5] If the 'list' option is given and the subscription is for a directory, the 
-  //                  data server shall include, in the resolved object, a `list` field containing 
+  //   [req-ds-sub-4] If the 'list' option is given and the subscription is for a directory, the 
+  //                  data server shall include, in the resolved object, a `data` field containing 
   //                  the long form listing of the directory contents (see requirements req-ds-ls-5..10).
   //
-  //   [req-ds-sub-6] If the 'list' option is given and the subscription is for a file, the 
+  //   [req-ds-sub-5] If the 'list' option is given and the subscription is for a file, the 
   //                  data server shall omit the `data` field in all notifications.
   //
-  //   [req-ds-sub-7] If the 'since' option is given and the subscription is for a directory, the 
-  //                  data server shall include, in the resolved object, a `list` field containing 
+  //   [req-ds-sub-6] If the 'since' option is given and the subscription is for a directory, the 
+  //                  data server shall include, in the resolved object, a `data` field containing 
   //                  the long form listing of the directory contents created or updated since (but not
   //                  on) the option's timestamp (integer UNIX timestamp in ms).  (See requirements 
   //                  req-ds-ls-5..10 for the long form listing format).
   //
-  //   [req-ds-sub-8] If the 'read' option is given and the subscription is for a file, the 
+  //   [req-ds-sub-7] If the 'read' option is given and the subscription is for a file, the 
   //                  data server shall include, in the resolved object, a `data` field containing 
   //                  the file contents.
   //
   // Notifications:
   //
-  //   [req-ds-sub-9] The data server shall notify the client `listener` function whenever the file
+  //   [req-ds-sub-8] The data server shall notify the client `listener` function whenever the file
   //                  or directory changes, subject to the subscription options.
   //
-  //   [req-ds-sub-10] By default, when a subscribed file is written to using the `write` command, 
+  //   [req-ds-sub-9] By default, when a subscribed file is written to using the `write` command, 
   //                  the data server shall notify the client with a `write` event and, unless the
   //                  'list' option was given (see req-ds-sub-6), the full contents of the file.
   //
-  //   [req-ds-sub-11] By default, when a subscribed file is appended to using the `append` command, 
+  //   [req-ds-sub-10] By default, when a subscribed file is appended to using the `append` command, 
   //                   the data server shall notify the client with a `append` event and, unless the
   //                  'list' option was given (see req-ds-sub-6), the appended data.
   //
-  //   [req-ds-sub-12] By default, when a subscribed file is deleted using the `delete` command, 
+  //   [req-ds-sub-11] By default, when a subscribed file is deleted using the `delete` command, 
   //                   the data server shall notify the client with a `delete` event.
   //
-  //   [req-ds-sub-13] By default, when a new directory is added to a subscribed root (via mkdir)
+  //   [req-ds-sub-12] By default, when a new directory is added to a subscribed root (via mkdir)
   //                   the data server shall notify the client of an `update` event and include a list
   //                   (array) of files that have changed.
   //
-  //   [req-ds-sub-14] By default, when a file is written to a subscribed directory (including the 
+  //   [req-ds-sub-13] By default, when a file is written to a subscribed directory (including the 
   //                   ROOT_PATH), the data server shall notify the client of an `update` event and 
   //                   include the updated file in its data array in the following format:
   //                      {event: 'write', <...long format listing of the file>}
   //
-  //   [req-ds-sub-15] By default, when a file is appended to in a subscribed directory (including the 
+  //   [req-ds-sub-14] By default, when a file is appended to in a subscribed directory (including the 
   //                   ROOT_PATH), the data server shall notify the client of an `update` event and 
   //                   include the updated file in its data array in the following format:
   //                      {event: 'append', <...long format listing of the file>}
   //
-  //   [req-ds-sub-16] By default, when a file is deleted from a subscribed directory (including the 
+  //   [req-ds-sub-15] By default, when a file is deleted from a subscribed directory (including the 
   //                   ROOT_PATH), the data server shall notify the client of an `update` event and 
   //                   include the updated file in its data array in the following format:
   //                      {event: 'delete', file: <fileId>, type: 'file'}
   //
+  //   [req-ds-sub-16] By default, when a subscribed directory is created using the `mkdir` command, 
+  //                   the data server shall notify the client with an `mkdir` event.
+  //
+  //   [req-ds-sub-17] By default, when a subscribed directory is deleted using the `delete` command, 
+  //                   the data server shall notify the client with a `delete` event.
+  //
   // Notification Format:
   //
-  //   [req-ds-sub-17] The type of each notification shall be a plain object.
+  //   [req-ds-sub-18] The type of each notification shall be a plain object.
   //
-  //   [req-ds-sub-18] Each notification shall contain a `subscriptionId` field containing the id
-  //                   of the subscription.
+  //   [req-ds-sub-19] Each notification shall contain an `subscriptionId` field containing the id of
+  //                   the subscription.
   //
-  //   [req-ds-sub-19] Each notification shall contain an `event` field indicating the type of 
+  //   [req-ds-sub-20] Each notification shall contain an `event` field indicating the type of 
   //                   event that caused the notification: 'write', 'append', 'delete', or 'update'.
   //
-  //   [req-ds-sub-20] Each update, write or append notification shall contain a `file` field 
+  //   [req-ds-sub-21] Each update, write or append notification shall contain a `file` field 
   //                   containing the long form listing of the updated file or directory 
   //                   (see requirements req-ds-ls-5..10).
   //
-  //   [req-ds-sub-21] Each file delete notification shall contain a `file` field containing the short
+  //   [req-ds-sub-22] Each file delete notification shall contain a `file` field containing the short
   //                   listing of the updated file, i.e. {file: <fileId>, type: 'file}.
   //
-  //   [req-ds-sub-22] A file notification containing file contents shall include the contents as a 
+  //   [req-ds-sub-23] A file notification containing file contents shall include the contents as a 
   //                   `data` field.
   //
-  //   [req-ds-sub-23] A directory notification shall contain a `list` field containing an array
+  //   [req-ds-sub-24] A directory notification shall contain a `list` field containing an array
   //                   of changed files in the long form listing format (see requirements req-ds-ls-5..10).
   //  
   subscribe(contract, file, listener, options) {
