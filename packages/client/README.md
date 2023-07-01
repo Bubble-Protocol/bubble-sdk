@@ -368,91 +368,6 @@ const listing = await bubble.list(filenames.publicDir, {long: true, since: Date.
 await bubble.terminate();
 ```
 
-## Subscriptions
-
-Subscriptions give you real-time notifications of updates to files and directories within your bubble.  
-
-- Subscribing to a file will notify your listener function whenever the file is written, appended or deleted.  
-
-- Subscribing to a directory will notify your listener function whenever the directory is created or deleted, or whenever a file within the directory is written, appended or deleted.
-
-Subscriptions are only available over a WebSocket connection.
-
-*Note, it is optional for off-chain storage services to support subscriptions, so check with your service provider.*
-
-
-```javascript
-function listener(notification, error) {
-  if (error) console.warn(error);
-  else {
-    console.log(notification);
-  }
-}
-
-// Construct a WebSocket provider for the remote storage system
-const storageProvider = new bubbleProviders.WebsocketBubbleProvider(bubbleId.provider);
-
-// Construct the client interface to your bubble
-const bubble = new Bubble(bubbleId, storageProvider, signFunction);
-
-// Subscribe to a file
-const subscription = await bubble.subscribe('<fileId>', listener, {...options});
-
-...
-
-// Unsubscribe when no longer needed
-await bubble.unsubscribe(subscription.subscriptionId);
-
-```
-
-### File Subscriptions
-
-Subscribe Options:
-
-- `list: <boolean>` set to `true` to exclude the `data` field from all notifications.
-- `read: <boolean>` set to `true` to include the file contents as a `data` field in the subscription response.
-
-File notifications are objects with the following structure:
-```javascript
-{
-  subscriptionId: <any>,  // subscription id matching that returned by the subscribe method
-  event: <'write'|'append'|'delete'>,
-  file: {
-    name: <string>,      // the file id
-    type: 'file',
-    length: <number>,    // length of the file in bytes
-    created: <number>,   // created time (UNIX time in ms)
-    modified: <number>   // last modified time (UNIX time in ms)
-  },
-  data: <string>         // contents of the written file or the appended data
-}
-```
-
-### Directory Subscriptions
-
-Subscribe Options:
-
-- `list: <boolean>` set to `true` to include the full directory listing as a `data` field in the subscription response.
-- `since: <time>` include a directory listing, as a `data` field in the subscription response, containing all files created or updated since (but not on) the given time.
-
-Directory notifications are objects with the following structure:
-```javascript
-{
-  subscriptionId: <any>,  // subscription id matching that returned by the subscribe method
-  event: <'mkdir'|'delete'|'update'>,
-  file: {
-    name: <string>,      // the directory's file id
-    type: 'file',
-    length: <number>,    // number of files within the directory
-    created: <number>,   // created time (UNIX time in ms)
-    modified: <number>   // last time a file was added or deleted (UNIX time in ms)
-  },
-  data: <array>          // list of updated files that triggered the notification (only applies to update notifications)
-}
-```
-
-Each entry in the `data` array contains the long-form listing of the file plus an `event` field indicating `write`, `append` or `delete`.
-
 ## BubbleFactory
 
 The `BubbleFactory` can be used to construct common instances of the `Bubble` class with features such as encryption or multiple users.
@@ -549,6 +464,91 @@ const signFunction = (hash) => {
 ### Revoking Delegations
 
 Support for revoking delegations on-chain is in development.
+
+## Subscriptions
+
+Subscriptions give you real-time notifications of updates to files and directories within your bubble.  
+
+- Subscribing to a file will notify your listener function whenever the file is written, appended or deleted.  
+
+- Subscribing to a directory will notify your listener function whenever the directory is created or deleted, or whenever a file within the directory is written, appended or deleted.
+
+Subscriptions are only available over a WebSocket connection.
+
+*Note, it is optional for off-chain storage services to support subscriptions, so check with your service provider.*
+
+
+```javascript
+function listener(notification, error) {
+  if (error) console.warn(error);
+  else {
+    console.log(notification);
+  }
+}
+
+// Construct a WebSocket provider for the remote storage system
+const storageProvider = new bubbleProviders.WebsocketBubbleProvider(bubbleId.provider);
+
+// Construct the client interface to your bubble
+const bubble = new Bubble(bubbleId, storageProvider, signFunction);
+
+// Subscribe to a file
+const subscription = await bubble.subscribe('<fileId>', listener, {...options});
+
+...
+
+// Unsubscribe when no longer needed
+await bubble.unsubscribe(subscription.subscriptionId);
+
+```
+
+### File Subscriptions
+
+Subscribe Options:
+
+- `list: <boolean>` set to `true` to exclude the `data` field from all notifications.
+- `read: <boolean>` set to `true` to include the file contents as a `data` field in the subscription response.
+
+File notifications are objects with the following structure:
+```javascript
+{
+  subscriptionId: <any>,  // subscription id matching that returned by the subscribe method
+  event: <'write'|'append'|'delete'>,
+  file: {
+    name: <string>,      // the file id
+    type: 'file',
+    length: <number>,    // length of the file in bytes
+    created: <number>,   // created time (UNIX time in ms)
+    modified: <number>   // last modified time (UNIX time in ms)
+  },
+  data: <string>         // contents of the written file or the appended data
+}
+```
+
+### Directory Subscriptions
+
+Subscribe Options:
+
+- `list: <boolean>` set to `true` to include the full directory listing as a `data` field in the subscription response.
+- `since: <time>` include a directory listing, as a `data` field in the subscription response, containing all files created or updated since (but not on) the given time.
+
+Directory notifications are objects with the following structure:
+```javascript
+{
+  subscriptionId: <any>,  // subscription id matching that returned by the subscribe method
+  event: <'mkdir'|'delete'|'update'>,
+  file: {
+    name: <string>,      // the directory's file id
+    type: 'file',
+    length: <number>,    // number of files within the directory
+    created: <number>,   // created time (UNIX time in ms)
+    modified: <number>   // last time a file was added or deleted (UNIX time in ms)
+  },
+  data: <array>          // list of updated files that triggered the notification (only applies to update notifications)
+}
+```
+
+Each entry in the `data` array contains the long-form listing of the file plus an `event` field indicating `write`, `append` or `delete`.
 
 ## Creating a Bubble (Example)
 
