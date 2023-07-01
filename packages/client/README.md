@@ -368,15 +368,18 @@ const listing = await bubble.list(filenames.publicDir, {long: true, since: Date.
 await bubble.terminate();
 ```
 
-### Subscriptions
-
-*Note, it is optional for off-chain storage services to support subscriptions, so check with your service provider.*
+## Subscriptions
 
 Subscriptions give you real-time notifications of updates to files and directories within your bubble.  
 
 - Subscribing to a file will notify your listener function whenever the file is written, appended or deleted.  
 
 - Subscribing to a directory will notify your listener function whenever the directory is created or deleted, or whenever a file within the directory is written, appended or deleted.
+
+Subscriptions are only available over a WebSocket connection.
+
+*Note, it is optional for off-chain storage services to support subscriptions, so check with your service provider.*
+
 
 ```javascript
 function listener(notification, error) {
@@ -386,14 +389,23 @@ function listener(notification, error) {
   }
 }
 
-const subscription = await bubble.subscribe(<fileId>, listener, <options>);
+// Construct a WebSocket provider for the remote storage system
+const storageProvider = new bubbleProviders.WebsocketBubbleProvider(bubbleId.provider);
+
+// Construct the client interface to your bubble
+const bubble = new Bubble(bubbleId, storageProvider, signFunction);
+
+// Subscribe to a file
+const subscription = await bubble.subscribe('<fileId>', listener, {...options});
 
 ...
 
+// Unsubscribe when no longer needed
 await bubble.unsubscribe(subscription.subscriptionId);
+
 ```
 
-#### File Subscriptions
+### File Subscriptions
 
 Subscribe Options:
 
@@ -416,7 +428,7 @@ File notifications are objects with the following structure:
 }
 ```
 
-#### Directory Subscriptions
+### Directory Subscriptions
 
 Subscribe Options:
 
