@@ -3,7 +3,9 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { HTTPBubbleProvider } from './HTTPBubbleProvider.js';
+import { WebsocketBubbleProvider } from './WebsocketBubbleProvider.js';
 
 export const bubbleProviders = {
-  HTTPBubbleProvider: HTTPBubbleProvider
+  HTTPBubbleProvider: HTTPBubbleProvider,
+  WebsocketBubbleProvider: WebsocketBubbleProvider
 }

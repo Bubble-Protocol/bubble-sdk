@@ -215,6 +215,36 @@ export class Bubble {
   }
 
   /**
+   * Subscribes to the given file
+   * 
+   * @param {String} path file to read from
+   * @param {Function} listener handler for subscription notices
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve with the subscriptionId
+   */
+  subscribe(path = ROOT_PATH, listener, options = {}) {
+    assert.isFunction(listener, 'listener');
+    return this.rpcFactory.subscribe(path, options)
+      .then(rpc => {
+        return this.provider.subscribe(rpc.params, listener);
+      })
+  }
+
+  /**
+   * Unsubscribes to the given subscription id.
+   * 
+   * @param {any} id subscriptionId from within the subscription
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve if successful
+   */
+  unsubscribe(id, options = {}) {
+    return this.rpcFactory.unsubscribe(id, options)
+    .then(rpc => {
+      return this.provider.unsubscribe(rpc.params);
+    })
+}
+
+  /**
    * Resolves to true if the bubble's smart contract has been terminated.
    * 
    * @param {Object} options passed transparently to the bubble server
@@ -319,7 +349,7 @@ export class RPCFactory {
     assert.isHexString(_contract, "contract");
     assert.isFunction(_signFunction, "signFunction");
     this.chainId = _chainId;
-    this.contract = _contract;
+    this.contract = _contract.toLowerCase();
     this.signFunction = _signFunction;
   }
 
@@ -535,6 +565,52 @@ export class RPCFactory {
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
         contract: this.contract,
+        options: options 
+      }
+    });
+  }
+
+  /**
+   * RPC to subscribe to the given file.
+   * 
+   * @param _path file to subscribe to
+   * @param options passed transparently to the bubble server
+   * @returns RPC
+   */
+  subscribe(_path = ROOT_PATH, options = {}) {
+    assert.isString(_path, "path");
+    assert.isObject(options, "options");
+    return this.sign({
+      method: 'subscribe',
+      params: {
+        timestamp: Date.now(),
+        nonce: Crypto.randomUUID(),
+        chainId: this.chainId,
+        contract: this.contract,
+        file: _path,
+        options: options 
+      }
+    });
+  }
+
+  /**
+   * RPC to unsubscribe to a subscription.
+   * 
+   * @param _subscriptionId subscription to unsubscribe to
+   * @param options passed transparently to the bubble server
+   * @returns RPC
+   */
+  unsubscribe(_subscriptionId, options = {}) {
+    assert.isNotNull(_subscriptionId, "subscription id");
+    assert.isObject(options, "options");
+    return this.sign({
+      method: 'unsubscribe',
+      params: {
+        timestamp: Date.now(),
+        nonce: Crypto.randomUUID(),
+        chainId: this.chainId,
+        contract: this.contract,
+        subscriptionId: _subscriptionId,
         options: options 
       }
     });

@@ -10,6 +10,7 @@ export class RamBasedDataServer extends DataServer {
   constructor() {
     super();
     this.bubbles = {};
+    this.subscriptions = [];
   }
 
   create(contract, options={}) {
@@ -28,8 +29,9 @@ export class RamBasedDataServer extends DataServer {
     }
     const time = Date.now();
     const fileExists = this.bubbles[contract][file] !== undefined;
+    let dir;
     if (file.length > 66) {
-      const dir = file.slice(0,66);
+      dir = file.slice(0,66);
       if (this.bubbles[contract][dir] === undefined) this.bubbles[contract][dir] = {type: 'dir', created: time, modified: time};
       else if (!fileExists) this.bubbles[contract][dir].modified = time;
     }
@@ -37,6 +39,9 @@ export class RamBasedDataServer extends DataServer {
       if (!fileExists) this.bubbles[contract][ROOT_PATH].modified = time;
     }
     this.bubbles[contract][file] = {type: 'file', created: time, modified: time, data: data};
+    this._notifySubscribers(contract, file, 'write', data);
+    if (dir) this._notifySubscribers(contract, dir, 'update', [{event: 'write', name: file, type: 'file', length: data.length, created: this.bubbles[contract][file].created, modified: time}]);
+    else this._notifySubscribers(contract, ROOT_PATH, 'update', [{event: 'write', name: file, type: 'file', length: data.length, created: this.bubbles[contract][file].created, modified: time}]);
     return Promise.resolve();
   }
 
@@ -45,8 +50,9 @@ export class RamBasedDataServer extends DataServer {
       return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST, "bubble does not exist"));
     }
     const time = Date.now();
+    let dir;
     if (file.length > 66) {
-      const dir = file.slice(0,66);
+      dir = file.slice(0,66);
       if (this.bubbles[contract][dir] === undefined) this.bubbles[contract][dir] = {type: 'dir', created: time, modified: time};
     }
     if (this.bubbles[contract][file] === undefined) this.bubbles[contract][file] = {type: 'file', created: time, modified: time, data: data};
@@ -54,6 +60,9 @@ export class RamBasedDataServer extends DataServer {
       this.bubbles[contract][file].data += data;
       this.bubbles[contract][file].modified = time;
     }
+    this._notifySubscribers(contract, file, 'append', data);
+    if (dir) this._notifySubscribers(contract, dir, 'update', [{event: 'append', name: file, type: 'file', length: this.bubbles[contract][file].data.length, created: this.bubbles[contract][file].created, modified: time}]);
+    else this._notifySubscribers(contract, ROOT_PATH, 'update', [{event: 'append', name: file, type: 'file', length: this.bubbles[contract][file].data.length, created: this.bubbles[contract][file].created, modified: time}]);
     return Promise.resolve();
   }
 
@@ -87,7 +96,8 @@ export class RamBasedDataServer extends DataServer {
       else return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_FILE_DOES_NOT_EXIST, "file does not exist"));
     }
 
-    const isDir = this.bubbles[contract][file].type === 'dir';
+    const type = this.bubbles[contract][file].type;
+    const isDir = type === 'dir';
     
     delete this.bubbles[contract][file];
 
@@ -97,13 +107,17 @@ export class RamBasedDataServer extends DataServer {
       }
     }
 
+    this._notifySubscribers(contract, file, 'delete', undefined, type);
+
     const time = Date.now();
     if (file.length > 66) {
       const dir = file.slice(0,66);
       this.bubbles[contract][dir].modified = time;
+      this._notifySubscribers(contract, dir, 'update', [{event: 'delete', name: file, type: 'file'}]);
     }
     else {
       this.bubbles[contract][ROOT_PATH].modified = time;
+      this._notifySubscribers(contract, ROOT_PATH, 'update', [{event: 'delete', name: file, type: 'file'}]);
     }
 
     return Promise.resolve();
@@ -121,6 +135,8 @@ export class RamBasedDataServer extends DataServer {
     const time = Date.now();
     this.bubbles[contract][file] = {type: 'dir', created: time, modified: time};
     this.bubbles[contract][ROOT_PATH].modified = time;
+    this._notifySubscribers(contract, file, 'mkdir');
+    this._notifySubscribers(contract, ROOT_PATH, 'update', [{event: 'mkdir', name: file, type: 'dir', length: 0, created: time, modified: time}]);
     return Promise.resolve();
   }
 
@@ -145,20 +161,6 @@ export class RamBasedDataServer extends DataServer {
         else if (f.slice(0,67) === file+"/") files.push(f);
       }
     }
-
-    let countFilesIn = (dir) => {
-      const dirIsRoot = dir === ROOT_PATH;
-      let count = 0;
-      for (let f in this.bubbles[contract]) {
-        if (dirIsRoot) {
-          if (f.length === 66 && f !== ROOT_PATH) count++;
-        }
-        else if (f.slice(0,67) === dir+"/") count++;
-      }
-      return count;
-    }
-    countFilesIn = countFilesIn.bind(this);
-
     
     // Prepare matches option
 
@@ -196,13 +198,35 @@ export class RamBasedDataServer extends DataServer {
       if (options.createdAfter !== undefined && meta.created <= options.createdAfter) return;
       if (options.matches && !matchesRegex.test(f)) return;
       const result = {name: f, type: meta.type};
-      if (options.long || options.length) result.length = meta.type === 'dir' ? countFilesIn(f) : meta.data ? meta.data.length : 0;
+      if (options.long || options.length) result.length = meta.type === 'dir' ? this._countFilesIn(contract, f) : meta.data ? meta.data.length : 0;
       if (options.long || options.created) result.created = meta.created;
       if (options.long || options.modified) result.modified = meta.modified;
       results.push(result);
     })
     
     return Promise.resolve(results);
+  }
+
+  subscribe(contract, file, listener, options={}) {
+    if (this.bubbles[contract] === undefined) {
+      return Promise.reject(new BubbleError(ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST, "bubble does not exist"));
+    }
+    this.subscriptions.push({contract, file, listener, options});
+    // construct response
+    const id = this.subscriptions.length-1;
+    const meta = {name: file, ...this.bubbles[contract][file]};
+    if (meta.type) {
+      meta.length = meta.type === 'dir' ? this._countFilesIn(contract, file) : meta.data ? meta.data.length : 0;
+      if (options.list === true) return this.list(contract, file, {long: true}).then(list => { return {subscriptionId: id, file: meta, data: list} });
+      if (options.since) return this.list(contract, file, {long: true, after: options.since}).then(list => { return {subscriptionId: id, file: meta, data: list} });
+      if (options.read) return this.read(contract, file).then(data => { return {subscriptionId: id, file: meta, data: data} });
+    }
+    return Promise.resolve({subscriptionId: id, file: meta});
+  }
+
+  unsubscribe(subscriptionId) {
+    if (typeof subscriptionId === 'number' && subscriptionId >= 0 && subscriptionId < this.subscriptions.length) this.subscriptions[subscriptionId] = {};
+    return Promise.resolve();
   }
 
   terminate(contract, options={}) {
@@ -212,11 +236,49 @@ export class RamBasedDataServer extends DataServer {
     return Promise.resolve();
   }
 
+  unsubscribeClient() {
+    // TODO
+  }
+
+  _notifySubscribers(contract, file, event, data, type) {
+    let meta;
+    if (event === 'delete') meta = {name: file, type: type};
+    else {
+      meta = {name: file, ...this.bubbles[contract][file]};
+      meta.length = meta.type === 'dir' ? this._countFilesIn(contract, file) : meta.data ? meta.data.length : 0;
+      delete meta.data;
+    }
+    this.subscriptions.forEach((sub, i) => {
+      if (sub.contract === contract && sub.file === file) {
+        sub.listener({
+          subscriptionId: i,
+          event: event,
+          file: meta,
+          data: event === 'delete' || sub.options.list ? undefined : data
+        })
+      }
+    })
+  }
+
+  _countFilesIn(contract, dir) {
+    const dirIsRoot = dir === ROOT_PATH;
+    let count = 0;
+    for (let f in this.bubbles[contract]) {
+      if (dirIsRoot) {
+        if (f.length === 66 && f !== ROOT_PATH) count++;
+      }
+      else if (f.slice(0,67) === dir+"/") count++;
+    }
+    return count;
+  }
+
   _reset() {
     this.bubbles = {};
+    this.subscriptions = [];
   }
 
   _resetBubble(contract) {
+    this.subscriptions = this.subscriptions.filter(sub => sub.contract !== contract);
     if (!this.bubbles[contract]) return;
     this.terminate(contract);
     this.create(contract);

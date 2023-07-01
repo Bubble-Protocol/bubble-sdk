@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { assert } from "@bubble-protocol/core";
+import { BubbleFilename, assert } from "@bubble-protocol/core";
 
 
 /**
@@ -52,7 +52,8 @@ export function toEthereumSignFunction(signFunction, delegate) {
 
 /**
  * Converts a number, BigInt, ArrayBuffer or hex string (with or without 0x prefix) to a valid file id part of
- * a content id.
+ * a content id.  If the `value` is already a valid file id (with or without a path extension) it is simply 
+ * returned.
  * 
  * @param {Number|BigInt|ArrayBuffer|hex string} value the value to convert
  * @param {string} extension optional path extension to append to the converted value
@@ -61,6 +62,8 @@ export function toEthereumSignFunction(signFunction, delegate) {
  */
 export function toFileId(value, extension) {
   const pathExtension = extension ? '/'+extension : '';
+  // Pass through if already a valid file id
+  if (extension === undefined && (new BubbleFilename(value)).isValid()) return value;
   // Numbers
   if (assert.isNumber(value) || assert.isBigInt(value)) {
     if (value < 0 || assert.isBigInt(value) && value > MAX_FILE_ID) throw new Error('parameter out of range');

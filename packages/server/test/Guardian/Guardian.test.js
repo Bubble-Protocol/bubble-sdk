@@ -33,44 +33,95 @@ describe("Guardian", () => {
     });
   
   
-    function post(method, params, mockPermissions, stubs = () => {}, key = key1, signaturePrefix) {
+    function post(method, params, mockPermissions, options = {}) {
+      const key = options.key || key1
       const newParams = {...params};
-      stubs();
-      return signRPC(method, newParams, key, signaturePrefix).then(() => {
+      if (options.stubs) options.stubs();
+      return signRPC(method, newParams, key, options.signaturePrefix).then(() => {
         blockchainProvider.recoverSignatory.mockResolvedValueOnce(key.address);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
-        return guardian.post(method, newParams)
+        return guardian.post(method, newParams, options.listener)
       });
     }
 
   
-    function commonTests(method, params, requiredPermissions) {
+    function commonTests(method, params, requiredPermissions, options={}) {
 
-      test('rejects with permission denied error if signatory has no permissions', async () => {
-        const mockPermissions = Permissions.DIRECTORY_BIT | (Permissions.ALL_PERMISSIONS & ~requiredPermissions);
-        return expect(post(method, params, mockPermissions))
-          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
-      })
+      if (requiredPermissions > 0) {
+
+        test('rejects with permission denied error if signatory has no permissions', async () => {
+          const mockPermissions = Permissions.DIRECTORY_BIT | (Permissions.ALL_PERMISSIONS & ~requiredPermissions);
+          return expect(post(method, params, mockPermissions, options))
+            .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
+        })
+
+        test('resolves if user has (and only has) the require permissions', async () => {
+          const newParams = {...params};
+          await signRPC(method, newParams, key1);
+          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+          blockchainProvider.getChainId.mockReturnValueOnce(1);
+          blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
+          dataServer[method].mockResolvedValueOnce();
+          return expect(guardian.post(method, newParams, options.listener)).resolves.not.toThrow()
+            .then(() => {
+              const expectedSignedPacket = {
+                method: method,
+                params: {...newParams}
+              }
+              delete expectedSignedPacket.params.signature;
+              expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
+              expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
+              expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, params));
+              expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
+              expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
+              expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+              expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
+              expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
+              expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
+              expect(dataServer[method].mock.calls).toHaveLength(1);
+              let paramIndex = 0;
+              expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.contract);
+              if (params.file) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.file);
+              if (params.data) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.data);
+              if (params.options) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.options);
+            })
+        })
+  
+        test("rejects with permission denied error if the 'public' signature is given but has no permissions", async () => {
+          const newParams = {...params, signature: 'public'};
+          blockchainProvider.getChainId.mockReturnValueOnce(1);
+          blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.ALL_PERMISSIONS & ~requiredPermissions);
+          return expect(guardian.post(method, newParams, options.listener))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED})
+          .then(() => {
+            expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
+            expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
+            expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
+            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
+          });
+        })
+    
+      }
   
       test('rejects when the data server rejects and passes the error through if a BubbleError', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new BubbleError(1234, 'data server rejection'));
-        return expect(post(method, params, mockPermissions))
+        return expect(post(method, params, mockPermissions, options))
           .rejects.toBeBubbleError(new BubbleError(1234, 'data server rejection'));
       })
 
       test('rejects when the data server rejects and wraps a non-bubble error in a BubbleError Internal Error', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce(new Error('data server simple error'));
-        return expect(post(method, params, mockPermissions))
+        return expect(post(method, params, mockPermissions, options))
           .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
       })
   
       test('rejects with an Internal BubbleError when the data server rejects with no error', async () => {
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
-        return expect(post(method, params, mockPermissions))
+        return expect(post(method, params, mockPermissions, options))
           .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
       })
   
@@ -78,16 +129,16 @@ describe("Guardian", () => {
         const newParams = {...params, chainId: 2};
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockRejectedValueOnce();
-        return expect(post(method, newParams, mockPermissions))
+        return expect(post(method, newParams, mockPermissions, options))
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED});
       })
   
       test('calls terminate and rejects with Terminated BubbleError when ACC has been terminated (and options are not passed through)', async () => {
-        const options = { val: 1, str: "hello" };
-        const newParams = {...params, options: options};
+        const paramOptions = { val: 1, str: "hello" };
+        const newParams = {...params, options: paramOptions};
         const mockPermissions = Permissions.BUBBLE_TERMINATED_BIT;
         dataServer.terminate.mockResolvedValueOnce();
-        return expect(post(method, newParams, mockPermissions))
+        return expect(post(method, newParams, mockPermissions, options))
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED})
           .then(() => {
             expect(dataServer.terminate.mock.calls).toHaveLength(1);
@@ -96,48 +147,16 @@ describe("Guardian", () => {
           });
       })
   
-      test('resolves if user has (and only has) the require permissions', async () => {
-        const newParams = {...params};
-        await signRPC(method, newParams, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
-        dataServer[method].mockResolvedValueOnce();
-        return expect(guardian.post(method, newParams)).resolves.not.toThrow()
-          .then(() => {
-            const expectedSignedPacket = {
-              method: method,
-              params: {...newParams}
-            }
-            delete expectedSignedPacket.params.signature;
-            expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-            expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, params));
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
-            expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
-            expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
-            expect(dataServer[method].mock.calls).toHaveLength(1);
-            let paramIndex = 0;
-            expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.contract);
-            if (params.file) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.file);
-            if (params.data) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.data);
-            if (params.options) expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.options);
-          })
-      })
-
       test('passes options through to the data server', async () => {
-        const options = { val: 1, str: "hello" };
-        const newParams = {...params, options: options};
+        const paramOptions = { val: 1, str: "hello" };
+        const newParams = {...params, options: paramOptions};
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockResolvedValueOnce();
-        return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+        return expect(post(method, newParams, mockPermissions, options)).resolves.not.toThrow()
         .then(() => {
           expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-          let paramIndex = params.file ? params.data ? 3 : 2 : 1;
-          expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(options);
+          let paramIndex = params.file ? params.data || options.listener ? 3 : 2 : 1;
+          expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(paramOptions);
         })
       })
 
@@ -146,7 +165,7 @@ describe("Guardian", () => {
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
         dataServer[method].mockResolvedValueOnce();
-        return expect(guardian.post(method, newParams))
+        return expect(guardian.post(method, newParams, options.listener))
         .resolves.not.toThrow()
         .then(() => {
           expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
@@ -156,27 +175,13 @@ describe("Guardian", () => {
         });
       })
 
-      test("rejects with permission denied error if the 'public' signature is given but has no permissions", async () => {
-        const newParams = {...params, signature: 'public'};
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.ALL_PERMISSIONS & ~requiredPermissions);
-        return expect(guardian.post(method, newParams))
-        .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED})
-        .then(() => {
-          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
-          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-          expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
-        });
-      })
-  
       test('enforces lowercase contract', async () => {
         const contractIn = '0x'+'1234ABCDEF'.repeat(4);
         const expectedContract = '0x'+'1234abcdef'.repeat(4);
         const newParams = {...params, contract: contractIn};
         const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
         dataServer[method].mockResolvedValueOnce();
-        return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+        return expect(post(method, newParams, mockPermissions, options)).resolves.not.toThrow()
         .then(() => {
           expect(dataServer[method].mock.calls[0][0]).toBe(expectedContract);
         })
@@ -193,7 +198,7 @@ describe("Guardian", () => {
           const newParams = {...params, file: filenameIn};
           const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
           dataServer[method].mockResolvedValueOnce();
-          return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+          return expect(post(method, newParams, mockPermissions, options)).resolves.not.toThrow()
           .then(() => {
             expect(dataServer[method].mock.calls[0][1]).toBe(expectedFilename);
           })
@@ -203,7 +208,7 @@ describe("Guardian", () => {
           const newParams = {...params, file: params.file.slice(2)};
           const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
           dataServer[method].mockResolvedValueOnce();
-          return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+          return expect(post(method, newParams, mockPermissions, options)).resolves.not.toThrow()
           .then(() => {
             expect(dataServer[method].mock.calls[0][0]).toBe(params.contract);
             expect(dataServer[method].mock.calls[0][1]).toBe(params.file);
@@ -231,7 +236,7 @@ describe("Guardian", () => {
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
         dataServer[method].mockResolvedValueOnce();
-        return expect(guardian.post(method, newParams)).resolves.not.toThrow()
+        return expect(guardian.post(method, newParams, options.listener)).resolves.not.toThrow()
           .then(() => {
             const expectedSignedPacket = {
               method: method,
@@ -587,6 +592,203 @@ describe("Guardian", () => {
     })
 
 
+    describe("rpc subscribe", () => {
+
+      const method = 'subscribe';
+
+      const VALID_SUBSCRIPTION = { subscriptionId: 1 };
+
+      const UNEXPECTED_LISTENER = () => { throw new Error('listener called when not expected')};
+
+      const params = {
+        ...COMMON_RPC_PARAMS,
+        file: VALID_FILE
+      };
+
+      // Test a notification by constructing a subscription then calling the listener that the
+      // Guardian passed to the mock data server.
+      async function testNotification(listener, notification, notifyPermissions) {
+        // subscribe
+        dataServer[method].mockResolvedValueOnce(VALID_SUBSCRIPTION);
+        await post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT, {listener: listener});
+        expect(dataServer[method].mock.calls[0][0]).toBe(params.contract);
+        expect(dataServer[method].mock.calls[0][1]).toBe(params.file);
+        const guardianListener = dataServer[method].mock.calls[0][2]
+        expect(typeof guardianListener).toBe('function');
+        // simulate notification
+        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | notifyPermissions);
+        await guardianListener(notification.subscriptionId, notification.result, notification.error);        
+      }
+
+      commonTests(method, params, Permissions.READ_BIT, {listener: UNEXPECTED_LISTENER});
+
+      test('rejects if the file param is missing', async () => {
+        const newParams = {...params};
+        delete newParams.file;
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        return expect(post(method, newParams, mockPermissions, {listener: UNEXPECTED_LISTENER}))
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
+      })
+
+      test('rejects if the listener param is missing', async () => {
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        return expect(post(method, params, mockPermissions, {listener: undefined}))
+          .rejects.toThrow('subscriptionListener is null');
+      })
+
+      test('rejects if the listener param is an invalid type', async () => {
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        return expect(post(method, params, mockPermissions, {listener: 'hello'}))
+          .rejects.toThrow('subscriptionListener type. Expected function');
+      })
+
+      test('fails if user does not have read access', async () => {
+        dataServer[method].mockResolvedValueOnce(VALID_SUBSCRIPTION);
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT | Permissions.APPEND_BIT | Permissions.EXECUTE_BIT;
+        return expect(post(method, params, mockPermissions, {listener: UNEXPECTED_LISTENER}))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
+      })
+  
+      test('resolves with the data server response if permitted', async () => {
+        dataServer[method].mockResolvedValueOnce(VALID_SUBSCRIPTION);
+        return expect(post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT, {listener: UNEXPECTED_LISTENER}))
+          .resolves.toStrictEqual(VALID_SUBSCRIPTION);
+      })
+  
+      test('resolves if permitted and has no path extension', async () => {
+        dataServer[method].mockResolvedValueOnce(VALID_SUBSCRIPTION);
+        const newParams = {
+          ...params,
+          file: VALID_DIR
+        }
+        return expect(post(method, newParams, Permissions.READ_BIT, {listener: UNEXPECTED_LISTENER}))
+          .resolves.toStrictEqual(VALID_SUBSCRIPTION);
+      })
+  
+      test('passes the subscriber and wrapped listener to the data server', async () => {
+        dataServer[method].mockResolvedValueOnce(VALID_SUBSCRIPTION);
+        const subscription = await post(method, params, Permissions.DIRECTORY_BIT | Permissions.READ_BIT, {listener: UNEXPECTED_LISTENER});
+        expect(subscription).toStrictEqual(VALID_SUBSCRIPTION);
+        expect(dataServer[method].mock.calls[0][0]).toBe(params.contract);
+        expect(dataServer[method].mock.calls[0][1]).toBe(params.file);
+        expect(typeof dataServer[method].mock.calls[0][2]).toBe('function');
+      })
+  
+      test('forwards a notification to the listener if still permitted', async () => {
+        const listener = jest.fn();
+        await testNotification(listener, {subscriptionId: 1, result: 'notification'}, Permissions.READ_BIT);
+        expect(listener.mock.calls).toHaveLength(1);
+        expect(listener.mock.calls[0][0]).toBe(1);
+        expect(listener.mock.calls[0][1]).toBe('notification');
+        expect(listener.mock.calls[0][2]).toBeUndefined();
+      })
+  
+      test('forwards an error notification to the listener if still permitted', async () => {
+        const listener = jest.fn();
+        const error = new BubbleError(123, 'Test Error');
+        await testNotification(listener, {subscriptionId: 1, error: error}, Permissions.READ_BIT);
+        expect(listener.mock.calls).toHaveLength(1);
+        expect(listener.mock.calls[0][0]).toBe(1);
+        expect(listener.mock.calls[0][1]).toBeUndefined();
+        expect(listener.mock.calls[0][2]).toStrictEqual(error);
+      })
+  
+      test('forwards a subscription terminated error to the listener if the client no longer has read permissions', async () => {
+        const listener = jest.fn();
+        await testNotification(listener, {subscriptionId: 1, result: 'notification'}, Permissions.WRITE_BIT | Permissions.APPEND_BIT | Permissions.EXECUTE_BIT);
+        expect(listener.mock.calls).toHaveLength(1);
+        expect(listener.mock.calls[0][0]).toBe(1);
+        expect(listener.mock.calls[0][1]).toBeUndefined();
+        expect(listener.mock.calls[0][2]).toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_SUBSCRIPTION_TERMINATED})
+      })
+  
+    })
+
+
+    describe("rpc unsubscribe", () => {
+
+      const method = 'unsubscribe';
+
+      const params = {
+        ...COMMON_RPC_PARAMS,
+        subscriptionId: 1
+      };
+
+      test('rejects if the subscriptionId param is missing', async () => {
+        const newParams = {...params};
+        delete newParams.subscriptionId;
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        return expect(post(method, newParams, mockPermissions))
+          .rejects.toBeBubbleError({code: ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
+      })
+
+      test('rejects when the data server rejects and passes the error through if a BubbleError', async () => {
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockRejectedValueOnce(new BubbleError(1234, 'data server rejection'));
+        return expect(post(method, params, mockPermissions))
+          .rejects.toBeBubbleError(new BubbleError(1234, 'data server rejection'));
+      })
+
+      test('rejects when the data server rejects and wraps a non-bubble error in a BubbleError Internal Error', async () => {
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockRejectedValueOnce(new Error('data server simple error'));
+        return expect(post(method, params, mockPermissions))
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
+      })
+  
+      test('rejects with an Internal BubbleError when the data server rejects with no error', async () => {
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockRejectedValueOnce();
+        return expect(post(method, params, mockPermissions))
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error'));
+      })
+  
+      test('rejects with a Blockchain BubbleError if not the correct chainId', async () => {
+        const newParams = {...params, chainId: 2};
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockRejectedValueOnce();
+        return expect(post(method, newParams, mockPermissions))
+          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED});
+      })
+  
+      test('passes subscriptionId and options through to the data server', async () => {
+        const newParams = {
+          ...params, 
+          options: { val: 1, str: "hello" }
+        };
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockResolvedValueOnce();
+        return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+        .then(() => {
+          expect(dataServer[method].mock.calls[0][0]).toBe(newParams.subscriptionId);
+          expect(dataServer[method].mock.calls[0][1]).toBe(newParams.options);
+        })
+      })
+
+      test('passes subscriptionId through to the server regardless of the subscriptionId type', async () => {
+        const newParams = {
+          ...params,
+          subscriptionId: {a: 'str', b: 1},
+          options: { val: 1, str: "hello" }
+        }
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS;
+        dataServer[method].mockResolvedValueOnce();
+        return expect(post(method, newParams, mockPermissions)).resolves.not.toThrow()
+        .then(() => {
+          expect(dataServer[method].mock.calls[0][0]).toBe(newParams.subscriptionId);
+          expect(dataServer[method].mock.calls[0][1]).toBe(newParams.options);
+        })
+      })
+  
+      test(`resolves regardless of the sender's permissions`, async () => {
+        const mockPermissions = BigInt(0);
+        dataServer[method].mockResolvedValueOnce();
+        return expect(post(method, params, mockPermissions)).resolves.not.toThrow();
+      })
+  
+    })
+
+      
     describe("rpc terminate", () => {
 
       const method = 'terminate';

@@ -40,7 +40,7 @@ export class BubbleFilename {
 
   setPermissions(permissions) {
     this.permissions = permissions;
-    if (this._parts.length === 2 && !permissions.isDirectory()) this._valid = false;
+    if (!permissions.bubbleTerminated() && this._parts.length === 2 && !permissions.isDirectory()) this._valid = false;
   }
 
   getPermissionedPart() {

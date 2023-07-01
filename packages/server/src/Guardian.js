@@ -58,7 +58,9 @@ export class Guardian extends BubbleProvider {
    * @param params the RPC params
    * @returns Promise to service the call resolving with data if appropriate
    */
-  async post(method, params) {
+  async post(method, params, subscriptionListener) {
+
+    if (method === 'subscribe') assert.isFunction(subscriptionListener, 'subscriptionListener');
 
     /** 
      * Basic RPC field validation
@@ -91,114 +93,20 @@ export class Guardian extends BubbleProvider {
     if (params.file !== undefined && (!assert.isString(params.file) || !assert.isNotEmpty(params.file))) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
 
-    if (params.file === undefined && ['write', 'append', 'read', 'delete', 'mkdir', 'list', 'getPermissions'].includes(method)) 
+    if (params.file === undefined && ['write', 'append', 'read', 'delete', 'mkdir', 'list', 'getPermissions', 'subscribe'].includes(method)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing file param');
       
     if (params.data !== undefined && !assert.isString(params.data)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed data');
+
+    if (params.subscriptionId === undefined && method === 'unsubscribe') 
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing subscriptionId param');
 
     if (params.options && !assert.isObject(params.options)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options');
 
     if (params.delegate && !assert.isObject(params.delegate)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed delegate');
-
-
-    // TODO validate timestamp
-
-    /**
-     * Parse and validate params.file
-     */
-
-    const file = new BubbleFilename(params.file || ROOT_PATH);
-    if (!file.isValid()) throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
-
-
-    /**
-     * Recover signatory from signature.  Allow for a public request and an optional signature prefix.
-     */
-
-    let signatory;
-
-    if (params.signature === 'public') signatory = PUBLIC_SIGNATORY;
-
-    else {
-      
-      const signaturePrefix = params.signaturePrefix;
-
-      const packet = {
-        method: method,
-        params: {...params}
-      }
-      delete packet.params.signature;
-      delete packet.params.signaturePrefix;
-      delete packet.params.delegate;
-
-      let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
-      if (signaturePrefix) hash = Web3.utils.keccak256(signaturePrefix+hash).slice(2);
-
-      const signature = params.signature.slice(0,2) === '0x' ? params.signature.slice(2) : params.signature;
-
-      try {
-        signatory = await this.blockchainProvider.recoverSignatory(hash, signature);
-      }
-      catch(error) {
-        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
-      }
-      if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later');
-
-    }
-
-
-    /** 
-     * Validate params.chainId
-     */
-
-    if (params.chainId !== this.blockchainProvider.getChainId()) 
-      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED, 'blockchain not supported');
-
-
-    /**
-     * Recover delegate signatory, if present, and set as this requests signatory
-     */
-
-    if (params.delegate) {
-
-      const delegate = await parseDelegation(params.delegate, this.blockchainProvider);
-      if (!delegate.isValid()) 
-        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode delegate', {cause: delegate.error.message || delegate.error});
-
-      const revoked = await this.blockchainProvider.hasBeenRevoked(delegate.hash);
-      const contentId = {chain: params.chainId, contract: params.contract, provider: this.id};
-      if (revoked || !delegate.canAccessContent(signatory, contentId)) 
-        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
-
-      signatory = delegate.signatory;
-
-    }
-
-
-    /** 
-     * Get permissions from ACC
-     */
-
-    let permissionBits;
-    try {
-      permissionBits = await this.blockchainProvider.getPermissions(params.contract, signatory, file.getPermissionedPart());
-      file.setPermissions(new BubblePermissions(permissionBits));
-    }
-    catch(error) {
-      if(error && error.message && error.message.match("execution reverted")) {
-        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_METHOD_FAILED, 'Blockchain reverted. Is this an Access Control Contract?', {cause: error.message});
-      }
-      else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
-    }
-
-    /**
-     * Handle getPermissions request
-     */
-
-    if (method === 'getPermissions') return Promise.resolve('0x'+permissionBits.toString(16));
 
 
     /**
@@ -209,12 +117,62 @@ export class Guardian extends BubbleProvider {
 
 
     /**
+     * Validate request
+     */
+
+    const file = await this._validateRequest(params);
+
+
+    /**
+     * Service an unsubscribe request regardless of the sender
+     */
+
+    if (method === 'unsubscribe') {
+      return this.dataServer.unsubscribe(params.subscriptionId, params.options)
+        .catch(_validateDataServerError);
+    }
+
+
+    /**
+     * Recover signatory
+     */
+
+    const signatory = await this._recoverSignatory(method, params);
+
+
+    /** 
+     * Get permissions from ACC
+     */
+
+    const permissionBits = await this._getPermissions(params.contract, file.getPermissionedPart(), signatory);
+    file.setPermissions(new BubblePermissions(permissionBits)); 
+
+
+    /**
+     * Service getPermissions request regardless of whether or not the bubble has been terminated or whether
+     * the permissions are valid.
+     */
+    
+    if (method === 'getPermissions') return Promise.resolve('0x'+permissionBits.toString(16));
+
+
+    /**
+     * Check whether the file is still valid now that permissions have been set (a file path with both directory
+     * and file parts is invalid if the permissions indicate the directory part is not a directory).
+     * 
+     * Note, this must be checked AFTER bubbleTerminated() since 
+     */
+
+    if (!file.isValid()) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
+
+
+    /**
      * Throw if the bubble has been terminated. Since the ACC is the bubble's master and we now 
      * know it has been terminated, instruct the data server to delete the bubble.  If the data
      * server fails to delete the bubble then instruct the client to send a terminate request
      * (the data server is responsible for logging the cause of the error in this case).
      */
-
+    
     if (file.permissions.bubbleTerminated()) {
       const terminateOptions = (method === 'terminate') ? params.options : undefined;
       return this.dataServer.terminate(params.contract, terminateOptions)
@@ -227,14 +185,6 @@ export class Guardian extends BubbleProvider {
           else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED, "bubble has been terminated - send a 'terminate' request to delete the bubble data");
         })
     }
-
-
-    /** 
-     * Check whether the file is still valid after setting permissions (a file path with both directory
-     * and file parts is invalid if the permissions indicate the directory part is not a directory)
-     */
-
-    if (!file.isValid()) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
 
     /**
@@ -291,6 +241,14 @@ export class Guardian extends BubbleProvider {
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
+      case "subscribe":
+        if (file.permissions.canRead()) {
+          const subscription = new ProtectedSubscription(this.blockchainProvider, params.contract, file, signatory, subscriptionListener);
+          return this.dataServer.subscribe(params.contract, file.fullFilename, subscription.listener, params.options)
+            .catch(_validateDataServerError);
+        }
+        else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
+
       case "terminate": // terminate is handled above if ACC has been terminated
         throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
@@ -299,10 +257,167 @@ export class Guardian extends BubbleProvider {
     }
   }
 
+
+  /**
+   * Validates the chain id and timestamp, and ensures params.file has a valid form
+   * 
+   * @returns promise to resolve a BubbleFilename object constructed from params.file
+   * @throws if the chain is not supported, the timestamp is out of date or the file is invalid.
+   */
+  async _validateRequest(params) {
+
+    /**
+     * Parse and validate params.file
+     */
+
+    const file = new BubbleFilename(params.file || ROOT_PATH);
+    if (!file.isValid()) throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
+    
+    /**
+     * Validate timestamp
+     */
+
+    // TODO
+
+    /** 
+     * Validate params.chainId
+     */
+
+    if (params.chainId !== this.blockchainProvider.getChainId()) 
+    throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED, 'blockchain not supported');
+
+    return file;
+  }
+
+
+  /**
+   * Recovers the signatory of the request. If a delegate is present then it is validated
+   * and confirmed to delegate permission to the request signatory.
+   * 
+   * @returns promise to resolve the signatory or delegate signatory of the request
+   * @throws if the signature or delegate is invalid or the delegate does not permit the signatory
+   */
+  async _recoverSignatory(method, params) {
+
+    if (params.signature === 'public') return PUBLIC_SIGNATORY;
+
+    const packet = {
+      method: method,
+      params: {...params}
+    }
+    delete packet.params.signature;
+    delete packet.params.signaturePrefix;
+    delete packet.params.delegate;
+  
+    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
+    if (params.signaturePrefix) hash = Web3.utils.keccak256(params.signaturePrefix+hash).slice(2);
+  
+    const signature = params.signature.slice(0,2) === '0x' ? params.signature.slice(2) : params.signature;
+  
+    let signatory;
+    try {
+      signatory = await this.blockchainProvider.recoverSignatory(hash, signature);
+    }
+    catch(error) {
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
+    }
+    if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain provider signature is invalid');
+
+
+    /**
+     * Recover delegate signatory, if present, and set as this request's signatory
+     */
+
+    if (params.delegate) {
+
+      const delegate = await parseDelegation(params.delegate, this.blockchainProvider);
+      if (!delegate.isValid()) 
+        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode delegate', {cause: delegate.error.message || delegate.error});
+    
+      const revoked = await this.blockchainProvider.hasBeenRevoked(delegate.hash);
+      const contentId = {chain: params.chainId, contract: params.contract, provider: this.id};
+      if (revoked || !delegate.canAccessContent(signatory, contentId)) 
+        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+    
+      signatory = delegate.signatory;
+    }
+
+    return signatory;
+  }
+
+
+  async _getPermissions(contract, file, signatory) {
+    return getPermissions(this.blockchainProvider, contract, file, signatory);
+  }
+
+
 }
 
+
+/**
+ * Ensures the given error has an error code. If not, a new internal BubbleError is constructed.
+ */
 
 function _validateDataServerError(err = new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server error')) {
   throw err.code === undefined ? new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, err.message || err) : err;
 }
 
+
+/** 
+ * Get permissions from the ACC
+ * 
+ * @returns promise to resolve the permission bits
+ * @throws if the blockchain cannot be reached or the contract is not an ACC
+ */
+
+async function getPermissions(blockchainProvider, contract, file, signatory) {
+  try {
+    return await blockchainProvider.getPermissions(contract, signatory, file);
+  }
+  catch(error) {
+    if(error && error.message && error.message.match("execution reverted")) {
+      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_METHOD_FAILED, 'Blockchain reverted. Is this an Access Control Contract?', {cause: error.message});
+    }
+    else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
+  }
+}
+
+
+/**
+ * A ProtectedSubsciption listener is designed to be called by the data server to serve notice of a
+ * subscription event to a client. It wraps a client subscription listener with a permission check
+ * to ensure the client is still permitted to access the subscribed file when a notification from
+ * the data server is received. If permitted, the notification is forwarded to the client listener.
+ * If not, the data server is instructed to terminate the subscription by returning the permission
+ * error, and an error is passed to the client listener informing it that permission is denied and
+ * that the subscription has been terminated.
+ * 
+ * @returns an error if permission is denied or the blockchain cannot be reached.  The data server
+ * must check for a permission denied error and unsubscribe the client.
+ */
+class ProtectedSubscription {
+
+  constructor(blockchainProvider, contract, file, signatory, clientListener) {
+    this.blockchainProvider = blockchainProvider;
+    this.contract = contract;
+    this.file = file;
+    this.signatory = signatory;
+    this.clientListener = clientListener;
+    this.listener = this.listener.bind(this);
+  }
+
+  async listener(subscriptionId, result, error) {
+    assert.isNotNull(subscriptionId, 'subscriptionId');
+    const permissionBits = await getPermissions(this.blockchainProvider, this.contract, this.file.getPermissionedPart(), this.signatory);
+    const permissions = new BubblePermissions(permissionBits);
+    if (!permissions.canRead()) {
+      const terminatedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_SUBSCRIPTION_TERMINATED, 'permission denied - subscription terminated');
+      this.clientListener(subscriptionId, undefined, terminatedError);
+      return error;
+    }
+    else {
+      this.clientListener(subscriptionId, result, error)
+    }
+  }
+
+}

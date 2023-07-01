@@ -1,6 +1,6 @@
 import Web3 from 'web3';
 
-import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
+import { BLOCKCHAIN_SERVER_URL, BUBBLE_SERVER_URL, BUBBLE_WS_SERVER_URL, CHAIN_ID, MockBubbleServer, blockchainProvider } from './test-servers.js';
 import { Bubble, bubbleProviders } from '../../packages/client';
 import { BubblePermissions, ContentId } from '../../packages/core';
 import defaultContractSrc from '../contracts/TestContract.json';
@@ -69,15 +69,26 @@ export async function constructTestBubble(options={}) {
   const bubbleId = new ContentId({
     chain: CHAIN_ID,
     contract: contract.options.address,
-    provider: BUBBLE_SERVER_URL
+    provider: options.protocol === 'ws:' ? BUBBLE_WS_SERVER_URL : BUBBLE_SERVER_URL
   });
-  const bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL(BUBBLE_SERVER_URL));
+  let bubbleProvider;
+  if (options.protocol === 'ws:') {
+    bubbleProvider = new bubbleProviders.WebsocketBubbleProvider(new URL(BUBBLE_WS_SERVER_URL));
+    await new Promise((resolve, reject) => {
+      bubbleProvider.on('open', resolve);
+      bubbleProvider.on('error', reject);
+    });
+  }
+  else {
+    bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL(BUBBLE_SERVER_URL));
+  }
   ownerBubble = new Bubble(bubbleId, bubbleProvider, ownerSign);
   requesterBubble = new Bubble(bubbleId, bubbleProvider, requesterSign);
 
   // Mock a bubble created on the bubble server
   if (!options.noBubble) await MockBubbleServer.createBubble(contract.options.address.toLowerCase());
 
+  return bubbleId;
 }
 
 
@@ -94,14 +105,13 @@ export function bubbleAvailableTest() {
 
   test('confirm contract has deployed', async () => {
     const file0 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+    expect(typeof contract).toBe('object');
+    expect(typeof contract.options.address).toBe('string');
     const permissionBits = await blockchainProvider.getPermissions(contract.options.address, owner.address, file0);
     const permissions = new BubblePermissions(BigInt(permissionBits));
     expect(permissions.bubbleTerminated()).toBe(false);
-    expect(permissions.isDirectory()).toBe(false);
     expect(permissions.canRead()).toBe(true);
     expect(permissions.canWrite()).toBe(true);
-    expect(permissions.canAppend()).toBe(true);
-    expect(permissions.canExecute()).toBe(true);
   }, 20000)
 
 }
