@@ -78,17 +78,18 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
 
   unsubscribe(params={}) {
-    if (!params.subscriptionId || !subscriptions.has(params.subscriptionId)) {
-      if (params.silent) return Promise.resolve();
+    const options = params.options || {};
+    if (!options.force && (params.subscriptionId === undefined || !this.subscriptions.has(params.subscriptionId))) {
+      if (options.silent) return Promise.resolve(); 
       else return Promise.reject(new Error('subscription does not exist'));
     }
-    return this.post('unsubscribe', {...params, subscriptionId})
+    return this.post('unsubscribe', params)
       .then(() => {
-        this.subscriptions.delete(subscriptionId);
+        this.subscriptions.delete(params.subscriptionId);
       })
       .catch(error => {
-        if (params.force) this.subscriptions.delete(subscriptionId);
-        else throw error;
+        if (options.force) this.subscriptions.delete(params.subscriptionId);
+        if (!options.silent) throw error;
       })
   }
 
