@@ -45,6 +45,15 @@ export class BubbleServerApi extends DataServer {
     return this.bubble.list(file, options);
   }
 
+  subscribe(contract, file, listener, options) {
+    this._validateContract(contract);
+    return this.bubble.subscribe(file, listener, options);
+  }
+
+  unsubscribe(subscriptionId, options) {
+    return this.bubble.unsubscribe(subscriptionId, options);
+  }
+
   terminate(contract, options) {
     this._validateContract(contract);
     return this.bubble.terminate(options);

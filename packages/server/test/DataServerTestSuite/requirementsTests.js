@@ -21,6 +21,8 @@ import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
  */
 export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
+  const NOTIFICATION_DELAY_MS = options.notificationDelay || 100;  // Delay to wait for a subscription notification to be received after an event
+
   //
   // Files used in the tests.
   //
@@ -115,10 +117,12 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
       });
 
-      test( "[req-ds-sub-3] subscribe fails with BUBBLE_DOES_NOT_EXIST error even if silent option is given", async () => {
-        await expect(dataServer.subscribe(contractAddress, root, {silent: true}))
-          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
-      });
+      if (options.noSubscriptions !== true) {
+        test( "[req-ds-sub-3] subscribe fails with BUBBLE_DOES_NOT_EXIST error even if silent option is given", async () => {
+          await expect(dataServer.subscribe(contractAddress, root, ()=>{}, {silent: true}))
+            .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_SERVER_ERROR_BUBBLE_DOES_NOT_EXIST});
+        });
+      }
 
     })
 
@@ -927,9 +931,8 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
             let fileA;
 
-            beforeEach(() => {})
-
             beforeAll(async () => {
+              await clearBubble();
               await testPoint.writeFile(contractAddress, dir3+'/a.txt', "hello");
               await sleep(2); // ensure create and modified times are different
               await dataServer.append(contractAddress, dir3+'/a.txt', " world");
@@ -998,6 +1001,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
               await dataServer.write(contractAddress, file1, "hello world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1013,6 +1017,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
               await dataServer.write(contractAddress, file1, "hello world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1028,6 +1033,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
               await dataServer.append(contractAddress, file1, " world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1043,6 +1049,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener, {list: true});
               await dataServer.append(contractAddress, file1, " world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1058,6 +1065,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, file1, listener);
               await dataServer.delete(contractAddress, file1);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1070,9 +1078,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
             test( "[req-ds-sub-12] the client is notified of an update to a subscribed root due to an mkdir", async () => {
               await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
               await dataServer.mkdir(contractAddress, dir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1085,9 +1095,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
             test( "[req-ds-sub-13] the client is notified of an update to the ROOT_PATH due to a file write", async () => {
               await dataServer.write(contractAddress, file1, "extra");  // pre-add extra file to ensure it is not included in notification
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
               await dataServer.write(contractAddress, file1, 'Hello World');
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1101,9 +1113,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             test( "[req-ds-sub-13] the client is notified of an update to a subscribed directory due to a file write", async () => {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.write(contractAddress, fileInDir3, "hello world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1117,9 +1131,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             test( "[req-ds-sub-14] the client is notified of an update to the ROOT_PATH due to a file append", async () => {
               await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, file1, "hello");
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
               await dataServer.append(contractAddress, file1, " world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1134,9 +1150,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, fileInDir3, "hello");
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.append(contractAddress, fileInDir3, " world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1150,9 +1168,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             test( "[req-ds-sub-15] the client is notified of an update to the ROOT_PATH due to a file delete", async () => {
               await dataServer.write(contractAddress, file2, "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, file1, "hello");
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, ROOT_PATH, listener);
               await dataServer.delete(contractAddress, file1);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1167,9 +1187,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               await dataServer.mkdir(contractAddress, dir3);
               await dataServer.write(contractAddress, dir3+'/extra-file', "extra");  // pre-add extra file to ensure it is not included in notification
               await dataServer.write(contractAddress, fileInDir3, "hello");
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.delete(contractAddress, fileInDir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1184,6 +1206,7 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.mkdir(contractAddress, dir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1195,9 +1218,11 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
 
             test( "[req-ds-sub-17] the client is notified of a delete event when a subscribed directory is deleted", async () => {
               await dataServer.mkdir(contractAddress, dir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               const subscription = await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.delete(contractAddress, dir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(1);
               checkNotification(listener.mock.calls[0][0], 
                 {
@@ -1210,10 +1235,12 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
             test( "[req-ds-sub-8] basic negative test: check notifications are not sent when not expected", async () => {
               await dataServer.write(contractAddress, file1, "hello world");
               await dataServer.mkdir(contractAddress, dir3);
+              await sleep(NOTIFICATION_DELAY_MS);
               const listener = jest.fn();
               await dataServer.subscribe(contractAddress, file1, listener);
               await dataServer.subscribe(contractAddress, dir3, listener);
               await dataServer.write(contractAddress, file2, "hello world");
+              await sleep(NOTIFICATION_DELAY_MS);
               expect(listener.mock.calls).toHaveLength(0);
             });
 
@@ -1232,16 +1259,19 @@ export function testDataServerRequirements(dataServer, testPoint, options={}) {
           const listener = jest.fn();
           await dataServer.write(contractAddress, file1, "hello");
           const subscription = await dataServer.subscribe(contractAddress, file1, listener);
+          await sleep(NOTIFICATION_DELAY_MS);
           expect(listener.mock.calls).toHaveLength(0);
           await dataServer.write(contractAddress, file1, "hello world");
+          await sleep(NOTIFICATION_DELAY_MS);
           expect(listener.mock.calls).toHaveLength(1);
-          expect(dataServer.unsubscribe(subscription.subscriptionId)).resolves.not.toThrow();
+          await expect(dataServer.unsubscribe(subscription.subscriptionId)).resolves.not.toThrow();
           await dataServer.write(contractAddress, file1, "hello world again");
+          await sleep(NOTIFICATION_DELAY_MS);
           expect(listener.mock.calls).toHaveLength(1);
         });
 
         test( "[req-ds-unsub-3] resolves even if subscription does not exist", async () => {
-          expect(dataServer.unsubscribe('non-existent subscription')).resolves.not.toThrow();
+          await expect(dataServer.unsubscribe('non-existent subscription', {force: true})).resolves.not.toThrow();
         });
 
       })
