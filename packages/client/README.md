@@ -321,9 +321,9 @@ import { ContentId } from '@bubble-protocol/core';
 // Identify the bubble (this example assumes the smart contract has already been deployed)
 
 const bubbleId = new ContentID({
-  chain: 1,                                                // Ethereum main chain
-  contract: '0x73eF7A3643aCbC3D616Bd5f7Ee5153Aa5f14DB30',  // Smart contract address
-  provider: 'https://vault.bubbleprotocol.com/v2'          // Off-chain storage provider url
+  chain: 1,                                                 // Ethereum main chain
+  contract: '0x73eF7A3643aCbC3D616Bd5f7Ee5153Aa5f14DB30',   // Smart contract address
+  provider: 'https://vault.bubbleprotocol.com/v2/ethereum'  // Off-chain storage provider url
 });
 
 const filenames = {
@@ -702,8 +702,8 @@ const signFunction = (hash) => web3.eth.sign(hash, accounts[0]);
 // Setup your bubble
 const bubbleId = new ContentId({
   chain: 1,
-  contract: "0xa84..3b6",                           // replace with your contract address
-  provider: 'https://vault.bubbleprotocol.com/v2'   // configure for your off-chain storage service
+  contract: "0xa84..3b6",                                   // replace with your contract address
+  provider: 'https://vault.bubbleprotocol.com/v2/ethereum'  // configure for your off-chain storage service
 });
 
 
@@ -724,9 +724,9 @@ await bubble.create();
 b) use bubble tools
 
 ```shell
-bubble servers add bubble-private-cloud https://vault.bubbleprotocol.com/v2
+bubble servers add bubble-private-cloud https://vault.bubbleprotocol.com/v2/ethereum
 
-bubble content create-bubble bubble-private-cloud example-bubble --chain 1
+bubble content create-bubble bubble-private-cloud example-bubble --chain ethereum
 ```
 
 ## Glossary
