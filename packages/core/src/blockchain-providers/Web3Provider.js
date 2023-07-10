@@ -4,10 +4,8 @@
 //
 
 import { BlockchainProvider } from '../BlockchainProvider.js';
-import { createRequire } from "module";
 import { ecdsa } from '@bubble-protocol/crypto';
-const require = createRequire(import.meta.url);
-const ABIs = require('./abi.json');
+import { ABIs } from './abi.js';
 
 export class Web3Provider extends BlockchainProvider {
 
