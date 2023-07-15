@@ -112,10 +112,14 @@ export class ContentId {
 
 
 function _encodeId(id) {
-  return Buffer.from(JSON.stringify(id), 'utf8').toString('base64url');
+  return Buffer.from(JSON.stringify(id), 'utf8').toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
 }
 
 
 function _decodeId(str) {
-  return JSON.parse(Buffer.from(str, 'base64url').toString('utf8'));
+  let b64str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (b64str.length % 4) {
+    b64str += '=';
+  }
+  return JSON.parse(Buffer.from(b64str, 'base64').toString('utf8'));
 }
