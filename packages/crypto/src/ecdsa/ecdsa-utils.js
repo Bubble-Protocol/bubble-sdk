@@ -32,6 +32,7 @@ export function sign(hash, privateKey) {
   hash = strip0x(hash);
   privateKey = strip0x(privateKey);
   const sig = secp256k1.ecdsaSign(Buffer.from(hash, 'hex'), Buffer.from(privateKey, 'hex'));
+  sig.recid += 27; // convert to EVM format
   return Buffer.from(sig.signature).toString('hex')+Buffer.from([sig.recid]).toString('hex');
 }
 
@@ -56,12 +57,12 @@ export function verify(hash, signature, address) {
 export function recover(hash, signature, asPublicKey=false) {
   assert.isHash(hash, 'hash');
   assert.isSignature(signature, "signature");
-  hash = strip0x(hash);
-  signature = strip0x(signature);
+  const sigBuf = hexToUint8Array(signature);
   const sig = {
-    signature: hexToUint8Array(signature.slice(0, -1)),
-    recid: parseInt(signature.slice(-1))
+    signature: sigBuf.slice(0, -1),
+    recid: sigBuf.slice(-1)[0]
   }
+  if (sig.recid >= 27) sig.recid -= 27; // convert from evm standard
   const publicKey = secp256k1.ecdsaRecover(sig.signature, sig.recid, hexToUint8Array(hash), false);
   if (asPublicKey) return uint8ArrayToHex(publicKey);
   else return publicKeyToAddress(uint8ArrayToHex(publicKey));
