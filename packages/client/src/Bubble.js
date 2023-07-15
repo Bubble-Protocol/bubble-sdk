@@ -37,6 +37,11 @@ export class Bubble {
   encryptionPolicy = new NullEncryptionPolicy();
 
   /**
+   * @dev record of subscriptions allowing them to be unsubscribed when this bubble is closed
+   */
+  subscriptions = [];
+
+  /**
    * Represents a Bubble hosted on an external Bubble server.
    * 
    * @param {ContentId} contentId the id of this bubble
@@ -141,7 +146,7 @@ export class Bubble {
     return this.rpcFactory.read(path, options)
       .then(this.post)
       .then(data => {
-        return (data && decrypt) 
+        return (decrypt && assert.isString(data)) 
           ? this.encryptionPolicy.decrypt(data, path).then(buf => { return Buffer.from(buf).toString() }) 
           : data || '';
       })
@@ -224,9 +229,23 @@ export class Bubble {
    */
   subscribe(path = ROOT_PATH, listener, options = {}) {
     assert.isFunction(listener, 'listener');
+    const decrypt = options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path)));
+    const wrappedListener = !decrypt ? listener : 
+      (notification) => {
+        if (!assert.isString(notification.data)) listener(notification);
+        else {
+          safeDecrypt(this.encryptionPolicy, this.getContentId(path), notification.data)
+            .then(data => listener({...notification, data}));
+        }
+      }
     return this.rpcFactory.subscribe(path, options)
       .then(rpc => {
-        return this.provider.subscribe(rpc.params, listener);
+        return this.provider.subscribe(rpc.params, wrappedListener)
+          .then(subscription => {
+            this.subscriptions.push(subscription.id);
+            if (!decrypt || !assert.isString(subscription.data)) return subscription;
+            else return safeDecrypt(this.encryptionPolicy, path, subscription.data).then(data => {return {...subscription, data}});
+          })
       })
   }
 
@@ -242,7 +261,11 @@ export class Bubble {
     .then(rpc => {
       return this.provider.unsubscribe(rpc.params);
     })
-}
+    .then(result => {
+      this.subscriptions = this.subscriptions.filter(sub => sub !== id);
+      return result;
+    })
+  }
 
   /**
    * Resolves to true if the bubble's smart contract has been terminated.
@@ -309,8 +332,18 @@ export class Bubble {
     return id;
   }
 
+  /**
+   * Converts a number, BigInt, ArrayBuffer or hex string (with or without 0x prefix) to a valid file id part of
+   * a content id.  If the `value` is already a valid file id (with or without a path extension) it is simply 
+   * returned.
+   * 
+   * @param {Number|BigInt|ArrayBuffer|hex string} value the value to convert
+   * @param {string} extension optional path extension to append to the converted value
+   * @returns String containing the 32-byte hex filename prefixed with 0x
+   * @throws if the parameter is an invalid type of is out of range
+   */
   toFileId = toFileId;
-  
+
 }
 
 
@@ -640,3 +673,10 @@ export class RPCFactory {
 }
 
 
+//
+// Functions
+//
+
+function safeDecrypt(encryptionPolicy, contentId, data) {
+  return encryptionPolicy.decrypt(data, contentId).then(buf => Buffer.from(buf).toString()).catch(() => data);
+}
