@@ -52,7 +52,7 @@ export class Key {
     [this.uPublicKey, this.cPublicKey] = _generatePublicKeys(this.privateKeyBuf);
     this.address = publicKeyToAddress(this.uPublicKey);
     this.sign = this.sign.bind(this);
-    this.promiseToSign = this.promiseToSign.bind(this);
+    this.signFunction = this.signFunction.bind(this);
   }
 
 
@@ -67,12 +67,12 @@ export class Key {
   }
 
   /**
-   * Promise to sign the given hash
+   * Promise to sign the given hash. Designed for use with client Bubble classes.
    * 
    * @param {hash} hash 32-byte hex string
    * @returns Promise to resolve the signature as a hex string
    */
-  promiseToSign(hash) {
+  signFunction(hash) {
     return Promise.resolve(this.sign(hash));
   }
 

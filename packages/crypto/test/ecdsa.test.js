@@ -474,9 +474,9 @@ describe("ECDSA", function() {
       expect(recover(randomHash, signature)).toBe(account.address);
     })
 
-    test("recover verifies Key.promiseToSign", async () => {
+    test("recover verifies Key.signFunction", async () => {
       const key = new Key(account.privateKey);
-      const signature = await key.promiseToSign(randomHash);
+      const signature = await key.signFunction(randomHash);
       expect(recover(randomHash, signature)).toBe(account.address);
     })
 
@@ -492,14 +492,14 @@ describe("ECDSA", function() {
       expect(recover(randomHash, signature)).toBe(account.address);
     })
 
-    test("Key.promiseToSign can be used in a different class scope", async () => {
+    test("Key.signFunction can be used in a different class scope", async () => {
       class OtherScope {
         constructor(signFunction) {
           this.signFunction = signFunction;
         }
       }
       const key = new Key(account.privateKey);
-      const scope = new OtherScope(key.promiseToSign);
+      const scope = new OtherScope(key.signFunction);
       const signature = await scope.signFunction(randomHash);
       expect(recover(randomHash, signature)).toBe(account.address);
     })
