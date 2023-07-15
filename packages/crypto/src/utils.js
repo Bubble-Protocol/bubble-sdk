@@ -12,8 +12,7 @@ const VALID_HEX_STRING_REGEX = /^(0x)?[0-9a-fA-F]+$/;
  */
 export function hexToUint8Array(hexString) {
   if(hexString === undefined || !VALID_HEX_STRING_REGEX.test(hexString)) throw new TypeError('hexString type. Expected hex string');
-  if (hexString.slice(0,2) === '0x') hexString = hexString.slice(2);
-  return Uint8Array.from(Buffer.from(hexString, 'hex'));
+  return Uint8Array.from(Buffer.from(strip0x(hexString), 'hex'));
 }
 
 
