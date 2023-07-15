@@ -53,12 +53,17 @@ export class BubbleFilename {
   }
 
   isDirectory() {
-    if (!this._valid) throw new Error("BubbleFilename.getPermissionedPart: filename is invalid");
+    if (!this._valid) throw new Error("BubbleFilename.isDirectory: filename is invalid");
     return this._parts.length === 1 && (!this.permissions || this.permissions.isDirectory());
   }
 
+  hasDirectory() {
+    if (!this._valid) throw new Error("BubbleFilename.hasDirectory: filename is invalid");
+    return this._parts.length === 2;
+  }
+
   isRoot() {
-    if (!this._valid) throw new Error("BubbleFilename.getPermissionedPart: filename is invalid");
+    if (!this._valid) throw new Error("BubbleFilename.isRoot: filename is invalid");
     return this._parts[0].toLowerCase() === ROOT_PATH;
   }
 
