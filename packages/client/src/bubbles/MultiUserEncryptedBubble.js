@@ -43,7 +43,7 @@ export class MultiUserEncryptedBubble extends UserEncryptedBubble {
    * @returns Promise to write the user's metadata file to this bubble
    */
   addUser(metadataFile, publicKey, metadata = {}) {
-    assert.isHexString(metadataFile, 'metadataFile');
+    assert.isString(metadataFile, 'metadataFile');
     ecies.assert.isCompressedPublicKey(publicKey, 'publicKey');
     assert.isObject(metadata, 'metadata');
     return this._writeMetadata(this.toFileId(metadataFile), publicKey, metadata)

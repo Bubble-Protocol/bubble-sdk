@@ -2,9 +2,10 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { ErrorCodes, assert } from '@bubble-protocol/core';
+import { BubbleFilename, ErrorCodes, assert } from '../../../core';  // '@bubble-protocol/core';
 import { ecies } from '@bubble-protocol/crypto';
 import { Bubble } from '../Bubble.js';
+import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy';
 
 /**
  * A bubble with a user metadata file named after the user's account address, encrypted using 
@@ -41,13 +42,14 @@ export class UserEncryptedBubble extends Bubble {
    * 
    *   (String: data) => { return Promise to resolve data decrypted with the user's private key }
    * 
-   * @param {EncryptionPolicy} encryptionPolicy encryption policy for this bubble.
+   * @param {EncryptionPolicy} encryptionPolicy optional encryption policy for this bubble. If not 
+   * given, a random AESGCM encryption policy will be used.
    */
-  constructor(contentId, provider, user, encryptionPolicy ) {
+  constructor(contentId, provider, user, encryptionPolicy, options={}) {
     assert.isObject(user, 'user');
     assert.isHexString(user.address, 'user address');
     ecies.assert.isCompressedPublicKey(user.cPublicKey, 'user cPublicKey');
-    super(contentId, provider, user.signFunction, encryptionPolicy);
+    super(contentId, provider, user.signFunction, encryptionPolicy || new AESGCMEncryptionPolicy());
     if (user.decryptFunction) {
       assert.isFunction(user.decryptFunction, 'user decrypt function');
       this.userDecryptFunction = user.decryptFunction;
@@ -57,7 +59,9 @@ export class UserEncryptedBubble extends Bubble {
       this.userDecryptFunction = (data) => Promise.resolve(ecies.decrypt(user.privateKey, data));
     }
     this.user = user;
-    this.metadataFile = this.toFileId(user.address);
+    this.metadataFile = options.metadataFile || this.toFileId(user.address);
+    this.metadataFilename = new BubbleFilename(this.metadataFile);
+    if (!this.metadataFilename.isValid()) throw new Error('invalid metadataFile option');
   }
 
   /**
@@ -94,6 +98,10 @@ export class UserEncryptedBubble extends Bubble {
    */
   create(metadata = {}, options) {
     return super.create(options)
+      .then(contentId => {
+        if (this.metadataFilename.hasDirectory()) return this.mkdir(this.metadataFilename.getPermissionedPart()).then(() => contentId);
+        else return contentId;
+      })
       .then(contentId => {
         return this.writeMetadata(metadata).then(() => contentId);
       })
