@@ -13,28 +13,30 @@ export class RamBasedBubbleServer {
     this.guardian = new Guardian(this.dataServer, blockchainProvider, host+':'+port);
     const guardian = this.guardian;
 
-    function post(method, params, callback) {
-      guardian.post(method, params)
-        .then(response => {
-          callback(null, response);
-        })
-        .catch(error => {
-          if (!error.code) console.log(error);
-          callback({code: error.code, message: error.message, cause: error.cause});
-        })
+    function makeMethod(method) {
+      return function (params, callback) {
+        guardian.post(method, params)
+          .then(response => {
+            callback(null, response);
+          })
+          .catch(error => {
+            if (!error.code) console.log(error);
+            callback({code: error.code, message: error.message, cause: error.cause});
+          });
+      };
     }
-
+    
     this.methods = {
       ping: (_, callback) => { callback(null, 'pong') },
-      create: (params, callback) => { post('create', params, callback) },
-      write:  (params, callback) => { post('write', params, callback) },
-      append:  (params, callback) => { post('append', params, callback) },
-      read:  (params, callback) => { post('read', params, callback) },
-      delete:  (params, callback) => { post('delete', params, callback) },
-      mkdir:  (params, callback) => { post('mkdir', params, callback) },
-      list:  (params, callback) => { post('list', params, callback) },
-      getPermissions:  (params, callback) => { post('getPermissions', params, callback) },
-      terminate:  (params, callback) => { post('terminate', params, callback) },
+      create: makeMethod('create'),
+      write: makeMethod('write'),
+      append: makeMethod('append'),
+      read: makeMethod('read'),
+      delete: makeMethod('delete'),
+      mkdir: makeMethod('mkdir'),
+      list: makeMethod('list'),
+      getPermissions: makeMethod('getPermissions'),
+      terminate: makeMethod('terminate'),
     };
 
     const rpcServer = new jayson.Server(this.methods);
