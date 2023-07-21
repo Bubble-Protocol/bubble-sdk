@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { BubbleFilename, ErrorCodes, assert } from '../../../core';  // '@bubble-protocol/core';
+import { BubbleFilename, ErrorCodes, assert } from '@bubble-protocol/core';
 import { ecies } from '@bubble-protocol/crypto';
 import { Bubble } from '../Bubble.js';
 import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy';
