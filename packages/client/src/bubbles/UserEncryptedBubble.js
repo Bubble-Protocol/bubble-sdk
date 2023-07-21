@@ -5,7 +5,7 @@
 import { BubbleFilename, ErrorCodes, assert } from '@bubble-protocol/core';
 import { ecies } from '@bubble-protocol/crypto';
 import { Bubble } from '../Bubble.js';
-import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy';
+import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy.js';
 
 /**
  * A bubble with a user metadata file named after the user's account address, encrypted using 
