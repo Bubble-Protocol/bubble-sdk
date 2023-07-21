@@ -1,5 +1,5 @@
 import { BubblePermissions, ContentId, ErrorCodes } from '../packages/client/node_modules/@bubble-protocol/core';
-import { BubbleContentManager, ContentManager, encryptionPolicies, toFileId } from '../packages/client';
+import { BubbleContentManager, ContentManager, encryptionPolicies, toDelegateSignFunction, toFileId } from '../packages/client';
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requester, requesterBubble, requesterSign } from './mockups/test-bubble.js';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint.js';
@@ -1049,22 +1049,11 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         })
       }
 
-      function constructDelegateSignFunction(signFunction, delegate) {
-        return (hash) => {
-          return signFunction(hash).then(sig => {
-            return {
-              signature: sig,
-              delegate: delegate
-            }
-          })
-        }
-      }
-
       test('succeeds if delegate has admin permissions', async () => {
         const delegation = new Delegation(requester.address, 'never');
         delegation.permitAccessToAllBubbles();
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .resolves.not.toThrow();
       })
@@ -1076,7 +1065,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           contract: contract.options.address
         })
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .resolves.not.toThrow();
       })
@@ -1089,7 +1078,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           provider: BUBBLE_SERVER_URL
         })
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .resolves.not.toThrow();
       })
@@ -1098,7 +1087,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         const delegation = new Delegation(requester.address, Date.now()/1000 - 1);
         delegation.permitAccessToAllBubbles();
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
@@ -1106,7 +1095,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       test('fails with permission error if delegate has no permissions', async () => {
         const delegation = new Delegation(requester.address, 'never');
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
@@ -1114,7 +1103,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
       test('fails with JSON 2.0 parameter error if delegation is not signed', async () => {
         const delegation = new Delegation(requester.address, 'never');
         delegation.permitAccessToAllBubbles();
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: JSON_RPC_ERROR_INVALID_METHOD_PARAMS});
       })
@@ -1123,7 +1112,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
         const delegation = new Delegation(owner.address, 'never');
         delegation.permitAccessToAllBubbles();
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
@@ -1135,7 +1124,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           contract: contract.options.address
         })
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
@@ -1147,7 +1136,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           contract: owner.address
         })
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
@@ -1160,7 +1149,7 @@ describe('end-to-end bubble to server and blockchain tests', () => {
           provider: BUBBLE_SERVER_URL+'/'
         }))
         await delegation.sign(ownerSign);
-        const signFunction = constructDelegateSignFunction(requesterSign, delegation);
+        const signFunction = toDelegateSignFunction(requesterSign, delegation);
         await expect(ContentManager.write(getContentId(), 'hello', signFunction))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })

@@ -31,9 +31,9 @@ export const requester = {
 };
 requester.key = new Key(requester.privateKey);
 
-export const ownerSign = owner.key.promiseToSign;
+export const ownerSign = owner.key.signFunction;
 
-export const requesterSign = requester.key.promiseToSign;
+export const requesterSign = requester.key.signFunction;
 
 
 //
@@ -74,10 +74,7 @@ export async function constructTestBubble(options={}) {
   let bubbleProvider;
   if (options.protocol === 'ws:') {
     bubbleProvider = new bubbleProviders.WebsocketBubbleProvider(new URL(BUBBLE_WS_SERVER_URL));
-    await new Promise((resolve, reject) => {
-      bubbleProvider.on('open', resolve);
-      bubbleProvider.on('error', reject);
-    });
+    await bubbleProvider.connect();
   }
   else {
     bubbleProvider = new bubbleProviders.HTTPBubbleProvider(new URL(BUBBLE_SERVER_URL));

@@ -41,7 +41,7 @@ export class BubbleFactory {
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
   createUnencryptedBubble(contentId, options={}) {
-    return new Bubble(contentId, options.provider || contentId.provider, user.signFunction);
+    return new Bubble(contentId, options.provider || contentId.provider, user.signFunction, options);
   }
 
   /**
@@ -51,7 +51,7 @@ export class BubbleFactory {
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
   createAESGCMEncryptedBubble(contentId, options={}) {
-    return new Bubble(contentId, options.provider || contentId.provider, user.signFunction, new AESGCMEncryptionPolicy(options.encryptionKey));
+    return new Bubble(contentId, options.provider || contentId.provider, user.signFunction, new AESGCMEncryptionPolicy(options.encryptionKey), options);
   }
 
   /**
@@ -90,7 +90,7 @@ export class BubbleFactory {
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
   createUserEncryptedBubble(contentId, encryptionPolicy, options={}) {
-    return new UserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy);
+    return new UserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy, options);
   }
 
   /**
@@ -102,7 +102,7 @@ export class BubbleFactory {
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
   createMultiUserEncryptedBubble(contentId, encryptionPolicy, options={}) {
-    return new MultiUserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy);
+    return new MultiUserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy, options);
   }
 
 }
