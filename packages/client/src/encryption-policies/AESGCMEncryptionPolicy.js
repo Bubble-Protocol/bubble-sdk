@@ -32,6 +32,7 @@ export class AESGCMEncryptionPolicy extends EncryptionPolicy {
   }
 
   encrypt(data) {
+    if (assert.isString(data)) data = Buffer.from(data);
     const iv = Crypto.getRandomValues(new Uint8Array(12));
     return this._getKey()
       .then(key => {
