@@ -36,6 +36,11 @@ Each piece of off-chain content is uniquely identified globally by a *Content ID
 The set of off-chain content controlled by a smart contract, combined with the on-chain logic of the contract itself, is known as a **bubble**, and is where Bubble Protocol gets it's name. For more details, see [Bubbles](#bubbles) below.
 
 See the [whitepaper](https://bubbleprotocol.com/docs/whitepaper) for more details.
+
+<p align="center">
+  <img src="docs/img/bubble-diagram.png" width="500">
+</p>
+
 ### Off-Chain Storage Services
 
 Off-chain storage services can be public or private, centralised or decentralised.
