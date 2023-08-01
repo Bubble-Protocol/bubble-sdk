@@ -19,6 +19,25 @@ export class BubbleProvider {
     throw new Error('BubbleProvider.post is a virtual function and must be implemented');
   }
 
+  /**
+   * Performs any connection functions required by the provider.
+   * 
+   * @param {Object} options client provided options
+   * @returns Promise to open this provider's connection
+   */
+  open(options) {
+    return Promise.resolve();
+  }
+
+  /**
+   * Performs any connection closure required by the provider.
+   * 
+  * @returns Promise to close this provider's connection
+   */
+  close(options) {
+    return Promise.resolve();
+  }
+
 }
 
 
