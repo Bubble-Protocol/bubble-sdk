@@ -51,10 +51,8 @@ export class WebsocketBubbleProvider extends BubbleProvider {
   requestId = 0;
 
   eventListeners = {
-    open: [],
-    close: [],
-    error: [],
-    available: []
+    "state-change": [],
+    error: []
   }
 
   timers = {
@@ -83,10 +81,15 @@ export class WebsocketBubbleProvider extends BubbleProvider {
     this._reconnect = this._reconnect.bind(this);
   }
 
+  
+  open() {
+    return this.connect();
+  }
+
 
   connect() {
     if (this.state !== STATE.closed && this.state !== STATE.reconnecting) throw new Error('cannot connect in the' + this.state + 'state');
-    if (this.state !== STATE.reconnecting) this.state = STATE.connecting;
+    if (this.state !== STATE.reconnecting) this._setState(STATE.connecting);
 
     // Construct websocket
     this.ws = new WebSocket(this.url.href);
@@ -98,7 +101,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
     // Respond to client
     if (this.ws.readyState === WebSocket.OPEN) {
-      this.state = STATE.open;
+      this._setState(STATE.open);
       return Promise.resolve();
     }
     else return new Promise((resolve, reject) => {
@@ -106,10 +109,8 @@ export class WebsocketBubbleProvider extends BubbleProvider {
       this.ws.on('error', reject);
       this.ws.on('open', () => {
         clearTimeout(this.timers.connectTimer);
-        this.state = STATE.open;
+        this._setState(STATE.open);
         this._sendHeartbeat();
-        this._notifyListeners('open');
-        this._notifyListeners('available', true);
         resolve();
       });
     })
@@ -167,7 +168,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
   
   close() {
     this._clearTimers();
-    this.state = STATE.closing;
+    this._setState(STATE.closing);
     return new Promise(resolve => {
       this.ws.on('close', resolve);
       this.ws.close();
@@ -224,7 +225,6 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
   _onClose(event) {
     this._clearTimers();
-    this._notifyListeners('available', false, event);
     this._rejectAllRequests(event);
     if (this.state === STATE.open) {
       this.reconnectAttempts = 0;
@@ -232,18 +232,16 @@ export class WebsocketBubbleProvider extends BubbleProvider {
       this._reconnect();
     }
     else {
-      this.state = STATE.closed;
-      this._notifyListeners('close', event);
+      this._setState(STATE.closed);
     }
   }
 
   _reconnect() {
     if (this.reconnectAttempts++ >= this.options.reconnectAttempts) {
-      this.state = STATE.closed;
-      this._notifyListeners('close', this.reconnectTriggerEvent);
+      this._setState(STATE.closed);
     }
     else {
-      this.state = STATE.reconnecting;
+      this._setState(STATE.reconnecting);
       this.connect()
         .catch(error => {
           this.timers.reconnectTimer = setTimeout(this._reconnect, this.options.reconnectPeriod);
@@ -259,6 +257,11 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
   _notifyListeners(event, ...payload) {
     this.eventListeners[event].forEach(l => l(...payload));
+  }
+
+  _setState(state) {
+    if (this.state !== state) this._notifyListeners('state-change', state);
+    this.state = state;
   }
 
 }
