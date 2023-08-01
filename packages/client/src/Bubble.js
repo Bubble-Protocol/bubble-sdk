@@ -37,11 +37,6 @@ export class Bubble {
   encryptionPolicy = new NullEncryptionPolicy();
 
   /**
-   * @dev record of subscriptions allowing them to be unsubscribed when this bubble is closed
-   */
-  subscriptions = [];
-
-  /**
    * Represents a Bubble hosted on an external Bubble server.
    * 
    * @param {ContentId} contentId the id of this bubble
@@ -55,7 +50,7 @@ export class Bubble {
    * The type and format of the signature must be appropriate to the blockchain platform.
    * @param {EncryptionPolicy} encryptionPolicy optional encryption policy
    */
-  constructor(contentId, provider, signFunction, encryptionPolicy ) {
+  constructor(contentId, provider, signFunction, encryptionPolicy) {
     if (!Crypto) throw new Error('missing crypto object');
     if (assert.isString(provider)) provider = new HTTPBubbleProvider(provider);
     assert.isInstanceOf(provider, BubbleProvider, "provider");
@@ -64,6 +59,16 @@ export class Bubble {
     if (encryptionPolicy) this.setEncryptionPolicy(encryptionPolicy);
     this.rpcFactory = new RPCFactory(contentId.chain, contentId.contract, signFunction);
     this.post = this.post.bind(this);
+  }
+
+  /**
+   * Opens the provider
+   * 
+   * @param {Object} options forwarded to provider
+   * @returns provider response
+   */
+  initialise(options) {
+    return this.provider.open(options);
   }
 
   /**
@@ -84,7 +89,10 @@ export class Bubble {
    * @returns {Promise} Promise to resolve when the bubble is constructed
    */
   create(options) {
-    return this.rpcFactory.create(options)
+    return this.provider.open(options)
+      .then(() => {
+        return this.rpcFactory.create(options)
+      })
       .then(this.post)
       .then(() => { 
         return this.getContentId() 
@@ -242,7 +250,6 @@ export class Bubble {
       .then(rpc => {
         return this.provider.subscribe(rpc.params, wrappedListener)
           .then(subscription => {
-            this.subscriptions.push(subscription.id);
             if (!decrypt || !assert.isString(subscription.data)) return subscription;
             else return safeDecrypt(this.encryptionPolicy, path, subscription.data).then(data => {return {...subscription, data}});
           })
@@ -260,10 +267,6 @@ export class Bubble {
     return this.rpcFactory.unsubscribe(id, options)
     .then(rpc => {
       return this.provider.unsubscribe(rpc.params);
-    })
-    .then(result => {
-      this.subscriptions = this.subscriptions.filter(sub => sub !== id);
-      return result;
     })
   }
 
@@ -330,6 +333,15 @@ export class Bubble {
     });
     if (path) id.setFile(path);
     return id;
+  }
+
+  /**
+   * Closes this bubble's provider
+   * 
+   * @returns provider response
+   */
+  close() {
+    return this.provider.close();
   }
 
   /**
