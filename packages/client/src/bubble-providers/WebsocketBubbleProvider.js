@@ -26,14 +26,68 @@ const DEFAULT_OPTIONS = {
   reconnectPeriod: 5000
 }
 
-
-const STATE = {
+const STATES = {
   closed: 'closed',
   connecting: 'connecting',
   reconnecting: 'reconnecting',
   open: 'open',
   closing: 'closing'
 }
+
+const TRANSITIONS = {
+  connected: 'connected',
+  connect: 'connect',
+  close: 'close',
+  closed: 'closed',
+  failed: 'failed',
+}
+
+const EVENTS = {
+  open: 'open',
+  close: 'close',
+  reconnect: 'reconnect',
+  fail: 'fail',
+  error: 'error'
+}
+
+const STATE_MACHINE = {
+  'closed': {
+    'connected': {},
+    'connect': {state: STATES.connecting},
+    'close': {error: "already closed"},
+    'closed': {},
+    'failed': {},
+  },
+  'connecting': {
+    'connected': {state: STATES.open, event: EVENTS.open},
+    'connect': {error: "Cannot connect in the connecting state"},
+    'close': {state: STATES.closing},
+    'closed': {},
+    'failed': {state: STATES.closed, event: EVENTS.fail},
+  },
+  'reconnecting': {
+    'connected': {state: STATES.open, event: EVENTS.reconnect},
+    'connect': {error: "Cannot connect in the reconnecting state"},
+    'close': {state: STATES.closing},
+    'closed': {},
+    'failed': {state: STATES.closed, event: EVENTS.fail},
+  },
+  'open': {
+    'connected': {},
+    'connect': {error: "already open"},
+    'close': {state: STATES.closing},
+    'closed': {},
+    'failed': {state: STATES.reconnecting},
+  },
+  'closing': {
+    'connected': {},
+    'connect': {error: "Cannot connect in the closing state"},
+    'close': {},
+    'closed': {state: STATES.closed, event: EVENTS.close},
+    'failed': {state: STATES.closed, event: EVENTS.fail},
+  },
+}
+
 
 /**
  * BubbleProvider using the websocket protocols.
@@ -43,17 +97,15 @@ const STATE = {
  */
 export class WebsocketBubbleProvider extends BubbleProvider {
 
-  STATES = STATE;
-
-  state = STATE.closed;
+  state = STATES.closed;
   subscriptions = new Map();
   requests = new Map();
   requestId = 0;
 
   eventListeners = {
-    "state-change": [],
+    event: [],
     error: []
-  }
+  };
 
   timers = {
     connectTimer: undefined,
@@ -74,6 +126,11 @@ export class WebsocketBubbleProvider extends BubbleProvider {
     // Setup options
     this.options = {...DEFAULT_OPTIONS, ...options};
 
+    // Setup listeners
+    for (const event of Object.keys(EVENTS)) {
+      this.eventListeners[event] = [];
+    }
+  
     // Bind handlers
     this.sendHeartbeat = this._sendHeartbeat.bind(this);
     this._handleMessage = this._handleMessage.bind(this);
@@ -88,8 +145,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
 
   connect() {
-    if (this.state !== STATE.closed && this.state !== STATE.reconnecting) throw new Error('cannot connect in the' + this.state + 'state');
-    if (this.state !== STATE.reconnecting) this._setState(STATE.connecting);
+    this._stateTransition(TRANSITIONS.connect);
 
     // Construct websocket
     this.ws = new WebSocket(this.url.href);
@@ -101,15 +157,23 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
     // Respond to client
     if (this.ws.readyState === WebSocket.OPEN) {
-      this._setState(STATE.open);
+      this._stateTransition(TRANSITIONS.connected);
       return Promise.resolve();
     }
     else return new Promise((resolve, reject) => {
-      this.timers.connectTimer = setTimeout(() => { this.ws.close(4000, 'connect timeout'); reject('timeout') }, this.options.connectTimeout);
-      this.ws.on('error', reject);
+      this.timers.connectTimer = 
+        setTimeout(() => { 
+          this.ws.close(4000, 'connect timeout'); 
+          this._stateTransition(TRANSITIONS.failed);
+          reject('timeout');
+        }, this.options.connectTimeout);
+      this.ws.on('error', error => {
+        this._stateTransition(TRANSITIONS.failed);
+        reject(error);
+      });
       this.ws.on('open', () => {
         clearTimeout(this.timers.connectTimer);
-        this._setState(STATE.open);
+        this._stateTransition(TRANSITIONS.connected);
         this._sendHeartbeat();
         resolve();
       });
@@ -120,7 +184,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
   post(method, params) {
     return new Promise((resolve, reject) => {
-      if (this.state !== STATE.open) reject({code: ErrorCodes.PROVIDER_CLOSED_ERROR_CODE, message: 'provider is not open'});
+      if (this.state !== STATES.open) reject({code: ErrorCodes.PROVIDER_CLOSED_ERROR_CODE, message: 'provider is not open'});
       if (this.ws.readyState !== WebSocket.OPEN) reject({code: ErrorCodes.PROVIDER_CLOSED_ERROR_CODE, message: 'websocket is not open'});
       const id = this.requestId++;
       const timeout = setTimeout(() => {
@@ -167,8 +231,8 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
   
   close() {
+    this._stateTransition(TRANSITIONS.close);
     this._clearTimers();
-    this._setState(STATE.closing);
     return new Promise(resolve => {
       this.ws.on('close', resolve);
       this.ws.close();
@@ -226,24 +290,22 @@ export class WebsocketBubbleProvider extends BubbleProvider {
   _onClose(event) {
     this._clearTimers();
     this._rejectAllRequests(event);
-    if (this.state === STATE.open) {
+    this._stateTransition(TRANSITIONS.failed);
+    if (this.state === STATES.reconnecting) {
       this.reconnectAttempts = 0;
       this.reconnectTriggerEvent = event;
       this._reconnect();
-    }
-    else {
-      this._setState(STATE.closed);
     }
   }
 
   _reconnect() {
     if (this.reconnectAttempts++ >= this.options.reconnectAttempts) {
-      this._setState(STATE.closed);
+      this._stateTransition(TRANSITIONS.failed);
     }
     else {
-      this._setState(STATE.reconnecting);
       this.connect()
-        .catch(error => {
+        .then(() => this._notifyListeners('reconnected'))
+        .catch(() => {
           this.timers.reconnectTimer = setTimeout(this._reconnect, this.options.reconnectPeriod);
         })
     }
@@ -259,9 +321,13 @@ export class WebsocketBubbleProvider extends BubbleProvider {
     this.eventListeners[event].forEach(l => l(...payload));
   }
 
-  _setState(state) {
-    if (this.state !== state) this._notifyListeners('state-change', state);
-    this.state = state;
+  _stateTransition(trigger) { 
+    const transition = STATE_MACHINE[this.state][trigger];
+    if (transition.error) throw new Error(transition.error);
+    if (transition.state) this.state = transition.state;
+    else console.warn('WebsocketBubbleProvider: unexpected state transition', this.state, trigger);
+    if (transition.event) this._notifyListeners(transition.event);
+    if (transition.event) this._notifyListeners('event', transition.event, this.state);
   }
 
 }
