@@ -7,8 +7,6 @@ import { ecies } from '../packages/crypto/src';
 import multiUserContractSrc from './contracts/MultiUserContract.json';
 
 
-const publicDir = "0x0000000000000000000000000000000000000000000000000000000000000001";
-const privateDir = "0x0000000000000000000000000000000000000000000000000000000000000002";
 const logFile = "0x0000000000000000000000000000000000000000000000000000000000000003";
 
 
@@ -64,14 +62,14 @@ describe('BubbleFactory', () => {
     }, 20000)
 
     test('owner can create the bubble with metadata', async () => {
-      await expect(ownerBubble.create(OWNER_METADATA)).resolves.toMatchObject(ownerBubble.contentId);
-      expect(ownerBubble.metadata).toStrictEqual(OWNER_METADATA);
+      await expect(ownerBubble.create({userMetadata: OWNER_METADATA})).resolves.toMatchObject(ownerBubble.contentId);
+      expect(ownerBubble.userMetadata).toStrictEqual(OWNER_METADATA);
     })
 
     describe('initialise bubble', () => {
 
       beforeAll(async () => {
-        await expect(ownerBubble.create(OWNER_METADATA, {silent: true})).resolves.not.toThrow();
+        await expect(ownerBubble.create({userMetadata: OWNER_METADATA, silent: true})).resolves.not.toThrow();
       })
       
       test('owner can add requester metadata', async () => {
@@ -81,14 +79,14 @@ describe('BubbleFactory', () => {
       test('requester can initialise', async () => {
         await expect(ownerBubble.addUser(requester.address, requester.key.cPublicKey, REQUESTER_METADATA)).resolves.not.toThrow();
         await expect(requesterBubble.initialise()).resolves.toStrictEqual(REQUESTER_METADATA);
-        expect(requesterBubble.metadata).toStrictEqual(REQUESTER_METADATA);
+        expect(requesterBubble.userMetadata).toStrictEqual(REQUESTER_METADATA);
       })
 
       test('owner can initialise', async () => {
         const ownerBubbleFactory = new BubbleFactory(ownerSign, owner.key);
         const newBubble = ownerBubbleFactory.createAESGCMEncryptedMultiUserBubble(bubble.contentId);
         await expect(newBubble.initialise()).resolves.toStrictEqual(OWNER_METADATA);
-        expect(newBubble.metadata).toStrictEqual(OWNER_METADATA);
+        expect(newBubble.userMetadata).toStrictEqual(OWNER_METADATA);
       })
 
       test('AESGCMEncryptedUserBubble can initialise with optional provider', async () => {
@@ -119,22 +117,22 @@ describe('BubbleFactory', () => {
 
       beforeEach(async () => {
         deleteAllBubbles();
-        await expect(ownerBubble.create(OWNER_METADATA)).resolves.not.toThrow();
+        await expect(ownerBubble.create({userMetadata: OWNER_METADATA})).resolves.not.toThrow();
       })
       
-      test('writeMetadata updates the bubble and local metadata', async () => {
-        expect(ownerBubble.metadata).toStrictEqual(OWNER_METADATA);
-        await expect(ownerBubble.writeMetadata(REQUESTER_METADATA)).resolves.not.toThrow();
-        expect(ownerBubble.metadata).toStrictEqual(REQUESTER_METADATA);
+      test('writeUserMetadata updates the bubble and local metadata', async () => {
+        expect(ownerBubble.userMetadata).toStrictEqual(OWNER_METADATA);
+        await expect(ownerBubble.writeUserMetadata(REQUESTER_METADATA)).resolves.not.toThrow();
+        expect(ownerBubble.userMetadata).toStrictEqual(REQUESTER_METADATA);
       })
 
       test('addUser can update the requester metadata', async () => {
         await expect(ownerBubble.addUser(requester.address, requester.key.cPublicKey, REQUESTER_METADATA)).resolves.not.toThrow();
         await expect(requesterBubble.initialise()).resolves.toStrictEqual(REQUESTER_METADATA);
-        expect(requesterBubble.metadata).toStrictEqual(REQUESTER_METADATA);
+        expect(requesterBubble.userMetadata).toStrictEqual(REQUESTER_METADATA);
         await expect(ownerBubble.addUser(requester.address, requester.key.cPublicKey, OWNER_METADATA)).resolves.not.toThrow();
         await expect(requesterBubble.initialise()).resolves.toStrictEqual(OWNER_METADATA);
-        expect(requesterBubble.metadata).toStrictEqual(OWNER_METADATA);
+        expect(requesterBubble.userMetadata).toStrictEqual(OWNER_METADATA);
       })
 
     })
@@ -143,7 +141,7 @@ describe('BubbleFactory', () => {
     describe('metadata is encrypted', () => {
 
       beforeAll(async () => {
-        await expect(ownerBubble.create(OWNER_METADATA, {silent: true})).resolves.not.toThrow();
+        await expect(ownerBubble.create({userMetadata: OWNER_METADATA, silent: true})).resolves.not.toThrow();
       })
       
       test('owner metadata is encrypted', async () => {
@@ -164,7 +162,7 @@ describe('BubbleFactory', () => {
 
       beforeAll(async () => {
         deleteAllBubbles();
-        await expect(ownerBubble.create(OWNER_METADATA)).resolves.not.toThrow();
+        await expect(ownerBubble.create({userMetadata: OWNER_METADATA})).resolves.not.toThrow();
         await expect(ownerBubble.addUser(requester.address, requester.key.cPublicKey, REQUESTER_METADATA)).resolves.not.toThrow();
         await expect(requesterBubble.initialise()).resolves.toStrictEqual(REQUESTER_METADATA);
       })
@@ -194,7 +192,7 @@ describe('BubbleFactory', () => {
       test('removed user can no longer initialise', async () => {
         await expect(requesterBubble.initialise()).resolves.toStrictEqual(REQUESTER_METADATA);
         await expect(ownerBubble.removeUser(requester.address)).resolves.not.toThrow();
-        await expect(requesterBubble.initialise()).rejects.toThrow('metadata file is missing');
+        await expect(requesterBubble.initialise()).rejects.toThrow('user metadata file is missing');
       })
 
     })

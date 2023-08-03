@@ -309,7 +309,9 @@ await manager.write(contentId, 'hello world');
 
 ## Bubble Class
 
-The [`Bubble`](./src/Bubble.js) class encapsulates a bubble hosted on a remote storage system.  Once constructed, content within the bubble can be accessed through the methods of the `Bubble` class using just the content's file id.
+The [`Bubble`](./src/Bubble.js) class encapsulates a bubble hosted on a remote storage system. Once constructed, content within the bubble can be accessed through the methods of the `Bubble` class using just the content's file id.  
+
+The Bubble class is designed to be extended to meet your use case.  This SDK includes some off-the-shelf bubble implementations in the [bubbles](./src/bubbles/) directory.  See [`BubbleFactory`](#bubblefactory)
 
 Example of using the `Bubble` class to create a bubble, write a file, list a directory and terminate the bubble.  Assumes the bubble's smart contract is already deployed to the blockchain and that you have access permissions.
 
@@ -729,6 +731,127 @@ bubble servers add bubble-private-cloud https://vault.bubbleprotocol.com/v2/ethe
 bubble content create-bubble bubble-private-cloud example-bubble --chain ethereum
 ```
 
+## ManagedBubble
+
+The `ManagedBubble` class is an extension of the `Bubble` class that accepts a `BubbleManager`.  A `BubbleManager` automatically manages one or more pieces of content within the bubble, constructing it at create time, reading it at initialisation time, and subscribing to content when required.
+
+Multiple `BubbleManagers` can be passed to a `ManagedBubble` allowing different bubble content to be encapsulated in different managers.  Use the [`ParallelBubbleMultiManager`](./src/bubble-managers/ParallelBubbleMultiManager.js) or [`SequentialBubbleMultiManager`](./src/bubble-managers/SequentialBubbleMultiManager.js) to group managers together into one.
+
+In the following messaging dApp example, each chat between users is held in its own chat bubble. A chat bubble is constructed using a custom `BubbleManager` to manage the chat's metadata and messages. A `BubbleManager` has three methods: `create`, `initialise` and `reconnect`:
+- `create` - called by `ManagedBubble` when the bubble is first created, the manager constructs a chat directory and a metadata file. 
+- `initialise` - called by `ManagedBubble` when an existing bubble is initialised, the manager reads the metadata from the bubble and checks for new messages, subscribing to the chat directory to receive new messages automatically. 
+- `reconnect` - finally, if the dApp loses a connection to the bubble server it must re-subscribe to the chat directory when the connection is re-established. The chat bubble uses the `WebsocketBubbleProvider` reconnect event to determine when to call the `reconnect` method.
+
+```javascript
+import { BubbleManager, toFileId } from '@bubble-protocol/client';
+
+const CONTENT = {
+  metadataFile: toFileId(1),
+  chatDirectory: toFileId(2)
+}
+
+class ChatBubbleManager extends BubbleManager{
+
+  create(bubble, options){
+    // Called when the bubble is first created
+    return Promise.all([
+      bubble.mkdir(CONTENT.chatDirectory, options),
+      bubble.write(CONTENT.metadataFile, JSON.stringify(bubble.metadata), options)
+    ])
+    .then(() => this._subscribeToContent(bubble, options));
+  }
+
+  initialise(bubble, options){
+    // Called instead of create to initialise the bubble when it already exists
+    return Promise.all([
+      this._subscribeToContent(bubble, options),
+      bubble.read(CONTENT.metadataFile, options)
+        .then(json => {
+          bubble.metadata = JSON.parse(json);
+        })
+    ]);
+  }
+
+  reconnect(bubble, ...params) {
+    // Called when the WebSocketBubbleProvider reconnects after a disconnect
+    return _this.subscribeToContent(bubble);
+  }
+
+  _subscribeToContent(bubble, options={}) {
+    // Subscribe to the chat directory. The `since` option will cause the resolved subscription 
+    // to contain a list of messages newer than the bubble's last update time.
+    this.bubble = bubble;
+    return bubble.subscribe(CONTENT.chatDirectory, this._handleChatNotification.bind(this), {...options, since: bubble.lastUpdateTime})
+      .then(this._handleChatNotification.bind(this))
+  }
+
+  _handleChatNotification(notification) {
+    // The notification contains a list of new messages, each in a different file
+    notification.data.forEach(file => this.bubble.readMessage(file));
+  }
+
+}
+
+
+class EncryptedChatBubble extends ManagedBubble {
+
+  metadata = {};
+  messages = [];
+  lastUpdateTime = 0;
+  userManager;
+
+  constructor(bubbleId, key, metadata) {
+
+    // Setup the provider
+    const provider = new WebsocketBubbleProvider(bubbleId.provider);
+
+    // Setup the encryption policy for all bubble content
+    const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy();
+
+    // Setup the bubble manager.  In this case, two managers chained together:
+    //   1. to manage the user metadata for each member of the chat (allows them to recover the bubble encryption key)
+    //   2. to manage the chat metadata and messages
+    this.userManager = new bubbleManagers.MultiUserEncryptedBubbleManager(key);
+    const bubbleManager = new bubbleManagers.SequentialBubbleMultiManager(
+      userManager,
+      new ChatBubbleManager()
+    );
+
+    // Construct the bubble
+    super(bubbleId, provider, key.signFunction, encryptionPolicy, bubbleManager);
+
+    // Handle a websocket reconnect so that subscriptions can be re-established
+    provider.on('reconnect', bubbleManager.reconnect.bind(bubbleManager)});
+
+  }
+
+  create(metadata, members, options) {
+    // Create the bubble and add members
+    this.metadata = metadata;
+    return super.create(options)
+      .then(() => {
+        return Promise.all(members.map(m => this.userManager.addUser(m.cPublicKey)));
+      })
+  }
+
+  readMessage(fileDetails) {
+    // Read the message from its file
+    return this.read(fileDetails.name)
+      .then(json => {
+        const message = JSON.parse(json);
+        message.created = messageDetails.created;
+        message.modified = messageDetails.modified;
+        this.messages.push(message);
+        this.lastUpdateTime = message.modified;
+        ...
+      })
+  }
+
+  ...
+
+}
+```
+
 ## Glossary
 
 #### Access Control Contract
@@ -743,11 +866,19 @@ Globally unique identifier for a file, directory or bubble.  See [Content IDs](#
 
 A bubble is an off-chain container for files and directories controlled by a smart contract (an *Access Control Contract*), and where Bubble Protocol got it's name.  Every piece of content is held in a bubble on an off-chain storage service, protected by the access permissions defined in its smart contract.  See the [bubble-sdk README](https://github.com/Bubble-Protocol/bubble-sdk#bubbles) for more information about bubbles, or the [Bubble Class](#bubble-class) above for how to interact with them.
 
+#### Bubble Manager
+
+A class used by a [`ManagedBubble`](#managedbubble) to automatically manage content within a bubble. A bubble manager handles the construction of content at create time, the reading of content at initialisation time, and automatically re-subscribes to content when the server reconnects after a connection failure.
+
 #### Bubble Provider
 
 A class used by a Content Manager or `Bubble` to post requests to a remote storage service using the service's communications protocol.  Most services use JSON-RPC 2.0 over HTTP or HTTPS and so the provided [`HTTPBubbleProvider`](src/bubble-providers/HTTPBubbleProvider.js) is used by default.
 
 If your bubble server uses a different protocol then you can create your own provider to implement the [`BubbleProvider`](https://github.com/Bubble-Protocol/bubble-sdk/blob/main/packages/core/src/BubbleProvider.js) interface.  This can be passed to a `Bubble` on construction.
+
+#### Delegation
+
+A [`Delegation`](#delegation) lets a private key construct a signed permission for a different key to temporarily access a bubble.  Delegations are designed to allow multiple applications on multiple devices to act as one, but they can be used for other use cases too.
 
 #### Encryption Policy
 
@@ -782,6 +913,10 @@ const accounts = await web3.eth.getAccounts();
 const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
 ```
 **NB**: observe the `.then(toEthereumSignature)` chain in the example above.  Since Ethereum wallets prefix signed messages with the string `"\x19Ethereum Signed Message:\n"+message.length`, any sign function that uses an Ethereum-type wallet must pass its output to the `toEthereumSignature` function defined in the Crypto Library.  This prepares the signature so that the storage server's Guardian software will recognise it as having a prefix and handle it accordingly.
+
+#### Subscription
+
+[Subscriptions](#subscriptions) provide the client of a `Bubble` with near real-time notifications of updates to content.  Subscribing to a file will instruct the host bubble server to notify the client whenever the file is created, updated or deleted.  Subscribing to a directory will result in a notification whenever the directory is created or deleted, or when a file within it is created, updated or deleted.  Subscriptions only work over a WebSocket connection and are subject to the user having read permission for the subscribed content.
 
 ## Dependencies
 
