@@ -5,7 +5,7 @@
 import { BubbleFilename, ErrorCodes, assert } from "@bubble-protocol/core";
 import { BubbleManager } from "../BubbleManager.js";
 import { ecies } from "@bubble-protocol/crypto";
-import { toFileId } from "../utils";
+import { toFileId } from "../utils.js";
 
 
 /**

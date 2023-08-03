@@ -5,7 +5,7 @@
 import { assert } from "@bubble-protocol/core";
 import { ecdsa } from "@bubble-protocol/crypto";
 import { UserEncryptedBubbleManager } from "./UserEncryptedBubbleManager.js";
-import { toFileId } from "../utils";
+import { toFileId } from "../utils.js";
 
 /**
  * Extension of UserEncryptedBubbleManager that manages encrypted metadata files for multiple
