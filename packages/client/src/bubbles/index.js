@@ -2,12 +2,5 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { UserEncryptedBubble } from "./UserEncryptedBubble.js";
-import { MultiUserEncryptedBubble } from "./MultiUserEncryptedBubble.js";
-
+export { ManagedBubble } from "./ManagedBubble.js"
 export { BubbleFactory } from "./BubbleFactory.js"
-
-export const bubbles = {
-  UserEncryptedBubble: UserEncryptedBubble,
-  MultiUserEncryptedBubble: MultiUserEncryptedBubble
-}

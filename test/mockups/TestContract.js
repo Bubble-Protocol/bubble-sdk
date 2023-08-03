@@ -8,19 +8,23 @@ import { Bubble, toEthereumSignFunction } from '../../packages/client';
 
 export class TestContract {
   
+  account;  // account used to deploy contract
+  accounts; // all accounts from web3.eth
   
-  constructor(web3, sourceCode) {
+  constructor(web3, sourceCode, account) {
     this.web3 = web3;
     this.sourceCode = sourceCode;
+    this.account = account;
   }
 
   async initialiseAccounts() {
     if (!this.accounts) this.accounts = await this.web3.eth.getAccounts();
+    this.account = this.account || this.accounts[0];
   }
 
   async deploy(params=[]) {
 
-    await this.initialiseAccounts();
+    if (!this.account) await this.initialiseAccounts();
 
     this.web3Contract = new this.web3.eth.Contract(this.sourceCode.abi);
 
@@ -29,9 +33,9 @@ export class TestContract {
         arguments: params
       })
       .send({
-        from: this.accounts[0],
+        from: this.account,
         gas: 1500000,
-        gasPrice: '30000000000000'
+        gasPrice: '30000000000'
       })
       .on('receipt', receipt => {
         this.address = receipt.contractAddress;
@@ -53,7 +57,7 @@ export class TestContract {
       provider: bubbleServerURL
     });
 
-    return new Bubble(bubbleId, bubbleProvider, toEthereumSignFunction((hash) => this.web3.eth.sign(hash, this.accounts[accountIndex])));
+    return new Bubble(bubbleId, bubbleProvider, toEthereumSignFunction((hash) => this.web3.eth.sign(hash, this.account)));
   }
 
 
@@ -76,7 +80,7 @@ export class TestContract {
   async testContractIsAvailable() {
     if( !this.address) throw new Error("TestContract - you must deploy the contract first");
     const file0 = '0x0000000000000000000000000000000000000000000000000000000000000000';
-    const permissionBits = await this.web3Contract.methods.getAccessPermissions(this.accounts[0], file0).call();
+    const permissionBits = await this.web3Contract.methods.getAccessPermissions(this.account, file0).call();
     const permissions = new BubblePermissions(BigInt(permissionBits));
     expect(permissions.bubbleTerminated()).toBe(false);
     expect(permissions.isDirectory()).toBe(false);

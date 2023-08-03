@@ -53,7 +53,7 @@ export async function constructTestBubble(options={}) {
 
   await contract.deploy({
       data: contractSrc.bytecode || contractSrc.bin,
-      arguments: [owner.address, requester.address]
+      arguments: options.args || [owner.address, requester.address]
     })
     .send({
       from: owner.address,
