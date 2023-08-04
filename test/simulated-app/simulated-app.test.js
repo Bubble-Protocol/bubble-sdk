@@ -3,11 +3,15 @@ import { bubbleAvailableTest, owner, ownerBubble, requester} from '../mockups/te
 import { constructTestBubble } from '../mockups/test-bubble.js';
 import '../../packages/core/test/BubbleErrorMatcher.js';
 import contractSrc from '../contracts/GroupBubble.json';
-import { assert, bubbleManagers, encryptionPolicies, toFileId } from '../../packages/client/src/index.js';
+import { assert, encryptionPolicies, toFileId, userManagers } from '../../packages/client/src/index.js';
 import { ecdsa, ecies } from '../../packages/crypto/src/index.js';
 import { Chat, CONTENT, DEFAULT_METADATA } from './Chat.js';
 
 describe('simulated application tests', () => {
+
+  const DEFAULT_USER_METADATA = {
+    title: 'simulated-app'
+  }
 
   let bubbleId;
   const encryptionKey = new ecdsa.Key().privateKey;
@@ -56,9 +60,9 @@ describe('simulated application tests', () => {
       bubbleId, 
       owner.key, 
       new encryptionPolicies.AESGCMEncryptionPolicy(encryptionKey), 
-      new bubbleManagers.MultiUserEncryptedBubbleManager(owner.key)
+      new userManagers.MultiUserManager(owner.key)
     );
-    await chat.create(DEFAULT_METADATA, {userMetadata: {title: 'simulated-app'}, silent: true});
+    await chat.create(DEFAULT_METADATA, {userMetadata: DEFAULT_USER_METADATA, silent: true});
     // confirm owner metadata file has been written
     let ownerMetadata;
     try {
@@ -83,10 +87,10 @@ describe('simulated application tests', () => {
     }
     chat.close();
     expect(typeof ownerMetadata.userEncryptionPolicy).toBe('object');
-    expect(ownerMetadata.title).toBe('simulated-app');
+    expect(ownerMetadata.metadata.title).toBe(DEFAULT_USER_METADATA.title);
     expect(chatMetadata.title).toBe(DEFAULT_METADATA.title);
     expect(typeof chat.userMetadata).toBe('object');
-    expect(chat.userMetadata.title).toBe('simulated-app');
+    expect(chat.userMetadata.title).toBe(DEFAULT_USER_METADATA.title);
     expect(typeof chat.metadata).toBe('object');
     expect(chat.metadata.title).toBe(DEFAULT_METADATA.title);
   })
@@ -97,10 +101,10 @@ describe('simulated application tests', () => {
       bubbleId, 
       owner.key, 
       new encryptionPolicies.AESGCMEncryptionPolicy(encryptionKey), 
-      new bubbleManagers.MultiUserEncryptedBubbleManager(owner.key)
+      new userManagers.MultiUserManager(owner.key)
     );
-    await chat.create(DEFAULT_METADATA, {userMetadata: {title: 'simulated-app'}, silent: true});
-    await chat.addUser(requester.key.cPublicKey);
+    await chat.create(DEFAULT_METADATA, {userMetadata: DEFAULT_USER_METADATA, silent: true});
+    await chat.userManager.addUser(requester.key.cPublicKey, {userMetadata: DEFAULT_USER_METADATA});
     // confirm user metadata file has been written
     let userMetadata;
     try {
@@ -114,7 +118,7 @@ describe('simulated application tests', () => {
     }
     chat.close();
     expect(typeof userMetadata.userEncryptionPolicy).toBe('object');
-    expect(userMetadata.title).toBe('simulated-app');
+    expect(userMetadata.metadata.title).toBe(DEFAULT_USER_METADATA.title);
   })
 
     
@@ -125,10 +129,10 @@ describe('simulated application tests', () => {
         bubbleId, 
         owner.key, 
         new encryptionPolicies.AESGCMEncryptionPolicy(encryptionKey), 
-        new bubbleManagers.MultiUserEncryptedBubbleManager(owner.key)
+        new userManagers.MultiUserManager(owner.key)
       );
-      await chat.create(DEFAULT_METADATA, {userMetadata: {title: 'simulated-app'}, silent: true});
-      await chat.addUser(requester.key.cPublicKey);
+      await chat.create(DEFAULT_METADATA, {userMetadata: DEFAULT_USER_METADATA, silent: true});
+      await chat.userManager.addUser(requester.key.cPublicKey, {userMetadata: DEFAULT_USER_METADATA});
       chat.close();
     })
 
@@ -137,11 +141,11 @@ describe('simulated application tests', () => {
         bubbleId, 
         owner.key, 
         new encryptionPolicies.AESGCMEncryptionPolicy(), 
-        new bubbleManagers.MultiUserEncryptedBubbleManager(owner.key)
-      );
+        new userManagers.MultiUserManager(owner.key)
+        );
       await chat.initialise();
       chat.close();
-      expect(chat.userMetadata.title).toBe('simulated-app'); 
+      expect(chat.userMetadata.title).toBe(DEFAULT_USER_METADATA.title); 
       expect(chat.metadata.title).toBe('Group Chat'); 
     })
 
@@ -150,11 +154,11 @@ describe('simulated application tests', () => {
         bubbleId, 
         requester.key, 
         new encryptionPolicies.AESGCMEncryptionPolicy(), 
-        new bubbleManagers.MultiUserEncryptedBubbleManager(requester.key)
-      );
+        new userManagers.MultiUserManager(requester.key)
+        );
       await chat.initialise();
       chat.close();
-      expect(chat.userMetadata.title).toBe('simulated-app'); 
+      expect(chat.userMetadata.title).toBe(DEFAULT_USER_METADATA.title); 
       expect(chat.metadata.title).toBe('Group Chat'); 
     })
 
@@ -170,17 +174,17 @@ describe('simulated application tests', () => {
         bubbleId, 
         owner.key, 
         new encryptionPolicies.AESGCMEncryptionPolicy(encryptionKey), 
-        new bubbleManagers.MultiUserEncryptedBubbleManager(owner.key)
-      );
-      await ownerChat.create(DEFAULT_METADATA, {userMetadata: {title: 'simulated-app'}, silent: true});
-      await ownerChat.addUser(requester.key.cPublicKey);
+        new userManagers.MultiUserManager(owner.key)
+        );
+      await ownerChat.create(DEFAULT_METADATA, {userMetadata: DEFAULT_USER_METADATA, silent: true});
+      await ownerChat.userManager.addUser(requester.key.cPublicKey, {userMetadata: DEFAULT_USER_METADATA});
 
       userChat = new Chat(
         bubbleId, 
         requester.key, 
         new encryptionPolicies.AESGCMEncryptionPolicy(), 
-        new bubbleManagers.MultiUserEncryptedBubbleManager(requester.key)
-      );
+        new userManagers.MultiUserManager(requester.key)
+        );
       await userChat.initialise();
     })
 
@@ -192,7 +196,7 @@ describe('simulated application tests', () => {
     test("updating metadata causes owner and user bubbles to update", async () => {
       await ownerChat.setMetadata({...DEFAULT_METADATA, title: 'New Group'});
       // wait for notifications to occur then check new metadata has been received
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 400));
       expect(ownerChat.metadata.title).toBe('New Group');    
       expect(userChat.metadata.title).toBe('New Group');  
     })
@@ -200,7 +204,7 @@ describe('simulated application tests', () => {
     test("posting a message from owner is received by user", async () => {
       await ownerChat.postMessage({id: 1, text: "hello user!"});
       // wait for notifications to occur then check new message has been received
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 400));
       expect(userChat.messages.length).toBeGreaterThan(0);  
       expect(userChat.messages[userChat.messages.length-1].text).toBe("hello user!");  
     })

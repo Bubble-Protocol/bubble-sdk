@@ -3,8 +3,9 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { assert } from '@bubble-protocol/core';
-import { ecies } from '@bubble-protocol/crypto';
-import { UserEncryptedBubble } from './UserEncryptedBubble.js';
+import { Bubble } from '../Bubble.js';
+import { MultiUserManager } from '../user-managers/MultiUserManager.js';
+import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy.js';
 
 /**
  * An encrypted bubble that can be accessed by multiple users without pre-sharing the encryption
@@ -30,33 +31,32 @@ import { UserEncryptedBubble } from './UserEncryptedBubble.js';
  * The encryption policy used with this bubble must implement the serialize and deserialize
  * methods, which are used to reconstruct the policy from the user's metadata file.
  */
-export class MultiUserEncryptedBubble extends UserEncryptedBubble {
+export class MultiUserEncryptedBubble extends Bubble {
 
   /**
-   * Adds a user to the bubble, writing the user's metadata file encrypted with the user's 
-   * public key. The metadata file contains the given metadata and this bubble's encryption 
-   * policy.
    * 
-   * @param {String} metadataFile file id or user's account as a hex string
-   * @param {String} publicKey user's compressed public key as a hex string
-   * @param {Object} metadata optional metadata to include for the user
-   * @returns Promise to write the user's metadata file to this bubble
-   */
-  addUser(metadataFile, publicKey, metadata = {}, options) {
-    assert.isString(metadataFile, 'metadataFile');
-    ecies.assert.isCompressedPublicKey(publicKey, 'publicKey');
-    assert.isObject(metadata, 'metadata');
-    return this.userEncryptedBubbleManager._writeUserMetadata(this, this.toFileId(metadataFile), publicKey, metadata, options)
-  }
-
-  /**
-   * Deletes a user's metadata file, preventing them from being able to decrypt the bubble.
+   * @param {ContentId} contentId the id of this bubble
+   * @param {String|BubbleProvider} provider the interface to the storage service
+   * @param {Key|Object} user the cryptographic details of the local user.  Must be a crypto Key
+   * object or a plain object containing the user's `address`, `cPublicKey` (compressed public key), 
+   * `signFunction` (see Bubble.js) and either `privateKey` or `decryptFunction`, where the decrypt 
+   * function takes the form:
    * 
-   * @param {String} metadataFile file id or user's account as a hex string
-   * @returns Promise to remove the user's metadata file from this bubble
+   *   (String: data) => { return Promise to resolve data decrypted with the user's private key }
+   * 
+   * @param {EncryptionPolicy} encryptionPolicy optional encryption policy for this bubble. If not 
+   * given, a random AESGCM encryption policy will be used.
+   * @param {Array} otherUsers optional list of users, other than the local user, who are users of
+   * this bubble. Each user must be either a compressed public key or an object of the form:
+   * 
+   *   { publicKey|cPublicKey: <compressed-public-key>, metadataFile: <optional filename> }
+   * 
+   * @option {String} userMetadataFile override default filename of the local user's 
+   * userMetadataFile.
    */
-  removeUser(metadataFile) {
-    return this.delete(this.toFileId(metadataFile), {silent: true});
+  constructor(contentId, provider, user, encryptionPolicy, otherUsers, options={}) {
+    const userManager = new MultiUserManager(user, options.userMetadataFile, otherUsers);
+    super(contentId, provider, user.signFunction, encryptionPolicy || new AESGCMEncryptionPolicy(), userManager);
   }
-
+  
 }

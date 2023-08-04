@@ -419,6 +419,66 @@ console.log(Buffer.from(decryptedDataBuf).toString());
 ContentManager.setEncryptionPolicy(encryptionPolicy);
 ```
 
+## User Management
+
+A `UserManager` adds user management capabilities to a `Bubble`.  It allows bubbles to be accessed by multiple users or devices without needing to pre-share the bubble's encryption key(s).  Users can be added to a bubble by simply passing their public key to the manager.  They will of course need the appropriate permissions set in the bubble's smart contract.
+
+The manager maintains a separate file in the bubble for each user containing the bubble's encryption policy (including encryption keys) and any custom metadata you provide. Each file is ECIES encrypted with the user's public key so that only they can read it and recover the bubble's encryption keys.
+
+There are currently two user managers available in the SDK:
+
+- `SingleUserManager` - allows the local user to load the bubble's encryption keys on initialisation.
+- `MultiUserManager` - extends `SingleUserManager` to allow other users to be added to the bubble.
+
+Extend the `UserManager` base class to implement your own custom user manager.
+
+In the following example, Alice and Bob create a shared bubble that only they can access and decrypt.  Bob passes his public key to Alice who creates the bubble (assumes the contract has already been deployed).  Alice passes the bubble's content ID back to Bob who can then initialise his bubble.
+
+```javascript
+// On Alice's device
+
+const aliceKey = new ecdsa.Key('0x...');
+
+const bobPublicKey = '0x...'; // given by Bob
+
+const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy();
+
+const userManager = new MultiUserManager(aliceKey, undefined, [bobPublicKey]);
+
+const bubble = new Bubble(bubbleId, provider, aliceKey.signFunction, encryptionPolicy, userManager);
+
+await bubble.create();
+
+await bubble.write(toFileId(1), 'Hi Bob!')
+
+...
+
+// On Bob's device
+
+const bobKey = new ecdsa.Key('0x...');
+
+const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy();
+
+const userManager = new MultiUserManager(bobKey);
+
+const bubble = new Bubble(bubbleId, provider, bobKey.signFunction, encryptionPolicy, userManager);
+
+await bubble.initialise();
+
+await bubble.read(toFileId(1)).then(console.log);
+```
+During the create process the user manager writes both Alice and Bob's user metadata files to the bubble.  By default the files are named after each user's public address. The files are encrypted so only Alice can read her file and only Bob can read his. Each file contains the serialised encryption policy, including the encryption key.  
+
+During the initialisation process, the user manager reads Bob's user metadata file, decrypts it with his key and deserialises the encryption policy, setting the encryption key.  Both Bob and Alice now have the encryption key and can share files within the bubble.
+
+Note, the `BubbleFactory` can be used instead to construct the bubble instance:
+
+```javascript
+const bubbleFactory = new BubbleFactory(aliceKey.signFunction, aliceKey);
+
+const bubble = bubbleFactory.createAESGCMEncryptedMultiUserBubble(bubbleId, {otherUsers: [bobPublicKey]});
+```
+
 ## Delegation
 
 Bubble Protocol supports key delegation, which allows a different private key to be used to access a bubble on behalf of the delegation signer.  This is designed primarily to allow applications to access bubble content without requesting a signature from the user's wallet each time.
@@ -729,127 +789,6 @@ b) use bubble tools
 bubble servers add bubble-private-cloud https://vault.bubbleprotocol.com/v2/ethereum
 
 bubble content create-bubble bubble-private-cloud example-bubble --chain ethereum
-```
-
-## ManagedBubble
-
-The `ManagedBubble` class is an extension of the `Bubble` class that accepts a `BubbleManager`.  A `BubbleManager` automatically manages one or more pieces of content within the bubble, constructing it at create time, reading it at initialisation time, and subscribing to content when required.
-
-Multiple `BubbleManagers` can be passed to a `ManagedBubble` allowing different bubble content to be encapsulated in different managers.  Use the [`ParallelBubbleMultiManager`](./src/bubble-managers/ParallelBubbleMultiManager.js) or [`SequentialBubbleMultiManager`](./src/bubble-managers/SequentialBubbleMultiManager.js) to group managers together into one.
-
-In the following messaging dApp example, each chat between users is held in its own chat bubble. A chat bubble is constructed using a custom `BubbleManager` to manage the chat's metadata and messages. A `BubbleManager` has three methods: `create`, `initialise` and `reconnect`:
-- `create` - called by `ManagedBubble` when the bubble is first created, the manager constructs a chat directory and a metadata file. 
-- `initialise` - called by `ManagedBubble` when an existing bubble is initialised, the manager reads the metadata from the bubble and checks for new messages, subscribing to the chat directory to receive new messages automatically. 
-- `reconnect` - finally, if the dApp loses a connection to the bubble server it must re-subscribe to the chat directory when the connection is re-established. The chat bubble uses the `WebsocketBubbleProvider` reconnect event to determine when to call the `reconnect` method.
-
-```javascript
-import { BubbleManager, toFileId } from '@bubble-protocol/client';
-
-const CONTENT = {
-  metadataFile: toFileId(1),
-  chatDirectory: toFileId(2)
-}
-
-class ChatBubbleManager extends BubbleManager{
-
-  create(bubble, options){
-    // Called when the bubble is first created
-    return Promise.all([
-      bubble.mkdir(CONTENT.chatDirectory, options),
-      bubble.write(CONTENT.metadataFile, JSON.stringify(bubble.metadata), options)
-    ])
-    .then(() => this._subscribeToContent(bubble, options));
-  }
-
-  initialise(bubble, options){
-    // Called instead of create to initialise the bubble when it already exists
-    return Promise.all([
-      this._subscribeToContent(bubble, options),
-      bubble.read(CONTENT.metadataFile, options)
-        .then(json => {
-          bubble.metadata = JSON.parse(json);
-        })
-    ]);
-  }
-
-  reconnect(bubble, ...params) {
-    // Called when the WebSocketBubbleProvider reconnects after a disconnect
-    return _this.subscribeToContent(bubble);
-  }
-
-  _subscribeToContent(bubble, options={}) {
-    // Subscribe to the chat directory. The `since` option will cause the resolved subscription 
-    // to contain a list of messages newer than the bubble's last update time.
-    this.bubble = bubble;
-    return bubble.subscribe(CONTENT.chatDirectory, this._handleChatNotification.bind(this), {...options, since: bubble.lastUpdateTime})
-      .then(this._handleChatNotification.bind(this))
-  }
-
-  _handleChatNotification(notification) {
-    // The notification contains a list of new messages, each in a different file
-    notification.data.forEach(file => this.bubble.readMessage(file));
-  }
-
-}
-
-
-class EncryptedChatBubble extends ManagedBubble {
-
-  metadata = {};
-  messages = [];
-  lastUpdateTime = 0;
-  userManager;
-
-  constructor(bubbleId, key, metadata) {
-
-    // Setup the provider
-    const provider = new WebsocketBubbleProvider(bubbleId.provider);
-
-    // Setup the encryption policy for all bubble content
-    const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy();
-
-    // Setup the bubble manager.  In this case, two managers chained together:
-    //   1. to manage the user metadata for each member of the chat (allows them to recover the bubble encryption key)
-    //   2. to manage the chat metadata and messages
-    this.userManager = new bubbleManagers.MultiUserEncryptedBubbleManager(key);
-    const bubbleManager = new bubbleManagers.SequentialBubbleMultiManager(
-      userManager,
-      new ChatBubbleManager()
-    );
-
-    // Construct the bubble
-    super(bubbleId, provider, key.signFunction, encryptionPolicy, bubbleManager);
-
-    // Handle a websocket reconnect so that subscriptions can be re-established
-    provider.on('reconnect', bubbleManager.reconnect.bind(bubbleManager)});
-
-  }
-
-  create(metadata, members, options) {
-    // Create the bubble and add members
-    this.metadata = metadata;
-    return super.create(options)
-      .then(() => {
-        return Promise.all(members.map(m => this.userManager.addUser(m.cPublicKey)));
-      })
-  }
-
-  readMessage(fileDetails) {
-    // Read the message from its file
-    return this.read(fileDetails.name)
-      .then(json => {
-        const message = JSON.parse(json);
-        message.created = messageDetails.created;
-        message.modified = messageDetails.modified;
-        this.messages.push(message);
-        this.lastUpdateTime = message.modified;
-        ...
-      })
-  }
-
-  ...
-
-}
 ```
 
 ## Glossary

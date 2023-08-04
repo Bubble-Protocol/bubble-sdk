@@ -8,6 +8,7 @@ import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from 
 import { toFileId } from "./utils.js";
 import Web3 from 'web3';
 import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
+import { UserManager } from "./UserManager.js";
 
 
 const Crypto = crypto || (window ? window.crypto : undefined);
@@ -37,6 +38,11 @@ export class Bubble {
   encryptionPolicy = new NullEncryptionPolicy();
 
   /**
+   * @dev optional manager to manage metadata and encryption keys for users of this bubble
+   */
+  userManager = new UserManager();
+
+  /**
    * @dev record of subscriptions allowing them to be unsubscribed when this bubble is closed
    */
   subscriptions = [];
@@ -55,13 +61,14 @@ export class Bubble {
    * The type and format of the signature must be appropriate to the blockchain platform.
    * @param {EncryptionPolicy} encryptionPolicy optional encryption policy
    */
-  constructor(contentId, provider, signFunction, encryptionPolicy ) {
+  constructor(contentId, provider, signFunction, encryptionPolicy, userManager) {
     if (!Crypto) throw new Error('missing crypto object');
     if (assert.isString(provider)) provider = new HTTPBubbleProvider(provider);
     assert.isInstanceOf(provider, BubbleProvider, "provider");
     this.contentId = contentId;
     this.provider = provider;
     if (encryptionPolicy) this.setEncryptionPolicy(encryptionPolicy);
+    if (userManager) this.setUserManager(userManager);
     this.rpcFactory = new RPCFactory(contentId.chain, contentId.contract, signFunction);
     this.post = this.post.bind(this);
   }
@@ -75,6 +82,20 @@ export class Bubble {
   setEncryptionPolicy(policy) {
     assert.isInstanceOf(policy, EncryptionPolicy, "encryption policy");
     this.encryptionPolicy = policy;
+    this.userManager.setEncryptionPolicy(this.encryptionPolicy);
+  }
+
+  /**
+   * Optional function to set a user manager.  User managers maintain metadata files within the
+   * bubble for each bubble user.  Each file holds the bubble's encryption key and other custom 
+   * data, and is encrypted with the user's public key.
+   * 
+   * @param {UserManager} manager the manager to set
+   */
+  setUserManager(manager) {
+    assert.isInstanceOf(manager, UserManager, "user manager");
+    this.userManager = manager;
+    this.userManager.setEncryptionPolicy(this.encryptionPolicy);
   }
 
   /**
@@ -86,9 +107,20 @@ export class Bubble {
   create(options) {
     return this.rpcFactory.create(options)
       .then(this.post)
+      .then(() => this.userManager.create(this, options))
       .then(() => { 
         return this.getContentId() 
       });
+  }
+
+  /**
+   * Initialise from a bubble that already exists. Initialises the user manager.
+   * 
+   * @param {Object} options passed transparently to the bubble server
+   * @returns {Promise} Promise to resolve when the user manager has initialised
+   */
+  initialise(options) { console.debug(this.userManager)
+    return this.userManager.initialise(this, options);
   }
 
   /**

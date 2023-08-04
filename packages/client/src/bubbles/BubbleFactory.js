@@ -78,7 +78,7 @@ export class BubbleFactory {
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
   createAESGCMEncryptedMultiUserBubble(contentId, options={}) {
-    return this.createMultiUserEncryptedBubble(contentId, new AESGCMEncryptionPolicy(options.encryptionKey), options);
+    return this.createMultiUserEncryptedBubble(contentId, new AESGCMEncryptionPolicy(options.encryptionKey), options.otherUsers, options);
   }
 
   /**
@@ -97,12 +97,12 @@ export class BubbleFactory {
    * A bubble with a custom encryption policy designed for use by multiple users.  The encryption policy is serialised
    * and saved to the bubble in a metadata file for each user, ECIES encrypted with the user's public key.  When each 
    * user initialises their client, the policy state (inluding any encryption keys) will be recovered from the bubble 
-   * so that it does not need to be pre-shared. @See UserEncryptedBubble.js
+   * so that it does not need to be pre-shared. @See MultiUserEncryptedBubble.js
    * 
    * @option {BubbleProvider} provider if absent, an HTTPBubbleProvider will be constructed from contentId.provider
    */
-  createMultiUserEncryptedBubble(contentId, encryptionPolicy, options={}) {
-    return new MultiUserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy, options);
+  createMultiUserEncryptedBubble(contentId, encryptionPolicy, otherUsers, options={}) {
+    return new MultiUserEncryptedBubble(contentId, options.provider || contentId.provider, this.user, encryptionPolicy, otherUsers, options);
   }
 
 }

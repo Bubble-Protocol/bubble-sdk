@@ -1,4 +1,4 @@
-import { BubbleManager, ManagedBubble, assert, toFileId } from "../../packages/client/src";
+import { Bubble, assert, toFileId } from "../../packages/client/src";
 import { WebsocketBubbleProvider } from "../../packages/client/src/bubble-providers/WebsocketBubbleProvider";
 
 export const CONTENT = {
@@ -10,19 +10,20 @@ export const DEFAULT_METADATA = {
   title: 'Group Chat'
 }
 
-export class Chat extends ManagedBubble {
+export class Chat extends Bubble {
 
   metadata;
   messages = [];
   
-  constructor(bubbleId, deviceKey, encryptionPolicy, contentManager) {
+  constructor(bubbleId, deviceKey, encryptionPolicy, userManager) {
     const provider = new WebsocketBubbleProvider(bubbleId.provider);
-    super(bubbleId, provider, deviceKey.signFunction, encryptionPolicy, contentManager || new BubbleManager());
+    super(bubbleId, provider, deviceKey.signFunction, encryptionPolicy, userManager);
     provider.on('reconnect', () => {this._subscribeToContent(true, true)});
   }
 
   create(metadata, options) {
-    return super.create(options)
+    return this.provider.open()
+      .then(() => super.create(options))
       .then(() => {
         return Promise.all([
           this.setMetadata(metadata, options),
@@ -36,7 +37,8 @@ export class Chat extends ManagedBubble {
     }
 
   initialise(options) {
-    return super.initialise(options)
+    return this.provider.open()
+      .then(() => super.initialise(options))
       .then(() => {
         return Promise.all([
           this.read(CONTENT.metadataFile).then(metadata => {this.metadata = JSON.parse(metadata)}),
@@ -44,11 +46,6 @@ export class Chat extends ManagedBubble {
         ])
       })
       .then(() => this.metadata)
-  }
-
-  addUser(publicKey, options) {
-    if (!this.contentManager || !assert.isFunction(this.contentManager.addUser)) throw new Error('not a multi-user chat');
-    return this.contentManager.addUser(this, publicKey, {...options, userMetadata: this.userMetadata});
   }
 
   setMetadata(metadata, options) {

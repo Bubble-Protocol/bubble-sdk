@@ -4,10 +4,8 @@
 
 import { assert } from '@bubble-protocol/core';
 import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy.js';
-import { UserEncryptedBubbleManager } from '../bubble-managers/UserEncryptedBubbleManager.js';
-import { ManagedBubble } from './ManagedBubble.js';
-import { SequentialBubbleMultiManager } from '../bubble-managers/SequentialBubbleMultiManager.js';
-import { BubbleManager } from '../BubbleManager.js';
+import { SingleUserManager } from '../user-managers/SingleUserManager.js';
+import { Bubble } from '../Bubble.js';
 
 /**
  * A bubble with a user metadata file named after the user's account address, encrypted using 
@@ -24,17 +22,12 @@ import { BubbleManager } from '../BubbleManager.js';
  * To include additional metadata in the user's metadata file, use the userMetadata option
  * when creating the bubble or call writeUserMetadata. 
  */
-export class UserEncryptedBubble extends ManagedBubble {
+export class UserEncryptedBubble extends Bubble {
 
   /**
    * @dev user's metadata read from the bubble
    */
   userMetadata;
-
-  /**
-   * @dev the BubbleManager that manages the user encrypted metadata
-   */
-  userEncryptedBubbleManager;
 
   /**
    * 
@@ -54,14 +47,8 @@ export class UserEncryptedBubble extends ManagedBubble {
    * @option {String} userMetadataFile override default filename of the userMetadataFile
    */
   constructor(contentId, provider, user, encryptionPolicy, options={}) {
-    const userManager = new UserEncryptedBubbleManager(user, options);
-    let contentManager = userManager;
-    if (options.contentManager) {
-      assert.isInstanceOf(contentManager, BubbleManager, 'contentManager');
-      contentManager = new SequentialBubbleMultiManager(userManager, options.contentManager)
-    }
-    super(contentId, provider, user.signFunction, encryptionPolicy || new AESGCMEncryptionPolicy(), contentManager);
-    this.userEncryptedBubbleManager = userManager;
+    const userManager = new SingleUserManager(user, options.userMetadataFile)
+    super(contentId, provider, user.signFunction, encryptionPolicy || new AESGCMEncryptionPolicy(), userManager);
   }
 
   /**
@@ -73,12 +60,11 @@ export class UserEncryptedBubble extends ManagedBubble {
    * @param {Object} options options passed to the bubble server
    * @returns Promise to save the metadata
    */
-  writeUserMetadata(metadata={}, options) {
-    assert.isObject(metadata, 'metadata');
-    return this.userEncryptedBubbleManager._writeUserMetadata(
+  writeUserMetadata(metadata, options) {
+    return this.userManager._writeUserMetadata(
       this, 
-      this.userEncryptedBubbleManager.userMetadataFile, 
-      this.userEncryptedBubbleManager.user.cPublicKey, 
+      this.userManager.metadataFile, 
+      this.userManager.user.cPublicKey, 
       metadata, 
       options
     )
