@@ -755,6 +755,11 @@ const contract = await deploy(accounts[0], contractSrc.abi, contractSrc.bytecode
 
 Use the `Bubble` class to create the off-chain bubble.
 
+In this case, our bubble will have the following features:
+- **Key Delegation**: our wallet will delegate temporary access to a local device key so that it doesn't need to be consulted every time the bubble is accessed from our dApp.
+- **Encryption Policy**: AESGCM encrypted throughout
+- **User Management**: Multi-user (encryption key will be shared with authorised friends and family)
+
 ```javascript
 import Web3 from 'web3';
 import { Bubble, bubbleProviders, Delegation, encryptionPolicies, userManagers, toEthereumSignature, toDelegateSignFunction } from '@bubble-protocol/client';
