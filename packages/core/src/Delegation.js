@@ -52,11 +52,11 @@ class BubblePermission extends Permission {
     assert.isNumber(bubbleId.chain, 'chain');
     assert.isHexString(bubbleId.contract, 'contract');
     assert.isString(bubbleId.provider, 'provider');
-    super('bubble', bubbleId);
+    super('bubble', {chain: bubbleId.chain, contract: bubbleId.contract.toLowerCase(), provider: bubbleId.provider});
   }
   
   isPermitted(contentId) {
-    return this.chain === contentId.chain && this.contract.toLowerCase() === contentId.contract.toLowerCase() && this.provider === contentId.provider
+    return this.chain === contentId.chain && this.contract === contentId.contract.toLowerCase() && this.provider === contentId.provider
   }
 
 }
@@ -67,11 +67,11 @@ class ContractPermission extends Permission {
   constructor(bubbleId) {
     assert.isNumber(bubbleId.chain, 'chain');
     assert.isHexString(bubbleId.contract, 'contract');
-    super('contract', {chain: bubbleId.chain, contract: bubbleId.contract});
+    super('contract', {chain: bubbleId.chain, contract: bubbleId.contract.toLowerCase()});
   }
 
   isPermitted(contentId) {
-    return this.chain === contentId.chain && this.contract.toLowerCase() === contentId.contract.toLowerCase();
+    return this.chain === contentId.chain && this.contract === contentId.contract.toLowerCase();
   }
   
 }
