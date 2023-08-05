@@ -25,8 +25,14 @@ contract ExampleBubble is AccessControlledStorage {
         // Owner has rwa access to both directories
         else if ((contentId == 1 || contentId == 2) && user == owner) return DIRECTORY_BIT | READ_BIT | WRITE_BIT | APPEND_BIT;
 
+        // Owner has read/write access to all other files
+        else if (user == owner) return READ_BIT | WRITE_BIT | APPEND_BIT;
+
         // Friends have read access to the public directory
         else if (contentId == 1 && friends[user]) return DIRECTORY_BIT | READ_BIT;
+
+        // Friends have read access to their own user metadata file (see User Managers)
+        else if (contentId == uint256(uint160(user)) && friends[user]) return READ_BIT;
 
         // Otherwise permission is denied
         else return NO_PERMISSIONS;
