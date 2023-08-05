@@ -964,10 +964,10 @@ describe("Guardian", () => {
 
         // permission type is 'bubble' is tested in common tests above
 
-        async function testValidDelegate(delegateFields) {
+        async function testValidDelegate(delegateFields, sigPrefix) {
           const method = 'write';
           const delegate = {...delegateFields};
-          await signDelegate(delegate, key2);
+          await signDelegate(delegate, key2, sigPrefix);
           const newParams = {...VALID_RPC_PARAMS};
           await signRPC(method, newParams, key1);
           newParams.delegate = delegate; // delegate is part of the signature, not part of the RPC itself
@@ -989,10 +989,10 @@ describe("Guardian", () => {
               expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, {...VALID_RPC_PARAMS}));
               expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
               expect(typeof blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe('string');
-              expect(blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe(hashDelegate(delegateFields));
+              expect(blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe(hashDelegate(delegateFields, sigPrefix));
               expect(blockchainProvider.recoverSignatory.mock.calls[1][1]).toBe(delegate.signature);
               expect(blockchainProvider.hasBeenRevoked.mock.calls).toHaveLength(1);
-              expect(blockchainProvider.hasBeenRevoked.mock.calls[0][0]).toBe(hashDelegate(delegateFields));
+              expect(blockchainProvider.hasBeenRevoked.mock.calls[0][0]).toBe(hashDelegate(delegateFields, sigPrefix));
               expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
               expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
               expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
@@ -1048,6 +1048,15 @@ describe("Guardian", () => {
             ]
           };
           return testValidDelegate(delegate);
+        })
+    
+        test("has sig prefix", async () => {
+          const delegate = {
+            delegate: key1.address,
+            expires: 2147483647,
+            permissions: 'all-permissions'
+          };
+          return testValidDelegate(delegate, '\x19Ethereum Signed Message:\n64');
         })
     
       })

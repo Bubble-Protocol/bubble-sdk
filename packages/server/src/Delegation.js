@@ -15,7 +15,7 @@ export async function parseDelegation(delegation, blockchainProvider) {
   try {
     assert.isHexString(delegation.signature, 'signature');
     if (delegation.signaturePrefix) assert.isString(delegation.signaturePrefix, 'signaturePrefix');
-    const hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
+    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
     if (delegation.signaturePrefix) hash = Web3.utils.keccak256(delegation.signaturePrefix+hash).slice(2);
     const signatory = await blockchainProvider.recoverSignatory(hash, delegation.signature);
     return new Delegation(delegation, hash, signatory);
