@@ -119,7 +119,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve when the user manager has initialised
    */
-  initialise(options) { console.debug(this.userManager)
+  initialise(options) {
     return this.userManager.initialise(this, options);
   }
 
