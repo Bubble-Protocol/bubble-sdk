@@ -59,17 +59,18 @@ export class Delegation extends CoreDelegation {
    * @returns this object
    */
   async sign(signFunction) {
-    const packet = {
+    const packet = JSON.parse(JSON.stringify({ // JSON removes undefined properties
       delegate: this.delegate,
       expires: this.expires,
       permissions: this.permissions
-    }
+    }));
     const signature = await signFunction(Web3.utils.keccak256(JSON.stringify(packet)).slice(2))
     if (typeof signature === 'object') {
       if (signature.prefix) this.signaturePrefix = signature.prefix;
       this.signature = signature.signature;
     }
     else this.signature = signature;
+    if (!assert.isHexString(this.signature)) throw new Error('signFunction returned an invalid signature when signing delegation', {cause: this.signature});
     return this;
   }
     
