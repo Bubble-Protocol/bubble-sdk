@@ -67,7 +67,7 @@ const STATE_MACHINE = {
   },
   'reconnecting': {
     'connected': {state: STATES.open, event: EVENTS.reconnect},
-    'connect': {error: "Cannot connect in the reconnecting state"},
+    'connect': {state: STATES.reconnecting},
     'close': {state: STATES.closing},
     'closed': {},
     'failed': {state: STATES.closed, event: EVENTS.fail},
@@ -145,6 +145,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
 
 
   connect() {
+    this._clearTimers();
     this._stateTransition(TRANSITIONS.connect);
 
     // Construct websocket
@@ -275,6 +276,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
   _sendHeartbeat() {
     this.post('ping').catch(error => {
       console.warn('WebsocketBubbleProvider: heartbeat could not be sent:', error);
+      this._stateTransition(TRANSITIONS.failed);
     });
     if (this.options.heartbeatPeriod > 0) this.timers.heartbeatTimer = setTimeout(this._sendHeartbeat, this.options.heartbeatPeriod);
   }
@@ -321,9 +323,9 @@ export class WebsocketBubbleProvider extends BubbleProvider {
     this.eventListeners[event].forEach(l => l(...payload));
   }
 
-  _stateTransition(trigger) { 
+  _stateTransition(trigger) { console.debug('stateTransition', trigger, STATE_MACHINE[this.state][trigger])
     const transition = STATE_MACHINE[this.state][trigger];
-    if (transition.error) throw new Error(transition.error);
+    if (transition.error) console.warn(transition.error);
     if (transition.state) this.state = transition.state;
     else console.warn('WebsocketBubbleProvider: unexpected state transition', this.state, trigger);
     if (transition.event) this._notifyListeners(transition.event);
