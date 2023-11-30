@@ -8,6 +8,8 @@ This client library allows decentralised applications to read and write content 
 
 See also the [Bubble Tools](https://github.com/Bubble-Protocol/bubble-tools) command line utility for developers.
 
+The Bubble Private Cloud is a cloud-based bubble provider available to developers for development and experimental purposes.  It supports common blockchains. See its [homepage](https://vault.bubbleprotocol.com) for a list of available endpoints.
+
 ## Installation
 
 ```shell

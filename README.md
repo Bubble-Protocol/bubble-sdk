@@ -19,7 +19,7 @@ The Bubble SDK contains javascript libraries for developers building with Bubble
 
 ## What Is Bubble Protocol?
 
-Bubble Protocol provides access-controlled off-chain storage for Web3 applications and allows blockchains to govern private data.  It adds Web3 capabilities to any storage system, whether a public relay server, decentralized storage network, home server, or private company infrastructure.
+Bubble Protocol provides access-controlled off-chain storage for Web3 applications and allows blockchains to govern private data.  It adds Web3 capabilities to any storage system, whether a cloud relay server, decentralized storage network, home server, or private company infrastructure. One such server is the [Bubble Private Cloud](https://vault.bubbleprotocol.com), a cloud server that can be used to build and experiment with Bubble Protocol.
 
 Bubble Protocol is blockchain agnostic and is designed to be highly adaptable, providing Web3 developers with an easy to use general purpose global data layer for data tokenisation, cross-device DApp storage, decentralised identity solutions, web3 privacy compliance solutions, paywalled content, NFT content, and much more.
 
@@ -45,7 +45,7 @@ See the [whitepaper](https://bubbleprotocol.com/docs/whitepaper) for more detail
 
 Off-chain storage services can be public or private, centralised or decentralised.
 
-The protocol allows each storage service to essentially function as a generic host for any bubble, allowing a single service to provide off-chain storage for any type of Web3 application.  Service providers can choose whether to provide an open, public service or a private service restricted to specific users, like customers or employees of a company.
+The protocol allows each storage service to essentially function as a generic host for any bubble, allowing a single service to provide off-chain storage for any type of Web3 application.  Service providers can choose whether to provide an open, public service - like the [Bubble Private Cloud](https://vault.bubbleprotocol.com) - or a private service restricted to specific users, like customers or employees of a company.
 
 Off-chain storage services can be implemented easily using the [Server Library](./packages/server/).
 
