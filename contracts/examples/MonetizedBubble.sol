@@ -32,6 +32,9 @@ contract MonetizedBubble is AccessControlledStorage {
       // If the bubble has been terminated, the off-chain storage service will delete the bubble and its contents
       if (terminated) return BUBBLE_TERMINATED_BIT;
 
+      // Owner has the right to construct the bubble
+      if (contentId == 0 && user == owner) return DIRECTORY_BIT | READ_BIT | WRITE_BIT | APPEND_BIT;
+
       // Owner has rwa access to directory 1
       if (contentId == 1 && user == owner) return DIRECTORY_BIT | READ_BIT | WRITE_BIT | APPEND_BIT;
 
