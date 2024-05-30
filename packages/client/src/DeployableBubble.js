@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { BubbleProvider, ContentId, assert, ErrorCodes } from '@bubble-protocol/core';
-import { Bubble } from '@bubble-protocol/client';
+import { Bubble } from './Bubble.js';
 
 /**
  * Construction state
