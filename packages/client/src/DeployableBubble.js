@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { BubbleProvider, ContentId, assert, ErrorCodes } from '@bubble-protocol/core';
-import { Bubble } from './Bubble.js';
+import { Bubble } from '@bubble-protocol/client';
 
 /**
  * Construction state
@@ -140,8 +140,10 @@ export class DeployableBubble {
     try {
       this.initState = INIT_STATE.initialising;
       await this._initialisationSequence(contractParams, providerUri, options);
+      this.bubble.addTerminatedListener(this._handleBubbleTerminated.bind(this));
       this.initState = INIT_STATE.initialised;
     } catch (error) {
+      console.debug("Error initialising bubble", error);
       this.initState = INIT_STATE.failed;
       this.error = error;
       this._checkForTerminatedBubble(error);
@@ -278,10 +280,18 @@ export class DeployableBubble {
   /**
    * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
    */
+  _handleBubbleTerminated() {
+    this.constructionState = CONSTRUCTION_STATE.deleted;
+    this.initState = INIT_STATE.failed;
+    this.error = new Error("Bubble has been terminated");
+  }
+
+  /**
+   * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
+   */
   _checkForTerminatedBubble(error) {
     if (error && error.code == ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED) {
-      this.constructionState = CONSTRUCTION_STATE.deleted;
-      this.initState = INIT_STATE.failed;
+      this._handleBubbleTerminated();
     }
   }
 

@@ -4,7 +4,7 @@
 
 import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
-import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert } from '@bubble-protocol/core';
+import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert, ErrorCodes } from '@bubble-protocol/core';
 import { toFileId } from "./utils.js";
 import Web3 from 'web3';
 import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
@@ -48,6 +48,11 @@ export class Bubble {
   subscriptions = [];
 
   /**
+   * @dev listeners for the bubble's termination event
+   */
+  terminatedListeners = [];
+
+  /**
    * Represents a Bubble hosted on an external Bubble server.
    * 
    * @param {ContentId} contentId the id of this bubble
@@ -71,6 +76,7 @@ export class Bubble {
     if (userManager) this.setUserManager(userManager);
     this.rpcFactory = new RPCFactory(contentId.chain, contentId.contract, signFunction);
     this.post = this.post.bind(this);
+    this._checkForTerminatedError = this._checkForTerminatedError.bind(this);
   }
 
   /**
@@ -104,7 +110,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve when the bubble is constructed
    */
-  create(options) {
+  async create(options) {
     return this.rpcFactory.create(options)
       .then(this.post)
       .then(() => this.userManager.create(this, options))
@@ -132,7 +138,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
-  write(path, data, options = {}) {
+  async write(path, data, options = {}) {
     const encrypt = data && (options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path))));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
@@ -153,7 +159,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the file's ContentId when complete
    */
-  append(path, data, options = {}) {
+  async append(path, data, options = {}) {
     const encrypt = data && (options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path))));
     return (encrypt ? this.encryptionPolicy.encrypt(data, path) : Promise.resolve(data))
       .then(dataToSend => {
@@ -173,7 +179,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the file contents
    */
-  read(path = ROOT_PATH, options = {}) {
+  async read(path = ROOT_PATH, options = {}) {
     const decrypt = options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path)));
     return this.rpcFactory.read(path, options)
       .then(this.post)
@@ -195,7 +201,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server.
    * @returns {Promise} Promise to resolve when complete
    */
-  delete(path, options) {
+  async delete(path, options) {
     return this.rpcFactory.delete(path, options)
       .then(this.post);
   }
@@ -210,7 +216,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the directory's ContentId when complete
    */
-  mkdir(path, options) {
+  async mkdir(path, options) {
     return this.rpcFactory.mkdir(path, options)
       .then(this.post)
       .then(() => { 
@@ -225,7 +231,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the listing
    */
-  list(path, options) {
+  async list(path, options) {
     return this.rpcFactory.list(path, options)
       .then(this.post)
       .then(result => {
@@ -242,7 +248,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the listing
    */
-  getPermissions(path, options) {
+  async getPermissions(path, options) {
     return this.rpcFactory.getPermissions(path, options)
       .then(this.post)
       .then(result => {
@@ -259,7 +265,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with the subscriptionId
    */
-  subscribe(path = ROOT_PATH, listener, options = {}) {
+  async subscribe(path = ROOT_PATH, listener, options = {}) {
     assert.isFunction(listener, 'listener');
     const decrypt = options.encrypted || (options.encrypted !== false && this.encryptionPolicy.isEncrypted(this.getContentId(path)));
     const wrappedListener = !decrypt ? listener : 
@@ -288,7 +294,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve if successful
    */
-  unsubscribe(id, options = {}) {
+  async unsubscribe(id, options = {}) {
     return this.rpcFactory.unsubscribe(id, options)
     .then(rpc => {
       return this.provider.unsubscribe(rpc.params);
@@ -305,7 +311,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve with a boolean
    */
-  isTerminated(options) {
+  async isTerminated(options) {
     return this.getPermissions(ROOT_PATH, options)
     .then(permissions => {
       return permissions.bubbleTerminated();
@@ -319,7 +325,7 @@ export class Bubble {
    * @param {Object} options passed transparently to the bubble server
    * @returns {Promise} Promise to resolve when complete
    */
-  terminate(options) {
+  async terminate(options) {
     return this.rpcFactory.terminate(options)
       .then(this.post);
   }
@@ -331,8 +337,9 @@ export class Bubble {
    * @param rpc the remote procedure call
    * @returns {Promise} Promise to resolve with any response data when complete
    */
-  post(rpc) {
-    return this.provider.post(rpc.method, rpc.params);
+  async post(rpc) {
+    return this.provider.post(rpc.method, rpc.params)
+    .catch(this._checkForTerminatedError);
   }
 
   /**
@@ -342,9 +349,30 @@ export class Bubble {
    * @returns Promise to resolve with an object containing the results to each RPC.  Match the
    *          response id to the RPC id.
    */
-  postAll(rpcs) {
-    return this.provider.postAll(rpcs);
+  async postAll(rpcs) {
+    return this.provider.postAll(rpcs)
+    .catch(this._checkForTerminatedError);
   }
+
+  /**
+   * Adds a terminated listener. The listener will be informed if the provider indicates the bubble
+   * has been terminated in response to any request. This bubble object will be passed to the listener.
+   * 
+   * @param {function} listener
+   */
+  addTerminatedListener(listener) {
+    this.terminatedListeners.push(listener);
+  }
+
+  /**
+   * Removes a terminated listener.
+   * 
+   * @param {function} listener 
+   */
+  removeTerminatedListener(listener) {
+    this.terminatedListeners = this.terminatedListeners.filter(l => l !== listener);
+  }
+
 
   /**
    * Constructs a ContentId object from this bubble's details and the given path.  If the path
@@ -375,6 +403,17 @@ export class Bubble {
    * @throws if the parameter is an invalid type of is out of range
    */
   toFileId = toFileId;
+
+  /**
+   * Checks the given error for a terminated error code and dispatches the terminated event if found.
+   * Throws the error onwards.
+   */
+  _checkForTerminatedError(error) {
+    if (error && error.code == ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED) {
+      this.terminatedListeners.forEach(listener => listener(this));
+    }
+    throw error;
+  }
 
 }
 
