@@ -56,7 +56,7 @@ export function isBuffer(value, name) {
 };
 
 export function isFunction(value, name) {
-  const result = isNotNull(value, name) && (toString.call(value) === '[object Function]');
+  const result = isNotNull(value, name) && typeof value === 'function';
   if (name !== undefined && !result) throw new TypeError(name + " type. Expected function");
   else return result;
 };
