@@ -48,6 +48,11 @@ export class BubbleFilename {
     return this._parts[0];
   }
 
+  getFilePart() {
+    if (!this._valid) throw new Error("BubbleFilename.getFilePart: filename is invalid");
+    return this._parts.length === 2 ? this._parts[1] : this._parts[0];
+  }
+
   isFile() {
     return !this.isDirectory();
   }

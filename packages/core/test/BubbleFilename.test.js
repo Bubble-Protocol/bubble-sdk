@@ -52,6 +52,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(false);
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe(VALID_DIR);
     })
 
     test('with a valid file with path extension', () => {
@@ -62,6 +63,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(true);
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe('hello-world.txt');
     })
 
     test('with the root path', () => {
@@ -72,6 +74,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(false);
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(ROOT_PATH);
+      expect(filename.getFilePart()).toBe(ROOT_PATH);
     })
 
     test('with a valid file with no path extension (no 0x prefix)', () => {
@@ -82,6 +85,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(false);
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe(VALID_DIR);
     })
 
     test('with a valid file with path extension (no 0x prefix)', () => {
@@ -92,6 +96,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(true);
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe('hello-world.txt');
     })
 
     test('with the root path (no 0x prefix)', () => {
@@ -102,6 +107,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(false);
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(ROOT_PATH);
+      expect(filename.getFilePart()).toBe(ROOT_PATH);
     })
 
     test('with valid unicode characters', () => {
@@ -114,6 +120,7 @@ describe('BubbleFilename', () => {
         expect(filename.isFile()).toBe(true);
         expect(filename.isDirectory()).toBe(false);
         expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+        expect(filename.getFilePart()).toBe(path);
       })
     })
 
@@ -126,6 +133,7 @@ describe('BubbleFilename', () => {
       expect(filename.isFile()).toBe(true);
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe('a'.repeat(255));
     })
 
   })  
@@ -191,6 +199,7 @@ describe('BubbleFilename', () => {
     test('throws when invalid and getters are called', () => {
       const filename = testInvalidPath(VALID_DIR+'/..');
       expect(() => filename.getPermissionedPart()).toThrow();
+      expect(() => filename.getFilePart()).toThrow();
       expect(() => filename.isFile()).toThrow();
       expect(() => filename.isDirectory()).toThrow();
       expect(() => filename.isRoot()).toThrow();
@@ -215,6 +224,7 @@ describe('BubbleFilename', () => {
       const filename = new BubbleFilename(UPPERCASE_DIR+'/MyFile.txt');
       expect(filename.isValid()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(LOWERCASE_DIR);
+      expect(filename.getFilePart()).toBe('MyFile.txt');
       expect(filename.fullFilename).toBe(LOWERCASE_DIR+'/MyFile.txt');
     })
   
@@ -234,6 +244,7 @@ describe('BubbleFilename', () => {
       const filename = new BubbleFilename(VALID_DIR.slice(2)+'/MyFile.txt');
       expect(filename.isValid()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
+      expect(filename.getFilePart()).toBe('MyFile.txt');
       expect(filename.fullFilename).toBe(VALID_DIR+'/MyFile.txt');
     })
   
