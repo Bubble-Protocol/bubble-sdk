@@ -34,7 +34,7 @@ export class ECIESEncryptionPolicy extends EncryptionPolicy {
   }
 
   encrypt(data) {
-    return Promise.resolve(ecies.encrypt(this.userKeys.privateKey, data));
+    return Promise.resolve(ecies.encrypt(this.userKeys.publicKey, data));
   }
 
   decrypt(data) {
