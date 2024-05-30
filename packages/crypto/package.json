@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/crypto",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Bubble Protocol crypto classes and functions",
   "author": "Bubble Protocol",
   "license": "MIT",
