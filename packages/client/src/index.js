@@ -3,6 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 export {Bubble} from './Bubble.js';
+export {DeployableBubble} from './DeployableBubble.js';
 export {BubbleContentManager} from './BubbleContentManager.js';
 export {ContentManager} from './ContentManager.js';
 export {PublicContentManager} from './PublicContentManager.js';

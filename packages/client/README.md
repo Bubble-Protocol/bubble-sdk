@@ -19,11 +19,13 @@ npm i @bubble-protocol/crypto  # if you need to access private or encrypted cont
 
 ## Overview
 
-There are two ways to interact with content in a bubble:
+There are three ways to interact with a bubble:
 
 * the [Content Manager](#content-manager) is a quick and easy way to access individual files via their [content id](#content-id) in bubbles that already exist.
 
-* the [Bubble](#bubble-class) class is a more powerful way to interact with files and directories in a specific [bubble](#bubble), or to manage the bubble itself (create or delete it). The [BubbleFactory](#bubblefactory) provides an easy way to construct common Bubble patterns, like those with encryption and multiple users.
+* the [Bubble](#bubble-class) class is a more powerful way to interact with files and directories in a specific off-chain [bubble](#bubble), or to manage the bubble itself (create or delete it). The [BubbleFactory](#bubblefactory) provides an easy way to construct common Bubble patterns, like those with encryption and multiple users.
+
+* the [DeployableBubble](#deployablebubble-class) class manages the construction and deletion of both the on-chain and off-chain parts of a bubble, designed for applications that deploy and manage user owned bubbles.
 
 Data encryption is achieved via [Encryption Policies](#encryption), optionally passed to the Content Manager or Bubble class.
 
@@ -178,6 +180,51 @@ await bubble.initialise();
 
 await bubble.write('<file-id>', 'Hello World!');
 ```
+
+## Quick Start - DeployableBubble Class
+
+Requires the abi and bytecode for the bubble's [Access Control Contract](#access-control-contracts) and a custom wallet object that provides functions to `deploy` contracts, `send` transactions and `getChainId`.
+
+### Construct A New Bubble
+```javascript
+import { DeployableBubble } from '@bubble-protocol/client';
+import { ecdsa } from '@bubble-protocol/crypto';
+
+const contractSourceCode = {
+  abi: [...],
+  bytecode: "..."
+}
+
+const myEthereumWallet = {
+  deploy: (abi, bytecode, constructorParams) => { ... },
+  send: (contractAddress, abi, method, params) => { ... },
+  getChainId: () => { return 1 }
+}
+
+let myAppState = localStorage.getItem('my-app-state') || {};
+
+const bubble = new DeployableBubble(
+  myAppState.bubbleMetadata,
+  myEthereumWallet,
+  contractSourceCode,
+  ecdsa.getSignFunction('<private-key>')
+);
+
+await bubble.initialise(
+  [],                       // contract constructor params
+  '<storage_service_url>',  // provider url
+);
+
+if (bubble.constructionState !== 'new') {
+  myAppState.bubbleMetadata = bubble.getMetadata();
+  localStorage.setItem('my-app-state', myAppState);
+}
+
+if(bubble.initState === 'failed') throw bubble.error;
+
+await bubble.getOffChainBubble().write('<file_id>', 'Hello World!');
+```
+
 
 ## Access Control Contracts
 
@@ -479,6 +526,202 @@ Note, the `BubbleFactory` can be used instead to construct the bubble instance:
 const bubbleFactory = new BubbleFactory(aliceKey.signFunction, aliceKey);
 
 const bubble = bubbleFactory.createAESGCMEncryptedMultiUserBubble(bubbleId, {otherUsers: [bobPublicKey]});
+```
+
+## DeployableBubble class
+
+The [`DeployableBubble`](./src/DeployableBubble.js) class encapsulates both the on-chain and off-chain components of a bubble. It is designed to simplify the construction, initialisation and termination processes for apps that deploy and manage their own bubbles at runtime. 
+
+The construction and initialisation of a new bubble consists of the following sequence:
+
+1) Deploy the bubble's access control contract to the blockchain.
+2) Create the off-chain bubble on a storage provider.
+3) Setup the new off-chain bubble with any default files and directories needed for your app.
+4) Read or subscribe to any content on initialisation.
+
+If something goes wrong during this sequence then the bubble will be left in an incomplete state.
+
+The `DeployableBubble` class manages this process, tracking the state of the bubble during construction and continuing construction where it left off next time it is initialised.
+
+To use the class an app must:
+- provide the bubble's contract source code (abi and bytecode)
+- store the bubble's metadata between app sessions
+- provide an interface to the user's wallet with `deploy`, `send` and `getChainId` functions.
+
+If your bubble has content that needs setting up during construction or reading/subscribing during initilisation then extend the `DeployableBubble` class and override the `_constructBubbleContents` and `_initialiseBubbleContents` methods.
+
+Example app that uses `DeployableBubble` to deploy and initialise a private file vault.  Defines a `SimpleFileVault` class that extends `DeployableBubble` so it can manage its own metadata file and stored vault files.  Defines a `Wallet` class that uses `web3js` to deploy contracts and send transactions.
+
+### The Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+
+// Access Control Contract for a simple file vault. Lets only the owner's login key access the vault.
+
+pragma solidity ^0.8.24;
+
+import "https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/AccessControlledStorage.sol";
+import "https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/AccessControlBits.sol";
+
+contract SimpleFileVault is AccessControlledStorage {
+
+    bool terminated = false;
+    address owner;
+    address ownerLogin;
+
+    constructor(address login) {
+        owner = msg.sender;
+        ownerLogin = login;
+    }
+
+    function terminate() external {
+        require (!terminated, "already terminated");
+        terminated = true;
+    }
+
+    function getAccessPermissions( address user, uint256 contentId ) override external view returns (uint256) {
+        if (terminated) return BUBBLE_TERMINATED_BIT;
+        if (user == ownerLogin) {
+            if (contentId == 0) return DRWA_BITS;
+            else if (contentId == 1) return RWA_BITS;
+            else if (contentId == 2) return DRWA_BITS;
+        }
+        return NO_PERMISSIONS;
+    }
+
+}
+```
+
+### The App
+
+```javascript
+import { DeployableBubble, toFileId } from '@bubble-protocol/client';
+import { ecdsa } from '@bubble-protocol/crypto';
+import { Key } from '@bubble-protocol/crypto/src/ecdsa';
+import Web3 from 'web3';
+
+class SimpleFileVault extends DeployableBubble {
+
+  METADATA_FILE = toFileId(1);
+  FILE_DIR = toFileId(2);
+
+  constructor(metadata, wallet, signFunction) {
+    super(metadata, wallet, contractSourceCode, signFunction);
+    this.name = metadata.name;
+    this.files = [];
+  }
+
+  async _constructBubbleContents() {
+    await this.bubble.write(this.METADATA_FILE, JSON.stringify({name: this.name}))
+    await this.bubble.mkdir(this.FILE_DIR, {silent: true})
+  }
+
+  async _initialiseBubbleContents() {
+    const metadata = await this.bubble.read(this.METADATA_FILE);
+    this.name = metadata.name;
+    this.files = await this.bubble.list(this.FILE_DIR);
+  }
+
+  getMetadata() {
+    return { 
+      ...super.getMetadata(), 
+      name: this.name
+    };
+  }
+
+  async writeFile(filename, contents) {
+    await this.bubble.write(toFileId(this.FILE_DIR, filename), contents);
+    this.files.push(filename);
+  }
+
+  async readFile(filename) {
+    return this.bubble.read(toFileId(this.FILE_DIR, filename));
+  }
+
+  async setName(name) {
+    await this.bubble.write(this.METADATA_FILE, {name});
+    this.name = name;
+  }
+
+}
+
+
+class Wallet {
+
+  constructor(web3Instance) {
+    this.web3 = web3Instance;
+  }
+
+  async deploy(abi, bytecode, constructorParams) {
+    const contract = new this.web3.eth.Contract(abi);
+    const from = window.ethereum.selectedAddress;
+    let address;
+    await contract.deploy({ data: bytecode, arguments: constructorParams })
+      .send({ from, gas: 1500000, gasPrice: '10000000000' })
+      .on('receipt', receipt => {
+        address = receipt.contractAddress;
+      });
+    return address;
+  }
+
+  async send(contractAddress, abi, method, params) {
+    const contract = new this.web3.eth.Contract(abi, contractAddress);
+    const from = window.ethereum.selectedAddress;
+    const gasEstimate = await contract.methods[method](...params).estimateGas({ from });
+    await contract.methods[method](...params).send({ from, gas: gasEstimate, gasPrice: '10000000000' });
+  }
+
+  async login(message) {
+    const from = window.ethereum.selectedAddress;
+    const signature = await this.web3.eth.personal.sign(message, from, '');
+    this.loginKey = new Key(ecdsa.hash(signature));
+  }
+
+  getChainId() { return 1 }
+}
+
+
+async function initApp(wallet) {
+
+  let myAppState = localStorage.getItem('simple-file-vault') || {};
+
+  const contractSourceCode = {
+    abi: [ { "inputs": [ { "internalType": "address", "name": "login", "type": "address" } ], "stateMutability": "nonpayable", "type": "constructor" }, { "inputs": [ { "internalType": "address", "name": "user", "type": "address" }, { "internalType": "uint256", "name": "contentId", "type": "uint256" } ], "name": "getAccessPermissions", "outputs": [ { "internalType": "uint256", "name": "", "type": "uint256" } ], "stateMutability": "view", "type": "function" }, { "inputs": [], "name": "terminate", "outputs": [], "stateMutability": "nonpayable", "type": "function" } ],
+    bytecode: "60806040525f805f6101000a81548160ff021916908315150217905550348015610027575f80fd5b5060405161050e38038061050e8339818101604052810190610049919061012d565b335f60016101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff1602179055508060015f6101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555050610158565b5f80fd5b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f6100fc826100d3565b9050919050565b61010c816100f2565b8114610116575f80fd5b50565b5f8151905061012781610103565b92915050565b5f60208284031215610142576101416100cf565b5b5f61014f84828501610119565b91505092915050565b6103a9806101655f395ff3fe608060405234801561000f575f80fd5b5060043610610034575f3560e01c80630c08bf8814610038578063c48dbf6a14610042575b5f80fd5b610040610072565b005b61005c60048036038101906100579190610295565b6100da565b60405161006991906102e2565b60405180910390f35b5f8054906101000a900460ff16156100bf576040517f08c379a00000000000000000000000000000000000000000000000000000000081526004016100b690610355565b60405180910390fd5b60015f806101000a81548160ff021916908315150217905550565b5f805f9054906101000a900460ff1615610116577f800000000000000000000000000000000000000000000000000000000000000090506101fe565b60015f9054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168373ffffffffffffffffffffffffffffffffffffffff16036101fa575f8203610199577f780000000000000000000000000000000000000000000000000000000000000090506101fe565b600182036101c9577f380000000000000000000000000000000000000000000000000000000000000090506101fe565b600282036101f9577f780000000000000000000000000000000000000000000000000000000000000090506101fe565b5b5f90505b92915050565b5f80fd5b5f73ffffffffffffffffffffffffffffffffffffffff82169050919050565b5f61023182610208565b9050919050565b61024181610227565b811461024b575f80fd5b50565b5f8135905061025c81610238565b92915050565b5f819050919050565b61027481610262565b811461027e575f80fd5b50565b5f8135905061028f8161026b565b92915050565b5f80604083850312156102ab576102aa610204565b5b5f6102b88582860161024e565b92505060206102c985828601610281565b9150509250929050565b6102dc81610262565b82525050565b5f6020820190506102f55f8301846102d3565b92915050565b5f82825260208201905092915050565b7f616c7265616479207465726d696e6174656400000000000000000000000000005f82015250565b5f61033f6012836102fb565b915061034a8261030b565b602082019050919050565b5f6020820190508181035f83015261036c81610333565b905091905056fea2646970667358221220c6f8951f18cc9dae8b65b70691c59898c9c6edd4e20c60528d7f119e2c5423e264736f6c63430008190033"
+  }
+
+  const vault = new SimpleFileVault(
+    myAppState.vaultMetadata,
+    wallet,
+    contractSourceCode,
+    wallet.loginKey.signFunction
+  );
+  
+  await vault.initialise(
+    [],
+    'https://vault.bubbleprotocol.com/v2/ethereum',
+  );
+  
+  if (vault.constructionState !== 'new') {
+    myAppState.vaultMetadata = vault.getMetadata();
+    localStorage.setItem('simple-file-vault', myAppState);
+  }
+  
+  if(vault.initState === 'failed') throw vault.error;
+
+}
+
+
+const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url
+const wallet = new Wallet(web3);
+
+try {
+  await initApp(wallet);
+}
+catch (e) {
+  console.error('Error initialising app:', e);
+}
 ```
 
 ## Delegation
