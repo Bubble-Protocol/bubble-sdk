@@ -28,11 +28,11 @@ export class MultiEncryptionPolicy extends EncryptionPolicy {
   }
 
   encrypt(data, contentId) {
-    return getRelevantPolicy(contentId).encrypt(data, contentId);
+    return this.getRelevantPolicy(contentId).encrypt(data, contentId);
   }
 
-  decrypt(data) {
-    return getRelevantPolicy(contentId).decrypt(data, contentId);
+  decrypt(data, contentId) {
+    return this.getRelevantPolicy(contentId).decrypt(data, contentId);
   }
 
   getRelevantPolicy(contentId) {
