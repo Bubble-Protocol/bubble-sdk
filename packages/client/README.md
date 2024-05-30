@@ -699,7 +699,7 @@ async function initApp(wallet) {
   );
   
   await vault.initialise(
-    [],
+    [wallet.loginKey.address],
     'https://vault.bubbleprotocol.com/v2/ethereum',
   );
   
