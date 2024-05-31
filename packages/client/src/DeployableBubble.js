@@ -295,4 +295,62 @@ export class DeployableBubble {
     }
   }
 
+  /**
+   * Returns true if the contract has not yet been deployed
+   */
+  isNew() {
+    return this.constructionState == CONSTRUCTION_STATE.new;
+  }
+
+  /**
+   * Returns true if the contract has been deployed and hasn't been terminated
+   */
+  isContractDeployed() {
+    return this.constructionState != CONSTRUCTION_STATE.new && this.constructionState != CONSTRUCTION_STATE.deleted;
+  }
+
+  /**
+   * Returns true if the contract and off-chain bubble have been deployed and the bubble hasn't been terminated.
+   * To be sure that the bubble is fully constructed and initialised, see `isConstructed()`.
+   */
+  isBubbleDeployed() {
+    return this.constructionState === CONSTRUCTION_STATE.bubbleDeployed || this.constructionState === CONSTRUCTION_STATE.constructed;
+  }
+
+  /**
+   * Returns true if the bubble is fully constructed and it's contents setup
+   */
+  isConstructed() {
+    return this.constructionState === CONSTRUCTION_STATE.constructed;
+  }
+
+  /**
+   * Returns true if the bubble has been terminated
+   */
+  isDeleted() {
+    return this.constructionState === CONSTRUCTION_STATE.deleted;
+  }
+
+  /**
+   * Returns true if the bubble has been constructed and contents initialised
+   */
+  isInitialised() {
+    return this.initState === INIT_STATE.initialised;
+  }
+
+  /**
+   * Returns true if the bubble is currently initialising
+   */
+  isInitialising() {
+    return this.initState === INIT_STATE.initialising;
+  }
+
+  /**
+   * Returns true if the bubble construction or initialisation has failed. Use `this.error` to get
+   * the error message.
+   */
+  isFailed() {
+    return this.initState === INIT_STATE.failed;
+  }
+
 }
