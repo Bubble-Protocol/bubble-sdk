@@ -1,4 +1,5 @@
-import { Bubble, assert, toFileId } from "../../packages/client/src";
+import { assert } from '../../packages/core/src/index.js';
+import { Bubble, toFileId } from "../../packages/client/src";
 import { WebsocketBubbleProvider } from "../../packages/client/src/bubble-providers/WebsocketBubbleProvider";
 
 export const CONTENT = {

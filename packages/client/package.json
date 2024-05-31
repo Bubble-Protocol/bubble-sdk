@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/client",
-  "version": "0.1.7",
+  "version": "0.2.1",
   "description": "Bubble Protocol client-side library",
   "author": "Bubble Protocol",
   "license": "MIT",

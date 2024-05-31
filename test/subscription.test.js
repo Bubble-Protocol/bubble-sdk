@@ -1,10 +1,10 @@
 import { jest } from '@jest/globals';
 import { pingWebsocketServerTest, startServers, stopServers } from './mockups/test-servers.js';
-import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requester, requesterBubble, requesterSign } from './mockups/test-bubble.js';
+import { bubbleAvailableTest, clearTestBubble, ownerBubble, requesterBubble } from './mockups/test-bubble.js';
 import { constructTestBubble } from './mockups/test-bubble.js';
 import '../packages/core/test/BubbleErrorMatcher.js';
 import contractSrc from './contracts/MultiUserContract.json';
-import { ROOT_PATH } from '../packages/client/src/index.js';
+import { ROOT_PATH } from '../packages/core/src/index.js';
 
 
 const publicDir = "0x0000000000000000000000000000000000000000000000000000000000000001";
