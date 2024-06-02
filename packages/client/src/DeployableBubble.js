@@ -438,6 +438,9 @@ export class DeployableBubble {
    */
   async _initialisationSequence(contractParams=[]) {
     assert.isArray(contractParams, 'contractParams');
+    if (this.constructionState === CONSTRUCTION_STATE.deleted) {
+      throw new Error("Bubble has been deleted");
+    }
     if (this.constructionState === CONSTRUCTION_STATE.new) {
       await this._deployContract(contractParams);
       this.constructionState = CONSTRUCTION_STATE.contractDeployed;
