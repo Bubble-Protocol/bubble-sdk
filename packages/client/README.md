@@ -211,11 +211,10 @@ const bubble = new DeployableBubble(
 );
 
 await bubble.initialise(
-  [],                       // contract constructor params
-  '<storage_service_url>',  // provider url
+  []  // contract constructor params
 );
 
-if (bubble.constructionState !== 'new') {
+if (!bubble.isNew()) {
   myAppState.bubbleMetadata = bubble.getMetadata();
   localStorage.setItem('my-app-state', myAppState);
 }
@@ -567,8 +566,8 @@ import "https://github.com/Bubble-Protocol/bubble-sdk/blob/main/contracts/Access
 contract SimpleFileVault is AccessControlledStorage {
 
     bool terminated = false;
-    address owner;
-    address ownerLogin;
+    address public owner;
+    address public ownerLogin;
 
     constructor(address login) {
         owner = msg.sender;
@@ -606,8 +605,10 @@ class SimpleFileVault extends DeployableBubble {
   METADATA_FILE = toFileId(1);
   FILE_DIR = toFileId(2);
 
-  constructor(metadata, wallet, signFunction) {
+  constructor(metadata, wallet, contractSourceCode, signFunction) {
     super(metadata, wallet, contractSourceCode, signFunction);
+    this.setContentConstructor(this._constructBubbleContents.bind(this));
+    this.setContentInitialiser(this._initialiseBubbleContents.bind(this));
     this.name = metadata.name;
     this.files = [];
   }
@@ -618,7 +619,8 @@ class SimpleFileVault extends DeployableBubble {
   }
 
   async _initialiseBubbleContents() {
-    const metadata = await this.bubble.read(this.METADATA_FILE);
+    const json = await this.bubble.read(this.METADATA_FILE);
+    const metadata = JSON.parse(json);
     this.name = metadata.name;
     this.files = await this.bubble.list(this.FILE_DIR);
   }
@@ -642,6 +644,10 @@ class SimpleFileVault extends DeployableBubble {
   async setName(name) {
     await this.bubble.write(this.METADATA_FILE, {name});
     this.name = name;
+  }
+
+  async getOwner() {
+    return this.contract.call('owner', []);
   }
 
 }
@@ -698,20 +704,22 @@ async function initApp(wallet) {
     wallet.loginKey.signFunction
   );
   
-  await vault.initialise(
-    [wallet.loginKey.address],
-    'https://vault.bubbleprotocol.com/v2/ethereum',
-  );
+  await vault.initialise([wallet.loginKey.address]);
   
-  if (vault.constructionState !== 'new') {
+  if (!vault.isNew()) {
+    // Vault initialisation at least partially completed so save vault state.
+    // (If vault failed to fully construct then the app will automatically try again when re-run)
     myAppState.vaultMetadata = vault.getMetadata();
     localStorage.setItem('simple-file-vault', myAppState);
   }
   
-  if(vault.initState === 'failed') throw vault.error;
+  if(vault.isFailed()) throw vault.error;
 
 }
 
+//
+// Main
+//
 
 const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url
 const wallet = new Wallet(web3);
@@ -722,6 +730,8 @@ try {
 catch (e) {
   console.error('Error initialising app:', e);
 }
+
+...
 ```
 
 ## Delegation

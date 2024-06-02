@@ -2,7 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { BubbleProvider, ContentId, assert, ErrorCodes } from '@bubble-protocol/core';
+import { ContentId, assert, ErrorCodes } from '@bubble-protocol/core';
 import { Bubble } from './Bubble.js';
 
 /**
@@ -62,9 +62,14 @@ export class DeployableBubble {
   error;
 
   /**
+   * The bubble's contract
+   */
+  contract;
+
+  /**
    * The bubble's globally unique ContentId
    */
-  bubbleId;
+  bubbleId = {};
 
   /**
    * The off-chain bubble
@@ -100,8 +105,14 @@ export class DeployableBubble {
    * @param {Object} wallet - object containing wallet functions used for contract interactions. @see this.wallet
    * @param {Object} contractSourceCode - Source code for the bubble smart contract. Requires `abi` and `bytecode` fields.
    * @param {Function} signFunction - Function to sign off-chain bubble requests.
+   * @param {String|Object} options.provider provider to use for the off-chain bubble, if not already set in metadata.bubbleId. See `setBubbleProvider()`.
+   * @param {EncryptionPolicy} options.encryptionPolicy encryption policy for the bubble
+   * @param {UserManager} options.userManager user manager for the bubble
+   * @param {async Function} options.contentConstructor custom function to construct bubble contents
+   * @param {async Function} options.contentInitialiser custom function to initialise bubble contents
+   * @param {async Function} options.contractTerminator custom function to terminate the bubble contract
    */
-  constructor(metadata={}, wallet, contractSourceCode, signFunction) {
+  constructor(metadata={}, wallet, contractSourceCode, signFunction, options={}) {
     // validate params
     assert.isObject(metadata, 'metadata');
     assert.isObject(wallet, 'wallet');
@@ -112,11 +123,26 @@ export class DeployableBubble {
     assert.isArray(contractSourceCode.abi, 'contractSourceCode.abi');
     assert.isString(contractSourceCode.bytecode || contractSourceCode.bin, 'contractSourceCode.bytecode');
     assert.isFunction(signFunction, "signFunction");
+    // parse options
+    this.setTerminateFunction(options.contractTerminator || this._terminateContract.bind(this));
+    if (options.contentConstructor) this.setContentConstructor(options.contentConstructor);
+    if (options.contentInitialiser) this.setContentInitialiser(options.contentInitialiser);
+    if (options.provider) this.setBubbleProvider(options.provider);
+    if (options.encryptionPolicy) this.setEncryptionPolicy(options.encryptionPolicy);
+    if (options.userManager) this.setUserManager(options.userManager);
+    // Setup contract functions
+    this.contract = {
+      address: this.bubbleId ? this.bubbleId.contract : undefined,
+      call: this._callContract.bind(this),
+      send: this._sendContract.bind(this),
+      isDeployed: this.isContractDeployed.bind(this)
+    }
     // set local state
     if (metadata.constructionState) {
       assert.isNotEmpty(metadata.bubbleId, 'metadata.bubbleId');
       this.constructionState = metadata.constructionState;
       if (metadata.bubbleId) this.bubbleId = new ContentId(metadata.bubbleId);
+      if (!options.provider && this.bubbleId.provider) this.setBubbleProvider(this.bubbleId.provider);
     }
     this.wallet = wallet;
     this.contractSourceCode = contractSourceCode;
@@ -125,25 +151,95 @@ export class DeployableBubble {
   }
 
   /**
+   * Allows the client to set a custom function to construct bubble contents during bubble construction.
+   * 
+   * @param {async Function} fn - The custom function to construct bubble contents.
+   */
+  setContentConstructor(fn) {
+    if (fn.constructor.name !== 'AsyncFunction') throw new Error("setContentConstructor must be an async function");
+    this._bubbleContentConstructor = fn;
+  }
+
+  /**
+   * Allows the client to set a custom function to read bubble contents during initialisation.
+   * 
+   * @param {async Function} fn - The custom function to read bubble contents.
+   */
+  setContentInitialiser(fn) {
+    if (fn.constructor.name !== 'AsyncFunction') throw new Error("setContentInitialiser must be an async function");
+    this._bubbleContentInitialiser = fn;
+  }
+
+  /**
+   * Allows the client to set a custom function to terminate the bubble contract.
+   * 
+   * @param {async Function} fn 
+   */
+  setTerminateFunction(fn) {
+    if (fn.constructor.name !== 'AsyncFunction') throw new Error("setTerminateFunction must be an async function");
+    this._contractTerminator = fn;
+  }
+
+  /**
+   * Allows the client to set a custom function to construct the off-chain bubble class instance.
+   * 
+   * @param {*} fn - The custom function to construct the off-chain bubble.
+   */
+  setBubbleConstructor(fn) {
+    if (fn.constructor.name !== 'Function') throw new Error("setBubbleConstructor must be a sync function");
+    this._bubbleConstructor = fn;
+  }
+
+  /**
+   * Sets the encryption policy for the off-chain bubble.
+   * 
+   * @param {EncryptionPolicy} policy 
+   */
+  setEncryptionPolicy(policy) {
+    this._encryptionPolicy = policy;
+  }
+
+  /**
+   * Sets the user manager for the off-chain bubble.
+   * 
+   * @param {UserManager} userManager 
+   */
+  setUserManager(userManager) {
+    this._userManager = userManager;
+  }
+
+  /**
+   * Allows the client to set the provider url or a custom BubbleProvider for the off-chain bubble.
+   * 
+   * @param {String|Object} provider - The provider url or an object with the structure {url: String, provider: BubbleProvider}
+   */
+  setBubbleProvider(provider) {
+    if (assert.isString(provider)) this._bubbleProvider = {url: provider};
+    else {
+      assert.isObject(provider, 'provider');
+      assert.isString(provider.url, 'provider.url');
+      assert.isObject(provider.provider, 'provider.provider');
+      this._bubbleProvider = provider;
+    }
+  }
+
+
+  /**
    * Initialises the bubble based on its current construction state (passed in the metadata during 
    * construction). As necessary, deploys the contract, creates the off-chain bubble, constructs 
-   * the bubble contents and initialises the bubble contents. Override the `_constructBubbleContents`
-   * and `_readBubbleContents` functions to create the internal structure of the bubble.
+   * the bubble contents and initialises the bubble contents. Use setContentConstructor and
+   * setContentInitialiser to set custom functions for constructing and initialising the bubble contents.
    * 
    * @param {Array} contractParams constructor params passed when deploying the contract
-   * @param {String} bubbleProvider URI of the off-chain bubble provider
-   * @param {BubbleProvider} options.provider custom BubbleProvider to use as the interface to the off-chain bubble
-   * @param {EncryptionPolicy} options.encryptionPolicy encryption policy for the bubble
-   * @param {UserManager} options.userManager user manager for the bubble
    */
-  async initialise(contractParams, providerUri, options={}) {
+  async initialise(contractParams) {
+    if (!this._bubbleProvider) throw new Error("Bubble provider not set");
     try {
       this.initState = INIT_STATE.initialising;
-      await this._initialisationSequence(contractParams, providerUri, options);
+      await this._initialisationSequence(contractParams);
       this.bubble.addTerminatedListener(this._handleBubbleTerminated.bind(this));
       this.initState = INIT_STATE.initialised;
     } catch (error) {
-      console.debug("Error initialising bubble", error);
       this.initState = INIT_STATE.failed;
       this.error = error;
       this._checkForTerminatedBubble(error);
@@ -152,9 +248,11 @@ export class DeployableBubble {
 
   /**
    * Deletes the bubble by terminating the contract and off-chain bubble.
+   * 
+   * @param {Boolean} terminateContract - Set to false to only delete the off-chain bubble. Default is true.
    */
-  async deleteBubble() {
-    await this.wallet.send(this.bubbleId.contract, this.contractSourceCode.abi, 'terminate', []);
+  async deleteBubble(terminateContract=true) {
+    if (terminateContract) await this._contractTerminator();
     if (this.constructionState !== CONSTRUCTION_STATE.contractDeployed) {
       this.bubble.terminate();
     }
@@ -173,7 +271,6 @@ export class DeployableBubble {
 
   /**
    * Returns this object's metadata (used to construct this class instance in the future).
-   * Override to add additional metadata.
    * 
    * @returns {Object} - metadata for the bubble.
    */
@@ -195,105 +292,75 @@ export class DeployableBubble {
     return this.bubble;
   }
 
-
+  
   //
-  // Protected functions
-  //
-
-  /**
-   * Override this method to construct any custom bubble contents during bubble construction.
-   */
-  async _constructBubbleContents() {}
-
-  /**
-   * Override this method to read any custom bubble contents during initialisation.
-   */
-  async _initialiseBubbleContents() {}
-
-  /**
-   * Constructs and returns a Bubble class instance. Override to use a custom Bubble class.
-   * 
-   * @param {String|BubbleProvider} provider - URI of the off-chain bubble provider or a custom BubbleProvider instance
-   * @param {Object} options - contains optional encryptionPolicy and userManager
-   */
-  _constructBubbleInstance(provider, options) {
-    return this.bubble || 
-    new Bubble(this.bubbleId, provider, this.signFunction, options.encryptionPolicy, options.userManager);
-  }
-
-
-  //
-  // Internal functions
+  // Off-chain bubble functions
   //
 
-  /**
-   * Initialises the bubble based on its current construction state. 
-   * 
-   * As necessary:
-   *   1) deploys the contract if it has not already been deployed
-   *   2) creates the off-chain bubble if it has not already been created
-   *   3) constructs any custom bubble content if it has not already been constructed
-   *   4) initialises (reads) any custom bubble content
-   */
-  async _initialisationSequence(contractParams, providerUri, options) {
-    assert.isArray(contractParams, 'contractParams');
-    assert.isString(providerUri, 'providerUri');
-    if (this.constructionState === CONSTRUCTION_STATE.new) {
-      await this._deployContract(contractParams);
-      this.bubbleId.provider = providerUri;
-      this.constructionState = CONSTRUCTION_STATE.contractDeployed;
-    }
-    this.bubble = this._constructBubbleInstance(options.provider || this.bubbleId.provider, options);
-    if (this.constructionState === CONSTRUCTION_STATE.contractDeployed) {
-      await this._deployOffChainBubble();
-      this.constructionState = CONSTRUCTION_STATE.bubbleDeployed;
-    }
-    if (this.constructionState === CONSTRUCTION_STATE.bubbleDeployed) {
-      await this._constructBubbleContents();
-      this.constructionState = CONSTRUCTION_STATE.constructed;
-    }
-    if (this.constructionState === CONSTRUCTION_STATE.constructed) {
-      await this._initialiseBubbleContents();
-    }
+  write(path, data, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.write(path, data, options);
   }
 
-  /**
-   * Deploys the bubble contract using the given contract params.
-   */
-  async _deployContract(params) {
-    const chainId = this.wallet.getChainId();
-    const contractAddress = await this.wallet.deploy(this.contractSourceCode.abi, this.contractSourceCode.bytecode, params);
-    this.bubbleId = new ContentId({
-      chain: chainId,
-      contract: contractAddress,
-      provider: ""
-    });
+  append(path, data, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.append(path, data, options);
   }
 
-  /**
-   * Deploys the off-chain bubble.
-   */
-  async _deployOffChainBubble() {
-    await this.bubble.create();
+  read(path, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.read(path, options);
   }
 
-  /**
-   * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
-   */
-  _handleBubbleTerminated() {
-    this.constructionState = CONSTRUCTION_STATE.deleted;
-    this.initState = INIT_STATE.failed;
-    this.error = new Error("Bubble has been terminated");
+  delete(path, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.delete(path, options);
   }
 
-  /**
-   * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
-   */
-  _checkForTerminatedBubble(error) {
-    if (error && error.code == ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED) {
-      this._handleBubbleTerminated();
-    }
+  mkdir(path, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.mkdir(path, options);
   }
+
+  list(path, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.list(path, options);
+  }
+
+  getPermissions(path, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.getPermissions(path, options);
+  }
+
+  subscribe(path, listener, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.subscribe(path, listener, options);
+  }
+
+  unsubscribe(id, options) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.unsubscribe(id, options);
+  }
+
+  addTerminatedListener(listener) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    this.bubble.addTerminatedListener(listener);
+  }
+
+  removeTerminatedListener(listener) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    this.bubble.removeTerminatedListener(listener);
+  }
+
+  getContentId(path) {
+    if (!this.bubble) throw new Error("bubble is not deployed");
+    return this.bubble.getContentId(path);
+  }
+
+
+  //
+  // State getter functions
+  //
 
   /**
    * Returns true if the contract has not yet been deployed
@@ -352,5 +419,108 @@ export class DeployableBubble {
   isFailed() {
     return this.initState === INIT_STATE.failed;
   }
+
+
+  //
+  // Internal functions
+  //
+
+  /**
+   * Initialises the bubble based on its current construction state. 
+   * 
+   * As necessary:
+   *   1) deploys the contract if it has not already been deployed
+   *   2) creates the off-chain bubble if it has not already been created
+   *   3) constructs any custom bubble content if it has not already been constructed
+   *   4) initialises (reads) any custom bubble content
+   * 
+   * @param {Array} contractParams constructor params passed when deploying the contract
+   */
+  async _initialisationSequence(contractParams=[]) {
+    assert.isArray(contractParams, 'contractParams');
+    if (this.constructionState === CONSTRUCTION_STATE.new) {
+      await this._deployContract(contractParams);
+      this.constructionState = CONSTRUCTION_STATE.contractDeployed;
+    }
+    this.contract.address = this.bubbleId.contract;
+    this.bubble = this._constructBubbleInstance(this._bubbleProvider);
+    if (this.constructionState === CONSTRUCTION_STATE.contractDeployed) {
+      await this._deployOffChainBubble();
+      this.constructionState = CONSTRUCTION_STATE.bubbleDeployed;
+    }
+    if (this.constructionState === CONSTRUCTION_STATE.bubbleDeployed) {
+      if (this._bubbleContentConstructor) await this._bubbleContentConstructor();
+      this.constructionState = CONSTRUCTION_STATE.constructed;
+    }
+    if (this.constructionState === CONSTRUCTION_STATE.constructed) {
+      if (this._bubbleContentInitialiser) await this._bubbleContentInitialiser();
+    }
+  }
+
+  /**
+   * Deploys the bubble contract using the given contract params.
+   */
+  async _deployContract(params) {
+    const chainId = this.wallet.getChainId();
+    const contractAddress = await this.wallet.deploy(this.contractSourceCode.abi, this.contractSourceCode.bytecode, params);
+    this.bubbleId = new ContentId({
+      chain: chainId,
+      contract: contractAddress,
+      provider: this._bubbleProvider.url
+    });
+  }
+
+  /**
+   * Default function to terminate the bubble contract.
+   */
+  async _terminateContract() {
+    await this.contract.send('terminate', []);
+  }
+
+  /**
+   * Deploys the off-chain bubble.
+   */
+  async _deployOffChainBubble() {
+    await this.bubble.create();
+  }
+
+  /**
+   * Constructs the off-chain Bubble class instance.
+   */
+  _constructBubbleInstance() {
+    if (this.bubble) return this.bubble;
+    this.bubbleId.provider = this._bubbleProvider.url;
+    if (this._bubbleConstructor) return this._bubbleConstructor(this._bubbleProvider, this.signFunction);
+    else return new Bubble(this.bubbleId, this._bubbleProvider.provider || this._bubbleProvider.url, this.signFunction, this._encryptionPolicy, this._userManager);
+  }
+
+  /**
+   * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
+   */
+  _handleBubbleTerminated() {
+    this.constructionState = CONSTRUCTION_STATE.deleted;
+    this.initState = INIT_STATE.failed;
+    this.error = new Error("Bubble has been terminated");
+  }
+
+  /**
+   * Checks if the given error is a terminated bubble error and sets the bubble's state accordingly.
+   */
+  _checkForTerminatedBubble(error) {
+    if (error && error.code == ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED) {
+      this._handleBubbleTerminated();
+    }
+  }
+
+  async _callContract(method, params) {
+    if (!this.isContractDeployed()) throw new Error("Contract has not been deployed");
+    return this.wallet.call(this.bubbleId.contract, this.contractSourceCode.abi, method, params);
+  }
+
+  async _sendContract(method, params) {
+    if (!this.isContractDeployed()) throw new Error("Contract has not been deployed");
+    return this.wallet.send(this.bubbleId.contract, this.contractSourceCode.abi, method, params);
+  }
+
 
 }
