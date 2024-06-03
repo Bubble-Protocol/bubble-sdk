@@ -531,12 +531,12 @@ const bubble = bubbleFactory.createAESGCMEncryptedMultiUserBubble(bubbleId, {oth
 
 The [`DeployableBubble`](./src/DeployableBubble.js) class encapsulates both the on-chain and off-chain components of a bubble. It is designed to simplify the construction, initialisation and termination processes for apps that deploy and manage their own bubbles at runtime. 
 
-The construction and initialisation of a new bubble consists of the following sequence:
+In general, the construction and initialisation of a new bubble consists of the following sequence:
 
 1) Deploy the bubble's access control contract to the blockchain.
 2) Create the off-chain bubble on a storage provider.
 3) Setup the new off-chain bubble with any default files and directories needed for your app.
-4) Read or subscribe to any content on initialisation.
+4) Read or subscribe to any content on subsequent initialisation.
 
 If something goes wrong during this sequence then the bubble will be left in an incomplete state.
 
@@ -547,7 +547,7 @@ To use the class an app must:
 - store the bubble's metadata between app sessions
 - provide an interface to the user's wallet with `deploy`, `send` and `getChainId` functions.
 
-If your bubble has content that needs setting up during construction or reading/subscribing during initilisation then extend the `DeployableBubble` class and override the `_constructBubbleContents` and `_initialiseBubbleContents` methods.
+If your bubble has content that needs setting up during construction or reading/subscribing during initialisation then use the hooks `setContentConstructor` and `setContentInitialiser`.
 
 Example app that uses `DeployableBubble` to deploy and initialise a private file vault.  Defines a `SimpleFileVault` class that extends `DeployableBubble` so it can manage its own metadata file and stored vault files.  Defines a `Wallet` class that uses `web3js` to deploy contracts and send transactions.
 
