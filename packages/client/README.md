@@ -91,10 +91,10 @@ Assumes a smart contract implementing the `AccessControlledStorage` interface ha
 ### Create A New Bubble
 ```javascript
 import { Bubble, bubbleProviders } from '@bubble-protocol/client';
-import { ContentID } from '@bubble-protocol/core';
+import { ContentId } from '@bubble-protocol/core';
 import { ecdsa } from '@bubble-protocol/crypto';
 
-const bubbleId = new ContentID({
+const bubbleId = new ContentId({
   chain: <chain_id>,
   contract: '<contract_address>',
   provider: '<storage_service_url>'
