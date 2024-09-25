@@ -29,7 +29,7 @@ abstract contract ProviderMetadata {
     /**
      * @dev Call this from the inheriting contract to update the provider URL.
      */
-    function _setProviderUrl(string memory _providerUrl) internal {
+    function _setProviderUrl(string memory _providerUrl) internal virtual {
         providerUrl = _providerUrl;
     }
 

@@ -27,7 +27,7 @@ abstract contract Terminatable {
     /**
      * @dev Call this function from the inheriting contract to terminate the bubble.
      */
-    function _terminate() internal {
+    function _terminate() internal virtual {
         terminated = true;
     }
 

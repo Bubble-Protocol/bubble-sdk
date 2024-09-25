@@ -44,7 +44,7 @@ abstract contract ConsentManagement {
     /**
      * @dev Call this from the inheriting contract to update the user consent.
      */
-    function _setConsent(bytes32 _consent) internal {
+    function _setConsent(bytes32 _consent) internal virtual {
         if (address(consentPolicy) != address(0)) {
             require(consentPolicy.isValid(_consent), "mandatory bits must be set");
         }

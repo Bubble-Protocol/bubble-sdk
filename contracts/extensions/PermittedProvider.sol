@@ -38,7 +38,7 @@ abstract contract PermittedProvider is ProviderMetadata {
      * @dev Call this from the inheriting contract to update the provider URL. Will revert if the
      * provider is not one of the permitted providers.
      */
-    function _setProviderUrl(string memory _providerUrl) internal override {
+    function _setProviderUrl(string memory _providerUrl) internal override virtual {
         require(isPermittedProvider(keccak256(abi.encodePacked(_providerUrl))), "Provider not permitted");
         super._setProviderUrl(_providerUrl);
     }
