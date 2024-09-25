@@ -42,12 +42,12 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
         address controller, 
         address processor, 
         bytes32 consent, 
-        bytes32 mandatoryConsentBits, 
+        IConsentPolicy consentPolicy,
         string memory providerUrl, 
         IProviderList permittedProviders
     )
     GDPRRoles(subject, controller, processor)
-    ConsentManagement(consent, mandatoryConsentBits)
+    ConsentManagement(consent, consentPolicy)
     PermittedProvider(providerUrl, permittedProviders)
     {}
 
@@ -77,13 +77,6 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
      */
     function updateProvider(string memory providerUrl) external onlySubject() {
         _setProviderUrl(providerUrl);
-    }
-
-    /**
-     * @dev Allow the controller to update the mandatory consent bits.
-     */
-    function setMandatoryConsent(bytes32 _mandatoryConsentBits) external onlyController {
-        _setMandatoryConsentBits(_mandatoryConsentBits);
     }
 
     /**

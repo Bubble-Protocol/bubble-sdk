@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import "./IConsentPolicy.sol";
 
 /**
  * Contract to manage user consent. Stores up to 256 consent flags, any of which can be mandatory.
@@ -13,14 +14,14 @@ abstract contract ConsentManagement {
     bytes32 private consent;
 
     // Mandatory consent bits
-    bytes32 private mandatoryConsent;
+    IConsentPolicy private consentPolicy;
 
     /**
      * @dev Constructor that initialises the user consent and mandatory consent bits.
      * Will revert if mandatory bits are not set in the consent.
      */
-    constructor(bytes32 _consent, bytes32 _mandatoryBits) {
-        _setMandatoryConsentBits(_mandatoryBits);
+    constructor(bytes32 _consent, IConsentPolicy _policy) {
+        consentPolicy = _policy;
         _setConsent(_consent);
     }
 
@@ -39,25 +40,11 @@ abstract contract ConsentManagement {
     }
 
     /**
-     * @dev Retrieve the mandatory consent bits.
-     */
-    function getMandatoryConsentBits() public view returns (bytes32) {
-        return mandatoryConsent;
-    }
-
-    /**
      * @dev Call this from the inheriting contract to update the user consent.
      */
     function _setConsent(bytes32 _consent) internal {
-        require(_consent & mandatoryConsent == mandatoryConsent, "mandatory bits must be set");
+        require(consentPolicy.meetsMandatoryConsent(_consent), "mandatory bits must be set");
         consent = _consent;
-    }
-
-    /**
-     * @dev Call this from the inheriting contract to update the mandatory consent bits.
-     */
-    function _setMandatoryConsentBits(bytes32 _mandatoryBits) internal {
-        mandatoryConsent = _mandatoryBits;
     }
 
 }
