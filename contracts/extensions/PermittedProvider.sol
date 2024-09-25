@@ -3,35 +3,35 @@
 pragma solidity ^0.8.0;
 
 import "./ProviderMetadata.sol";
-import "./IProviderList.sol";
+import "./IProviderPolicy.sol";
 
 /**
- * Holds metadata about a bubble's host provider and optionally enforces the provider to be within
- * a list of permitted providers.
+ * Holds metadata about a bubble's host provider and optionally enforces the provider to be 
+ * permitted by a policy.
  */
 abstract contract PermittedProvider is ProviderMetadata {
 
     // Permitted providers list
-    IProviderList permittedProviders;
+    IProviderPolicy providerPolicy;
 
     /**
-     * @dev Constructor that initialises the permitted providers. Will revert if the provider URL
-     * is not one of the permitted providers. Passing a null provider list (address 0) will allow
+     * @dev Constructor that initialises the provider and policy. Will revert if the provider URL
+     * is not permitted by the policy. Passing a null policy (address 0) will allow
      * any provider.
      */
-    constructor(string memory _providerUrl, IProviderList _permittedProviders)
+    constructor(string memory _providerUrl, IProviderPolicy _policy)
     ProviderMetadata(_providerUrl) 
     {
-        permittedProviders = _permittedProviders;
+        providerPolicy = _policy;
         require(isPermittedProvider(keccak256(abi.encodePacked(_providerUrl))), "Provider not permitted");
     }
 
     /**
-     * @dev Returns true if the provider is permitted.
+     * @dev Returns true if the provider is permitted by the provider policy.
      */
     function isPermittedProvider(bytes32 provider) public view returns (bool) {
-        if (address(permittedProviders) == address(0)) return true;
-        return permittedProviders.contains(provider);
+        if (address(providerPolicy) == address(0)) return true;
+        return providerPolicy.isPermittedProvider(provider);
     }
 
     /**

@@ -35,7 +35,7 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
 
     /**
      * @dev Constructor that initialises the bubble with the subject, controller, processor, consent,
-     * mandatory consent bits, provider URL and any optional permitted providers.
+     * consent policy, provider URL and an optional provider policy.
      */
     constructor(
         address subject, 
@@ -44,7 +44,7 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
         bytes32 consent, 
         IConsentPolicy consentPolicy,
         string memory providerUrl, 
-        IProviderList permittedProviders
+        IProviderPolicy permittedProviders
     )
     GDPRRoles(subject, controller, processor)
     ConsentManagement(consent, consentPolicy)
