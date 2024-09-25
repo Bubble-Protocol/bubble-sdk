@@ -5,14 +5,14 @@ import "../AccessControlledStorage.sol";
 import "../AccessControlBits.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import "../extensions/Terminatable.sol";
 
 /**
  * An example of using a Chainlink oracle to control access to content.  Public access to a file is  
  * permitted if the current oracle value is above or below an owner set price level.
  */
-contract ChainlinkExampleBubble is AccessControlledStorage, Ownable {
+contract ChainlinkExampleBubble is AccessControlledStorage, Ownable, Terminatable {
 
-    bool terminated = false;
     AggregatorV3Interface internal dataFeed;
     mapping (uint256 => int) filePriceLevels;
 
@@ -65,7 +65,7 @@ contract ChainlinkExampleBubble is AccessControlledStorage, Ownable {
          * If the bubble has been terminated, the off-chain storage service will delete the bubble and 
          * all its contents.
          */
-        if (terminated) return BUBBLE_TERMINATED_BIT;
+        if (isTerminated()) return BUBBLE_TERMINATED_BIT;
 
         /**
          * Owner has full access rights to all files and to the bubble itself
@@ -90,7 +90,7 @@ contract ChainlinkExampleBubble is AccessControlledStorage, Ownable {
      * contents.  Only the contract owner can terminate the bubble.
      */
     function terminate() external onlyOwner {
-        terminated = true;
+        _terminate();
     }
 
 

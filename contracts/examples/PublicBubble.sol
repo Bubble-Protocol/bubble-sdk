@@ -4,16 +4,16 @@ pragma solidity ^0.8.0;
 
 import "../AccessControlledStorage.sol";
 import "../AccessControlBits.sol";
+import "../extensions/Terminatable.sol";
 
 /**
  * The simplest of all bubbles!  All files are public with rwa rights for all.  Only the owner can manage 
  * the bubble itself.
  */
-contract PublicBubble is AccessControlledStorage {
+contract PublicBubble is AccessControlledStorage, Terminatable {
 
+    // The contract owner
     address owner = msg.sender;
-    bool terminated = false;
-
 
     /**
      * The off-chain storage service's Guardian software uses this method to determine the access
@@ -25,7 +25,7 @@ contract PublicBubble is AccessControlledStorage {
          * If the bubble has been terminated, the off-chain storage service will delete the bubble and 
          * all its contents.
          */
-        if (terminated) return BUBBLE_TERMINATED_BIT;
+        if (isTerminated()) return BUBBLE_TERMINATED_BIT;
 
         /**
          * File 0 is a special file that represents the root of the bubble. Only users with write permission 
@@ -46,7 +46,7 @@ contract PublicBubble is AccessControlledStorage {
      */
     function terminate() external {
         require(msg.sender == owner, "permission denied");
-        terminated = true;
+        _terminate();
     }
 
 }

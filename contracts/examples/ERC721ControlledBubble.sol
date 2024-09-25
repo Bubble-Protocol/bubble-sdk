@@ -6,6 +6,7 @@ import "../AccessControlledStorage.sol";
 import "../AccessControlBits.sol";
 import "../BubbleStandardContent.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
+import "../extensions/Terminatable.sol";
 
 
 /**
@@ -15,11 +16,10 @@ import "@openzeppelin/contracts/interfaces/IERC721.sol";
  * This example also provides a single public directory that anyone can read to discover information about 
  * the token.
  */
-contract ERC721ControlledBubble is AccessControlledStorage {
+contract ERC721ControlledBubble is AccessControlledStorage, Terminatable {
 
     IERC721 nftContract;
     address owner = msg.sender;
-    bool terminated = false;
 
     constructor(IERC721 nft) {
       nftContract = nft;
@@ -37,7 +37,7 @@ contract ERC721ControlledBubble is AccessControlledStorage {
        * If the bubble has been terminated, the off-chain storage service will delete the bubble and 
        * all its contents.
        */
-      if (terminated) return BUBBLE_TERMINATED_BIT;
+      if (isTerminated()) return BUBBLE_TERMINATED_BIT;
 
       /**
        * This template includes a single public directory.  A public directory can be useful for discovery 
@@ -87,7 +87,7 @@ contract ERC721ControlledBubble is AccessControlledStorage {
      */
     function terminate() public {
       require(msg.sender == owner, "permission denied");
-      terminated = true;
+      _terminate();
     }
     
 }

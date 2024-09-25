@@ -4,15 +4,15 @@ pragma solidity ^0.8.0;
 
 import "../AccessControlledStorage.sol";
 import "../AccessControlBits.sol";
+import "../extensions/Terminatable.sol";
 
 /**
  * Bubble that allows anyone to pay to access data.  Users send ETH to the `topup` function to give
  * them access for a period of time, based on a price per minute set by the owner.
  */
-contract MonetizedBubble is AccessControlledStorage {
+contract MonetizedBubble is AccessControlledStorage, Terminatable {
 
     address owner = msg.sender;
-    bool public terminated = false;
 
     // The timestamp at which a user's access expires
     mapping (address => uint) expiryTimes;
@@ -30,7 +30,7 @@ contract MonetizedBubble is AccessControlledStorage {
     function getAccessPermissions( address user, uint256 contentId ) override external view returns (uint256) {
 
       // If the bubble has been terminated, the off-chain storage service will delete the bubble and its contents
-      if (terminated) return BUBBLE_TERMINATED_BIT;
+      if (isTerminated()) return BUBBLE_TERMINATED_BIT;
 
       // Owner has the right to construct the bubble
       if (contentId == 0 && user == owner) return DIRECTORY_BIT | READ_BIT | WRITE_BIT | APPEND_BIT;
@@ -64,7 +64,7 @@ contract MonetizedBubble is AccessControlledStorage {
     // Owner can terminate the bubble forcing the off-chain storage service to delete the bubble and its contents
     function terminate() external {
       require(msg.sender == owner, "permission denied");
-      terminated = true;
+      _terminate();
     }
 
 
