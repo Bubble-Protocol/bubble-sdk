@@ -42,13 +42,13 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
         address controller, 
         address processor, 
         bytes32 consent, 
-        IConsentPolicy consentPolicy,
         string memory providerUrl, 
-        IProviderPolicy permittedProviders
+        IConsentPolicy consentPolicy,
+        IProviderPolicy providerPolicy
     )
     GDPRRoles(subject, controller, processor)
     ConsentManagement(consent, consentPolicy)
-    PermittedProvider(providerUrl, permittedProviders)
+    PermittedProvider(providerUrl, providerPolicy)
     {}
 
     /**

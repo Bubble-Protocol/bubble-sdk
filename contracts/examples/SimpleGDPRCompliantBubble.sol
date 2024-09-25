@@ -41,12 +41,12 @@ contract SimpleGDPRCompliantBubble is GDPRCompliantBubble {
         address subject, 
         address controller, 
         address processor, 
-        bytes32 consent, 
+        bytes32 consent,
+        string memory providerUrl,
         IConsentPolicy consentPolicy, 
-        string memory providerUrl, 
-        IProviderPolicy permittedProviders
+        IProviderPolicy providerPolicy
     )
-    GDPRCompliantBubble(subject, controller, processor, consent, consentPolicy, providerUrl, permittedProviders)
+    GDPRCompliantBubble(subject, controller, processor, consent, providerUrl, consentPolicy, providerPolicy)
     {}
 
     /**
