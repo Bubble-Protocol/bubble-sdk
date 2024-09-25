@@ -13,9 +13,9 @@ pragma solidity ^0.8.0;
 interface IConsentPolicy {
 
     /**
-     * @dev Returns true if the given consent bitfield meets the minimal mandatory consent 
-     * requirements for this policy.
+     * @dev Returns true if the given consent bitfield is valid against the requirements of
+     * this policy (for example, if it meets the minimal mandatory consent)
      */
-    function meetsMandatoryConsent(bytes32 _consent) external view returns (bool);
+    function isValid(bytes32 _consent) external view returns (bool);
 
 }
