@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "./ConsentManagement.sol";
 import "./GDPRRoles.sol";
@@ -45,7 +44,7 @@ abstract contract GDPRCompliantBubble is ERC165, AccessControlledStorage, Permit
         bytes32 consent, 
         bytes32 mandatoryConsentBits, 
         string memory providerUrl, 
-        bytes32[] memory permittedProviders
+        IProviderList permittedProviders
     )
     GDPRRoles(subject, controller, processor)
     ConsentManagement(consent, mandatoryConsentBits)

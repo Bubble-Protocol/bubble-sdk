@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "./ProviderMetadata.sol";
+import "./IProviderList.sol";
 
 /**
  * Holds metadata about a bubble's host provider and optionally enforces the provider to be within
@@ -11,45 +12,26 @@ import "./ProviderMetadata.sol";
 abstract contract PermittedProvider is ProviderMetadata {
 
     // Permitted providers list
-    bytes32[] private permittedProviders;
+    IProviderList permittedProviders;
 
     /**
      * @dev Constructor that initialises the permitted providers. Will revert if the provider URL
-     * is not one of the permitted providers. Passing a zero length array will allow any provider.
+     * is not one of the permitted providers. Passing a null provider list (address 0) will allow
+     * any provider.
      */
-    constructor(string memory _providerUrl, bytes32[] memory _permittedProviders)
+    constructor(string memory _providerUrl, IProviderList _permittedProviders)
     ProviderMetadata(_providerUrl) 
     {
-        _setPermittedProviders(_permittedProviders);
-    }
-
-    /**
-     * @dev Returns true if any provider is allowed.
-     */
-    function isAnyProviderAllowed() public view returns (bool) {
-        return permittedProviders.length == 0;
+        permittedProviders = _permittedProviders;
+        require(isPermittedProvider(keccak256(abi.encodePacked(_providerUrl))), "Provider not permitted");
     }
 
     /**
      * @dev Returns true if the provider is permitted.
      */
     function isPermittedProvider(bytes32 provider) public view returns (bool) {
-        if (isAnyProviderAllowed()) return true;
-        for (uint i = 0; i < permittedProviders.length; i++) {
-            if (permittedProviders[i] == provider) {
-                return true;
-            }
-        }
-    }
-
-    /**
-     * @dev Call this from the inheriting contract to update the permitted providers. Will revert
-     * if the current provider is not one of the permitted providers. Passing a zero length array
-     * will allow any provider.
-     */
-    function _setPermittedProviders(bytes32[] memory _permittedProviders) internal {
-        permittedProviders = _permittedProviders;
-        _setProviderUrl(getProviderUrl());
+        if (address(permittedProviders) == address(0)) return true;
+        return permittedProviders.contains(provider);
     }
 
     /**
