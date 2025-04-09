@@ -20,8 +20,8 @@ export const ErrorCodes = {
 
 const DEFAULT_OPTIONS = {
   connectTimeout: 3000,
-  sendTimeout: 3000,
-  heartbeatPeriod: 3600_000,
+  sendTimeout: 5000,
+  heartbeatPeriod: 0,
   reconnectAttempts: 3,
   reconnectPeriod: 5000
 }
@@ -175,7 +175,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
       this.ws.on('open', () => {
         clearTimeout(this.timers.connectTimer);
         this._stateTransition(TRANSITIONS.connected);
-        this._sendHeartbeat();
+        if (this.options.heartbeatPeriod > 0) this._sendHeartbeat();
         resolve();
       });
     })
@@ -274,11 +274,14 @@ export class WebsocketBubbleProvider extends BubbleProvider {
   }
 
   _sendHeartbeat() {
-    this.post('ping').catch(error => {
+    this.post('ping')
+    .then(() => {
+      if (this.options.heartbeatPeriod > 0) this.timers.heartbeatTimer = setTimeout(this._sendHeartbeat, this.options.heartbeatPeriod);
+    })
+    .catch(error => {
       console.warn('WebsocketBubbleProvider: heartbeat could not be sent:', error);
       this._stateTransition(TRANSITIONS.failed);
     });
-    if (this.options.heartbeatPeriod > 0) this.timers.heartbeatTimer = setTimeout(this._sendHeartbeat, this.options.heartbeatPeriod);
   }
 
   _rejectAllRequests(error) {
@@ -323,7 +326,7 @@ export class WebsocketBubbleProvider extends BubbleProvider {
     this.eventListeners[event].forEach(l => l(...payload));
   }
 
-  _stateTransition(trigger) { console.debug('stateTransition', trigger, STATE_MACHINE[this.state][trigger])
+  _stateTransition(trigger) {
     const transition = STATE_MACHINE[this.state][trigger];
     if (transition.error) console.warn(transition.error);
     if (transition.state) this.state = transition.state;
