@@ -10,7 +10,11 @@ import { EncryptionPolicy } from "../EncryptionPolicy.js";
  * Override `isEncrypted()` to change the policy.
  */
 
-const Crypto = crypto || (window ? window.crypto : undefined);
+const Crypto = typeof crypto !== "undefined" && crypto.subtle
+  ? crypto
+  : typeof window !== "undefined" && window.crypto && window.crypto.subtle
+    ? window.crypto
+    : undefined;
 
 
 export class AESGCMEncryptionPolicy extends EncryptionPolicy {
