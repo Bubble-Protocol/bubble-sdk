@@ -1,7 +1,6 @@
 import { jest } from '@jest/globals';
-import { BlockchainProvider } from '@bubble-protocol/core';
+import { IBlockchainProvider } from '../../src/blockchain-providers/IBlockchainProvider.js';
 import { DataServer } from '../../src/DataServer.js';
-import Web3 from 'web3';
 
 /**
  * Errors
@@ -49,12 +48,15 @@ export const VALID_CONTRACT = '0x0000000000000000000000000000000000000001';
 export const VALID_DIR = '0x0000000000000000000000000000000000000000000000000000000000000002';
 export const VALID_FILE_PART = 'valid_file';
 export const VALID_FILE = VALID_DIR+'/'+VALID_FILE_PART;
+export const DUMMY_SIGNATURE = 'dummy-signature';
 
 export const COMMON_RPC_PARAMS = {
+  version: 1,
   timestamp: 1,
   nonce: "a1",
   chainId: 1,
   contract: VALID_CONTRACT,
+  signature: DUMMY_SIGNATURE
 };
 
 export const VALID_RPC_PARAMS = {
@@ -63,73 +65,6 @@ export const VALID_RPC_PARAMS = {
   data: 'hello world',
   options: undefined,
 };
-
-
-/**
- * Cryptographic functions
- */
-
-export const ECDSA_PARAMS = {name: 'ECDSA', hash: 'SHA-256'};
-export const ECDSA_KEYGEN_PARAMS = {name: 'ECDSA', namedCurve: 'P-256'};
-
-export async function generateKey(usages) {
-  return await crypto.subtle.generateKey(ECDSA_KEYGEN_PARAMS, true, usages)
-}
-
-export function signRPC(method, params, key, prefix='') {
-  const packet = {
-    method: method,
-    params: params
-  }
-  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(prefix+JSON.stringify(packet)))
-    .then(signature => {
-      params.signature = uint8ArrayToHex(signature);
-      if (prefix !== '') params.signaturePrefix = prefix;
-    })
-}
-
-export function signDelegate(delegate, key, prefix='') {
-  return crypto.subtle.sign(ECDSA_PARAMS, key.privateKey, Buffer.from(prefix+JSON.stringify(delegate)))
-    .then(signature => {
-      delegate.signature = uint8ArrayToHex(signature);
-      if (prefix !== '') delegate.signaturePrefix = prefix;
-    })
-}
-
-export function hashRPC(method, params, prefix='') {
-  const packet = {
-    method: method,
-    params: params
-  } 
-  const hash = Web3.utils.sha3(JSON.stringify(packet)).slice(2);
-  if (prefix !== '') return Web3.utils.sha3(prefix+hash).slice(2)
-  else return hash;
-}
-
-export function hashDelegate(delegate, prefix='') {
-  const hash = Web3.utils.sha3(JSON.stringify(delegate)).slice(2);
-  if (prefix !== '') return Web3.utils.sha3(prefix+hash).slice(2)
-  else return hash;
-}
-
-export async function publicKeyToEthereumAddress(publicKey) {
-  const rawKey = await crypto.subtle.exportKey('raw', publicKey);
-  const hash = await crypto.subtle.digest('SHA-256', rawKey.slice(1));
-  return '0x'+uint8ArrayToHex(hash.slice(-20));
-}
-
-
-/**
- * Utils
- */
-
-export function hexToUint8Array(hexString) {
-  return Buffer.from(hexString, 'hex');
-}
-
-export function uint8ArrayToHex(buffer) {
-  return Buffer.from(buffer).toString('hex');
-}
 
 
 /**
@@ -155,7 +90,7 @@ export class TestDataServer extends DataServer {
 }
 
 
-export class TestBlockchainProvider extends BlockchainProvider {
+export class TestBlockchainProvider extends IBlockchainProvider {
 
   resetStubs() {
     this.getPermissions = jest.fn(() => Promise.reject(new Error('unexpected stub call: getPermissions')));
@@ -164,5 +99,10 @@ export class TestBlockchainProvider extends BlockchainProvider {
     this.hasBeenRevoked = jest.fn(() => Promise.reject(new Error('unexpected stub call: hasBeenRevoked')));
   }
 
+  validateContract(contract) {
+    return VALID_EVM_CONTRACT_ADDRESS_REGEX.test(contract);
+  }
+
 }
 
+const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^0x[a-fA-F0-9]{40}$/;

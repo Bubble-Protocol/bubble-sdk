@@ -1,0 +1,446 @@
+import { expect, jest } from '@jest/globals';
+import { BubbleError, ROOT_PATH } from '@bubble-protocol/core';
+import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
+import { Guardian } from '../../src/Guardian.js';
+import { 
+  VALID_CONTRACT, 
+  TestDataServer, 
+  ErrorCodes, Permissions
+} from './common.js';
+import { EVMProvider } from '../../src/blockchain-providers/EVM/EVMProvider.js';
+import { generatePrivateKey, privateKeyToAccount, serializeSignature, sign } from 'viem/accounts';
+import { keccak256, toBytes } from 'viem';
+import { eip712 } from '../../src/blockchain-providers/EVM/eip712.js';
+
+
+
+describe("Guardian/Provider Integration Tests", () => {
+
+  const privateKey = generatePrivateKey();
+  const account = privateKeyToAccount(privateKey);
+  const delegateKey = generatePrivateKey();
+  const delegateAccount = privateKeyToAccount(delegateKey);
+
+  const FILE1 = '0x0000000000000000000000000000000000000000000000000000000000000001';
+  const DIR2 = '0x0000000000000000000000000000000000000000000000000000000000000002';
+  
+  const VALID_RPC_PARAMS = {
+    version: 1,
+    timestamp: 1,
+    nonce: "a1",
+    chainId: 1,
+    contract: VALID_CONTRACT
+  };
+  
+  let dataServer, blockchainProvider, guardian;
+
+
+  const mockEthersProvider = {
+    getBlockNumber: jest.fn(),
+    getTransaction: jest.fn(),
+    getTransactionReceipt: jest.fn(),
+    call: jest.fn(),
+    sendTransaction: jest.fn(),
+    on: jest.fn(),
+    removeListener: jest.fn(),
+  };
+
+  beforeAll(async () => {
+    dataServer = new TestDataServer();
+    blockchainProvider = new EVMProvider("1.0", 1, mockEthersProvider, "bubble.io");
+    guardian = new Guardian(dataServer, blockchainProvider, "bubble.io");
+  })
+
+  beforeEach( () => {
+    jest.resetAllMocks();
+    dataServer.resetStubs();
+  });
+
+  describe("RPC succeeds", () => {
+
+    async function testValidRPC(rpc, serverResult, permissions, options={}) {
+      const signatory = options.signatory || account.address;
+      mockEthersProvider.call.mockResolvedValueOnce(toBytes(permissions));
+      dataServer[rpc.method].mockResolvedValueOnce(serverResult);
+      const result = await guardian.post(rpc.method, rpc.params);
+      expect(result).toEqual(serverResult);
+      expect(mockEthersProvider.call).toHaveBeenCalledTimes(1);
+      expect(mockEthersProvider.call).toHaveBeenCalledTimes(1);
+      expect(mockEthersProvider.call.mock.calls[0][0].to).toBe(VALID_CONTRACT);
+      expect(mockEthersProvider.call.mock.calls[0][0].data).toContain('0xc48dbf6a'); // getPermissions
+      expect(mockEthersProvider.call.mock.calls[0][0].data).toContain(signatory.toLowerCase().slice(2));
+      expect(mockEthersProvider.call.mock.calls[0][0].data).toContain(rpc.params.file.slice(2));
+    }
+
+    test("create a bubble with a plain signature", async () => {
+      const rpc = {
+        method: 'create',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT;
+      const serverResult = undefined;
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      return testValidRPC(rpc, serverResult, permissions);
+    });
+
+    test("write a file with an eip-191 signature", async () => {
+      const rpc = {
+        method: 'write',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: FILE1,
+          data: 'hello world'
+        }
+      }
+      const permissions = Permissions.WRITE_BIT;
+      const serverResult = undefined;
+      const sig = await account.signMessage({message: JSON.stringify(rpc)});
+      rpc.params.signature = {type: 'eip191', signature: sig};
+      return testValidRPC(rpc, serverResult, permissions);
+    });
+
+    test("read a file with an eip-712 signature", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: FILE1
+        }
+      }
+      const permissions = Permissions.READ_BIT;
+      const serverResult = 'hello world';
+      const typedData = {
+        domain: {...eip712.getEIP712Domain(1)},
+        types: eip712.EIP712_REQUEST_TYPES,
+        primaryType: "Request",
+        message: {
+          method: rpc.method,
+          ...rpc.params,
+          file: rpc.params.file ?? '',
+          data: rpc.params.data ?? ''
+        }
+      };
+      const sig = await account.signTypedData(typedData);    
+      rpc.params.signature = {type: 'eip712', signature: sig};
+      return testValidRPC(rpc, serverResult, permissions);
+    });
+
+    test("mkdir with a legacy signature", async () => {
+      const rpc = {
+        method: 'mkdir',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: DIR2
+        }
+      }
+      delete rpc.params.version; // legacy v0 has no version
+      const permissions = Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT;
+      const serverResult = undefined;
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = sig;
+      return testValidRPC(rpc, serverResult, permissions);
+    });
+
+    test("list dir with a plain delegate", async () => {
+      const rpc = {
+        method: 'list',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: DIR2
+        }
+      }
+      const permissions = Permissions.DIRECTORY_BIT | Permissions.READ_BIT;
+      const serverResult = [];
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 'never',
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'bubble.io'}
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testValidRPC(rpc, serverResult, permissions, {signatory: delegateAccount.address});
+    });
+
+    test("append file with an eip191 delegate", async () => {
+      const rpc = {
+        method: 'append',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: FILE1,
+          data: 'hello world'
+        }
+      }
+      const permissions = Permissions.APPEND_BIT;
+      const serverResult = undefined;
+      const sig = await account.signMessage({message: JSON.stringify(rpc)});
+      rpc.params.signature = {type: 'eip191', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 'never',
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'bubble.io'}
+        ]
+      }
+      const delegateSig = await delegateAccount.signMessage({message: JSON.stringify(delegate)});
+      delegate.signature = {type: 'eip191', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testValidRPC(rpc, serverResult, permissions, {signatory: delegateAccount.address});
+    });
+
+    test("read file with a plain signature and eip712 delegate", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: FILE1
+        }
+      }
+      const permissions = Permissions.READ_BIT;
+      const serverResult = "hello world";
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 2147483647,
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'bubble.io'}
+        ]
+      }
+      const typedData = {
+        domain: {...eip712.getEIP712Domain()},
+        types: eip712.EIP712_DELEGATE_TYPES,
+        primaryType: "Delegation",
+        message: delegate
+      };
+      const delegateSig = await delegateAccount.signTypedData(typedData);
+      delegate.signature = {type: 'eip712', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testValidRPC(rpc, serverResult, permissions, {signatory: delegateAccount.address});
+    });
+
+    test("read file with a legacy signature and legacy eip191 delegate", async () => { // entire packet is legacy or none. Does not support v1 rpc with v0 delegate
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: FILE1
+        }
+      }
+      delete rpc.params.version; // legacy v0 has no version
+      const permissions = Permissions.READ_BIT;
+      const serverResult = "hello world";
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = sig;
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 2147483647,
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'bubble.io'}
+        ]
+      }
+      const delegateSig = await delegateAccount.signMessage({message: JSON.stringify(delegate)});
+      delegate.signature = delegateSig;
+      delegate.signaturePrefix = "\x19Ethereum Signed Message:\n64"; // legacy v0 prefix
+      rpc.params.delegate = delegate;
+      return testValidRPC(rpc, serverResult, permissions, {signatory: delegateAccount.address});
+    });
+
+  });
+
+  describe("RPC fails gracefully", () => {  
+
+
+    async function testFailedRPC(rpc, expectedError, permissions, options={}) {
+      const signatory = options.signatory || account.address;
+      if (permissions) mockEthersProvider.call.mockResolvedValueOnce(toBytes(permissions));
+      return expect(guardian.post(rpc.method, rpc.params))
+      .rejects.toBeBubbleError(expectedError)
+      .then(() => {
+        if (permissions) {
+          expect(mockEthersProvider.call).toHaveBeenCalledTimes(1);
+          expect(mockEthersProvider.call.mock.calls[0][0].to).toBe(VALID_CONTRACT);
+          expect(mockEthersProvider.call.mock.calls[0][0].data).toContain('0xc48dbf6a'); // getPermissions
+          expect(mockEthersProvider.call.mock.calls[0][0].data).toContain(signatory.toLowerCase().slice(2));
+          expect(mockEthersProvider.call.mock.calls[0][0].data).toContain(rpc.params.file.slice(2));
+        }
+      });
+    }
+
+    test("permission denied when user does not have contract permission", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = Permissions.WRITE_BIT | Permissions.APPEND_BIT | Permissions.EXECUTE_BIT;
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+    test("delegate denied when unauthorized user signs rpc", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = undefined;  // no getPermissions call
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: delegateAccount.address,  // not the rpc signing user
+        expires: 'never',
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'bubble.io'}
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+    test("delegate denied when provider does not match", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = undefined;  // no getPermissions call
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 'never',
+        permissions: [
+          {type: 'bubble', chain: 1, contract: VALID_CONTRACT, provider: 'different.com'}  // different provider
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+    test("delegate denied when contract does not match", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = undefined;  // no getPermissions call
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 'never',
+        permissions: [
+          {type: 'contract', chain: 1, contract: account.address}  // different contract
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+    test("delegate denied when chain does not match", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = undefined;  // no getPermissions call
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: 'never',
+        permissions: [
+          {type: 'bubble', chain: 2, contract: VALID_CONTRACT, provider: 'bubble.io'}  // different chain
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+    test("delegate denied when delegation has expired", async () => {
+      const rpc = {
+        method: 'read',
+        params: {
+          ...VALID_RPC_PARAMS,
+          file: ROOT_PATH
+        }
+      }
+      const permissions = undefined;  // no getPermissions call
+      const expectedError = new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
+      const hash = keccak256(toBytes(JSON.stringify(rpc)));
+      const sig = serializeSignature(await sign({hash, privateKey}));
+      rpc.params.signature = {type: 'plain', signature: sig};
+      const delegate = {
+        version: 1,
+        delegate: account.address,
+        expires: Math.floor(Date.now()/1000) - 1,  // expired
+        permissions: [
+          {type: 'bubble', chain: 2, contract: VALID_CONTRACT, provider: 'bubble.io'}  // different chain
+        ]
+      }
+      const delegateHash = keccak256(toBytes(JSON.stringify(delegate)));
+      const delegateSig = serializeSignature(await sign({hash: delegateHash, privateKey: delegateKey}));
+      delegate.signature = {type: 'plain', signature: delegateSig};
+      rpc.params.signature.delegate = delegate;
+      return testFailedRPC(rpc, expectedError, permissions);
+    });
+
+  });  // fails gracefully
+
+});

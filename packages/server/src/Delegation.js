@@ -1,32 +1,6 @@
 import { Delegation as CoreDelegation, assert } from '@bubble-protocol/core';
-import Web3 from 'web3';
 
-/**
- * Server-side function to parse and validate a received signatory delegation object.
- * 
- * @param {Object} delegation signed delegation object to parse and validate
- * @param {BlockchainProvider} blockchainProvider provider to allow signature to be recovered
- * @returns ServerDelegation object that can be queried
- */
-export async function parseDelegation(delegation, blockchainProvider) {
-  const packet = {...delegation};
-  delete packet.signature;
-  delete packet.signaturePrefix;
-  try {
-    assert.isHexString(delegation.signature, 'signature');
-    if (delegation.signaturePrefix) assert.isString(delegation.signaturePrefix, 'signaturePrefix');
-    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
-    if (delegation.signaturePrefix) hash = Web3.utils.keccak256(delegation.signaturePrefix+hash).slice(2);
-    const signatory = await blockchainProvider.recoverSignatory(hash, delegation.signature);
-    return new Delegation(delegation, hash, signatory);
-  }
-  catch(error) {
-    return new Delegation(delegation, undefined, undefined, error);
-  }
-}
-
-
-class Delegation extends CoreDelegation {
+export class Delegation extends CoreDelegation {
 
   /**
    * The unique hash of the delegation
