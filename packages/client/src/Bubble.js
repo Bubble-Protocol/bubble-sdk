@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Bubble Protocol
+// Copyright (c) 2025 Bubble Protocol
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
@@ -6,7 +6,6 @@ import { EncryptionPolicy } from "./EncryptionPolicy.js";
 import { NullEncryptionPolicy } from "./encryption-policies/NullEncryptionPolicy.js";
 import { BubblePermissions, BubbleProvider, ContentId, ROOT_PATH, assert, ErrorCodes } from '@bubble-protocol/core';
 import { toFileId } from "./utils.js";
-import Web3 from 'web3';
 import { HTTPBubbleProvider } from "./bubble-providers/HTTPBubbleProvider.js";
 import { UserManager } from "./UserManager.js";
 
@@ -61,7 +60,7 @@ export class Bubble {
    * @param {Function} signFunction function that signs all transactions. (The storage service
    * identifies the user from the transaction signature). Takes the form:
    * 
-   *   (Buffer: hash) => { return Promise to resolve the signature of the hash as a Buffer }
+   *   (Object: packet) => { return Promise to resolve the signature }
    * 
    * The type and format of the signature must be appropriate to the blockchain platform.
    * @param {EncryptionPolicy} encryptionPolicy optional encryption policy
@@ -721,22 +720,17 @@ export class RPCFactory {
   }
 
   /**
-   * Signs and posts the given RPC to the bubble server.  May be used if the bubble server
-   * implements non-standard methods.  
+   * Signs the given RPC with the user-provided signing function.  The signature is added to the
+   * RPC parameters.
    * 
    * @param rpc the remote procedure call
    * @returns Promise to resolve with any response data when complete
    */
   sign(rpc) {
     if (rpc.options === undefined) delete rpc.options;
-    return this.signFunction(Web3.utils.keccak256(JSON.stringify(rpc)).slice(2))
+    return this.signFunction(rpc)
       .then(signature => {
-        if (typeof signature === 'object') {
-          if (signature.prefix) rpc.params.signaturePrefix = signature.prefix;
-          if (signature.delegate) rpc.params.delegate = signature.delegate;
-          rpc.params.signature = signature.signature;
-        }
-        else rpc.params.signature = signature;
+        rpc.params.signature = signature;
         return rpc;
       })
   }

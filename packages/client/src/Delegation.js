@@ -1,9 +1,8 @@
-// Copyright (c) 2023 Bubble Protocol
+// Copyright (c) 2025 Bubble Protocol
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { Delegation as CoreDelegation, assert } from '@bubble-protocol/core';
-import Web3 from 'web3';
 
 export class Delegation extends CoreDelegation {
 
@@ -52,7 +51,7 @@ export class Delegation extends CoreDelegation {
    * 
    * Takes the form:
    * 
-   *   (Buffer: hash) => { return Promise to resolve the signature of the hash as a Buffer }
+   *   (Object: packet) => { return Promise to resolve the signature }
    * 
    * The type and format of the signature must be appropriate to the blockchain platform.
    *
@@ -64,13 +63,7 @@ export class Delegation extends CoreDelegation {
       expires: this.expires,
       permissions: this.permissions
     }));
-    const signature = await signFunction(Web3.utils.keccak256(JSON.stringify(packet)).slice(2))
-    if (typeof signature === 'object') {
-      if (signature.prefix) this.signaturePrefix = signature.prefix;
-      this.signature = signature.signature;
-    }
-    else this.signature = signature;
-    if (!assert.isHexString(this.signature)) throw new Error('signFunction returned an invalid signature when signing delegation', {cause: this.signature});
+    this.signature = await signFunction(packet)
     return this;
   }
     
