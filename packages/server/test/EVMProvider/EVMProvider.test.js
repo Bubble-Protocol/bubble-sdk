@@ -236,6 +236,13 @@ describe("EVMProvider", () => {
         expect(result).toBe(account.address);
       });
 
+      test("handles a signature without leading 0x", async () => {
+        const hash = keccak256(toBytes(JSON.stringify(MIN_VALID_RPC_PACKET)));
+        const sig = serializeSignature(await sign({hash, privateKey})).slice(2);
+        const result = await uut.recoverSignatory(MIN_VALID_RPC_PACKET, { type: "plain", signature: sig }, "rpc");
+        expect(result).toBe(account.address);
+      });
+
       test("recovers from a delegate", async () => {
         const hash = keccak256(toBytes(JSON.stringify(MIN_VALID_DELEGATE_PACKET)));
         const sig = serializeSignature(await sign({hash, privateKey}));
@@ -278,6 +285,13 @@ describe("EVMProvider", () => {
       test("recovers from an rpc", async () => {
         const message = JSON.stringify(MIN_VALID_RPC_PACKET);
         const sig = await account.signMessage({ message });
+        const result = await uut.recoverSignatory(MIN_VALID_RPC_PACKET, { type: "eip191", signature: sig }, "rpc");
+        expect(result).toBe(account.address);
+      });
+
+      test("handles a signature without the leading 0x", async () => {
+        const message = JSON.stringify(MIN_VALID_RPC_PACKET);
+        const sig = (await account.signMessage({ message })).slice(2);
         const result = await uut.recoverSignatory(MIN_VALID_RPC_PACKET, { type: "eip191", signature: sig }, "rpc");
         expect(result).toBe(account.address);
       });
@@ -332,7 +346,8 @@ describe("EVMProvider", () => {
             method: packet.method,
             ...packet.params,
             file: packet.params.file ?? '',
-            data: packet.params.data ?? ''
+            data: packet.params.data ?? '',
+            options: JSON.stringify(packet.params.options ?? {})
           }
         };
         const sig = await account.signTypedData(typedData);    
@@ -340,7 +355,7 @@ describe("EVMProvider", () => {
         expect(result).toBe(account.address);
       });
       
-      test("recovers from a maximal RPC", async () => {
+      test("recovers from a maximal RPC (includes options parameter)", async () => {
         const packet = MAX_VALID_RPC_PACKET;
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
@@ -348,10 +363,28 @@ describe("EVMProvider", () => {
           primaryType: "Request",
           message: {
             method: packet.method,
-            ...packet.params
+            ...packet.params,
+            options: JSON.stringify(packet.params.options ?? {})
           }
         };
         const sig = await account.signTypedData(typedData);    
+        const result = await uut.recoverSignatory(packet, { type: "eip712", signature: sig }, "rpc");
+        expect(result).toBe(account.address);
+      });
+      
+      test("handles a signature without the leading 0x", async () => {
+        const packet = MAX_VALID_RPC_PACKET;
+        const typedData = {
+          domain: {...eip712.getEIP712Domain(CHAIN_ID)},
+          types: eip712.EIP712_REQUEST_TYPES,
+          primaryType: "Request",
+          message: {
+            method: packet.method,
+            ...packet.params,
+            options: JSON.stringify(packet.params.options ?? {})
+          }
+        };
+        const sig = (await account.signTypedData(typedData)).slice(2);    
         const result = await uut.recoverSignatory(packet, { type: "eip712", signature: sig }, "rpc");
         expect(result).toBe(account.address);
       });
@@ -394,7 +427,8 @@ describe("EVMProvider", () => {
           primaryType: "Request",
           message: {
             method: rpc.method,
-            ...rpc.params
+            ...rpc.params,
+            options: JSON.stringify(rpc.params.options ?? {})
           }
         };
         const sigObj = { 
@@ -427,7 +461,8 @@ describe("EVMProvider", () => {
           primaryType: "Request",
           message: {
             method: rpc.method,
-            ...rpc.params
+            ...rpc.params,
+            options: JSON.stringify(rpc.params.options ?? {})
           }
         };
         const sigObj = { 

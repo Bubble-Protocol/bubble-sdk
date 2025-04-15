@@ -22,7 +22,8 @@ const EIP712_REQUEST_TYPES = {
     { name: "chainId", type: "uint256" },
     { name: "contract", type: "address" },
     { name: "file", type: "string" },
-    { name: "data", type: "string" }
+    { name: "data", type: "string" },
+    { name: "options", type: "string" }
   ]
 };
 
@@ -60,7 +61,8 @@ function rpcToEIP712Message(packet) {
     chainId: packet.params.chainId,
     contract: packet.params.contract,
     file: packet.params.file ?? '',
-    data: packet.params.data ?? ''
+    data: packet.params.data ?? '',
+    options: JSON.stringify(packet.params.options ?? {})
   }
 }
 

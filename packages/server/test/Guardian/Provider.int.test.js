@@ -122,7 +122,8 @@ describe("Guardian/Provider Integration Tests", () => {
           method: rpc.method,
           ...rpc.params,
           file: rpc.params.file ?? '',
-          data: rpc.params.data ?? ''
+          data: rpc.params.data ?? '',
+          options: JSON.stringify(rpc.params.options ?? {})
         }
       };
       const sig = await account.signTypedData(typedData);    

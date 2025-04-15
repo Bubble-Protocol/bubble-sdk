@@ -83,7 +83,7 @@ export class EVMProvider extends IBlockchainProvider{
     }
 
     const digest = getDigest(context, message);
-    const signatureHex = signature.signature;
+    const signatureHex = signature.type === 'public' || signature.signature.startsWith('0x') ? signature.signature : '0x' + signature.signature;
     const delegate = signature.delegate;
     let signatory;
 
