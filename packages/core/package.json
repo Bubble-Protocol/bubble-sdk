@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/core",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "description": "Bubble Protocol core classes, types and constants",
   "author": "Bubble Protocol",
   "license": "MIT",

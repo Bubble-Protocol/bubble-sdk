@@ -104,6 +104,11 @@ export class Delegation {
   static BubblePermission = BubblePermission;
 
   /**
+   * The version of the delegation protocol
+   */
+  version = 1;
+
+  /**
    * The address to delegate to
    */
   delegate;
