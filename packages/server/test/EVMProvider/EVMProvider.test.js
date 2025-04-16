@@ -341,8 +341,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
           types: eip712.EIP712_REQUEST_TYPES,
-          primaryType: "Request",
+          primaryType: "BubbleDataRequest",
           message: {
+            purpose: "Off-Chain Bubble Data Request",
             method: packet.method,
             ...packet.params,
             file: packet.params.file ?? '',
@@ -360,8 +361,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
           types: eip712.EIP712_REQUEST_TYPES,
-          primaryType: "Request",
+          primaryType: "BubbleDataRequest",
           message: {
+            purpose: "Off-Chain Bubble Data Request",
             method: packet.method,
             ...packet.params,
             options: JSON.stringify(packet.params.options ?? {})
@@ -377,8 +379,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
           types: eip712.EIP712_REQUEST_TYPES,
-          primaryType: "Request",
+          primaryType: "BubbleDataRequest",
           message: {
+            purpose: "Off-Chain Bubble Data Request",
             method: packet.method,
             ...packet.params,
             options: JSON.stringify(packet.params.options ?? {})
@@ -394,8 +397,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain()}, // no chain id in delegate domain
           types: eip712.EIP712_DELEGATE_TYPES,
-          primaryType: "Delegation",
+          primaryType: "BubbleDelegate",
           message: {
+            purpose: "Authorize Delegate Account to Access Off-Chain Content",
             ...packet,
             permissions: packet.permissions.map(p => ({ ...p, provider: p.provider ?? '' }))
           }
@@ -411,8 +415,11 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain()}, // no chain id in delegate domain
           types: eip712.EIP712_DELEGATE_TYPES,
-          primaryType: "Delegation",
-          message: packet
+          primaryType: "BubbleDelegate",
+          message: {
+            purpose: "Authorize Delegate Account to Access Off-Chain Content",
+            ...packet
+          }
         };
         const sig = await account.signTypedData(typedData);    
         const result = await uut.recoverSignatory(packet, { type: "eip712", signature: sig }, "delegate");
@@ -424,8 +431,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
           types: eip712.EIP712_REQUEST_TYPES,
-          primaryType: "Request",
+          primaryType: "BubbleDataRequest",
           message: {
+            purpose: "Off-Chain Bubble Data Request",
             method: rpc.method,
             ...rpc.params,
             options: JSON.stringify(rpc.params.options ?? {})
@@ -448,8 +456,11 @@ describe("EVMProvider", () => {
         const delegateTypedData = {
           domain: {...eip712.getEIP712Domain()}, // no chain id in delegate domain
           types: eip712.EIP712_DELEGATE_TYPES,
-          primaryType: "Delegation",
-          message: delegate
+          primaryType: "BubbleDelegate",
+          message: {
+            purpose: "Authorize Delegate Account to Access Off-Chain Content",
+            ...delegate
+          }
         };
         const delegateSig = await delegateAccount.signTypedData(delegateTypedData);    
         delegate.signature = { type: "eip712", signature: delegateSig };
@@ -458,8 +469,9 @@ describe("EVMProvider", () => {
         const typedData = {
           domain: {...eip712.getEIP712Domain(CHAIN_ID)},
           types: eip712.EIP712_REQUEST_TYPES,
-          primaryType: "Request",
+          primaryType: "BubbleDataRequest",
           message: {
+            purpose: "Off-Chain Bubble Data Request",
             method: rpc.method,
             ...rpc.params,
             options: JSON.stringify(rpc.params.options ?? {})

@@ -10,11 +10,13 @@ import { assert } from "@bubble-protocol/core";
 
 const EIP712_DOMAIN = {
   name: "BubbleProtocol",
-  version: "1.0"
+  version: "1.0",
+  verifyingContract: "0x0000000000000000000000000000000000000000"
 }
 
 const EIP712_REQUEST_TYPES = {
-  Request: [
+  BubbleDataRequest: [
+    { name: "purpose", type: "string" },
     { name: "version", type: "uint256" },
     { name: "method", type: "string" },
     { name: "timestamp", type: "uint256" },
@@ -28,7 +30,8 @@ const EIP712_REQUEST_TYPES = {
 };
 
 const EIP712_DELEGATE_TYPES = {
-  Delegation: [
+  BubbleDelegate: [
+    { name: "purpose", type: "string" },
     { name: "version", type: "uint256" },
     { name: "delegate", type: "address" },
     { name: "expires", type: "uint256" },
@@ -54,6 +57,7 @@ function rpcToEIP712Message(packet) {
   assert.isObject(packet, 'packet');
   assert.isObject(packet.params, 'params');
   return {
+    purpose: "Off-Chain Bubble Data Request",
     version: packet.params.version,
     method: packet.method,
     timestamp: packet.params.timestamp,
@@ -70,6 +74,7 @@ function delegateToEIP712Message(packet) {
   assert.isObject(packet, 'packet');
   assert.isArray(packet.permissions, 'permissions');
   return {
+    purpose: "Authorize Delegate Account to Access Off-Chain Content",
     version: packet.version,
     delegate: packet.delegate,
     expires: packet.expires,
