@@ -59,6 +59,7 @@ export class Delegation extends CoreDelegation {
    */
   async sign(signFunction) {
     const packet = JSON.parse(JSON.stringify({ // JSON removes undefined properties
+      version: this.version,
       delegate: this.delegate,
       expires: this.expires,
       permissions: this.permissions

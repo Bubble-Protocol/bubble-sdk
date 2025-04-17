@@ -15,7 +15,6 @@ const MAX_FILE_ID = 115792089237316195423570985008687907853269984665640564039457
  */
 const file0 = "0000000000000000000000000000000000000000000000000000000000000000";
 
-
 /**
  * Converts a number, BigInt, ArrayBuffer or hex string (with or without 0x prefix) to a valid file id part of
  * a content id.  If the `value` is already a valid file id (with or without a path extension) it is simply 

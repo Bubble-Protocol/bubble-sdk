@@ -467,6 +467,7 @@ export class RPCFactory {
     return this.sign({
       method: 'create',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -492,6 +493,7 @@ export class RPCFactory {
     return this.sign({
       method: 'write',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -519,6 +521,7 @@ export class RPCFactory {
     return this.sign({
       method: 'append',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -543,6 +546,7 @@ export class RPCFactory {
     return this.sign({
       method: 'read',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -570,6 +574,7 @@ export class RPCFactory {
     return this.sign({
       method: 'delete',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -596,6 +601,7 @@ export class RPCFactory {
     return this.sign({
       method: 'mkdir',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -619,6 +625,7 @@ export class RPCFactory {
     return this.sign({
       method: 'list',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -643,6 +650,7 @@ export class RPCFactory {
     return this.sign({
       method: 'getPermissions',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -664,6 +672,7 @@ export class RPCFactory {
     return this.sign({
       method: 'terminate',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -686,6 +695,7 @@ export class RPCFactory {
     return this.sign({
       method: 'subscribe',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
@@ -709,6 +719,7 @@ export class RPCFactory {
     return this.sign({
       method: 'unsubscribe',
       params: {
+        version: 1,
         timestamp: Date.now(),
         nonce: Crypto.randomUUID(),
         chainId: this.chainId,
