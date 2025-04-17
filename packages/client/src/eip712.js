@@ -124,7 +124,7 @@ function getEIP712SignFunction(context, signFn) {
     assert.isObject(packet, 'packet');
     const typedData = packetToTypedData(packet, context);
     const sig = await signFn(typedData.domain, typedData.types, typedData.message)
-    .catch((err) => {throw new Error(`EIP712 sign function error: ${err}`)});
+    .catch((err) => {throw new Error(`EIP712 sign function error: ${err.message}`, {cause: err})});
     return {
       type: 'eip712',
       signature: sig,
@@ -137,7 +137,7 @@ function getEIP191SignFunction(signFn) {
   return async (packet) => {
     assert.isObject(packet, 'packet');
     const sig = await signFn(JSON.stringify(packet))
-    .catch((err) => {throw new Error(`EIP191 sign function error: ${err}`)});
+    .catch((err) => {throw new Error(`EIP191 sign function error: ${err.message}`, {cause: err})});
     return {
       type: 'eip191',
       signature: sig,
@@ -150,7 +150,7 @@ function getSignFunction(signFn) {
   return async (packet) => {
     assert.isObject(packet, 'packet');
     const sig = await signFn(JSON.stringify(packet))
-    .catch((err) => {throw new Error(`Sign function error: ${err}`)});
+    .catch((err) => {throw new Error(`Sign function error: ${err.message}`, {cause: err})});
     return {
       type: 'plain',
       signature: sig,
