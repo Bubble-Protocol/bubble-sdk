@@ -36,7 +36,7 @@ A host server **may** provide different endpoints, e.g. for different chains or 
 
 Every piece of content served by the protocol has a globally unique *Content ID*. A content ID is structured as follows:
 
-```json
+```
 {
   chain: ...,
   contract: "0x...",
@@ -65,7 +65,7 @@ Request and response packets follow the [JSON-RPC 2.0 specification](https://www
 
 ### 3.1 Request Packet
 
-```json
+```
 {
   "jsonrpc": "2.0",
   "id": ...,
@@ -113,7 +113,7 @@ Request and response packets follow the [JSON-RPC 2.0 specification](https://www
 |--------|---|
 | public | *host server uses random address* |
 | plain | `sign(keccak256(packet))` |
-| eip191 | `sign(keccak256("\x19Ethereum Signed Message:\n64" ‖ packet))` |
+| eip191 | `sign(keccak256("\x19Ethereum Signed Message:\n" ‖ packet length ‖ packet))` |
 | eip712 | `sign(keccak256("\x19\x01" ‖ domainSeparator ‖ hashStruct(packet)))` |
 
 where:
@@ -126,7 +126,7 @@ where:
 
 ### 3.2 Response Packet
 
-```json
+```
 {
   "jsonrpc": "2.0",
   "id": ...,
@@ -150,7 +150,7 @@ where:
 
 ### 3.3 Signature Delegation
 
-```json
+```
 {
   "version": 1,
   "delegate": "...",
@@ -184,7 +184,7 @@ where:
 
 Any error returned by a host server **must** be of the form:
 
-```json
+```
 {
   code: ...,
   message: "...",
