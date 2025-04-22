@@ -4,24 +4,21 @@ import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 import { Guardian } from '../../src/Guardian.js';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
-  generateKey, signRPC, publicKeyToEthereumAddress, 
   TestDataServer, TestBlockchainProvider, 
   ErrorCodes, Permissions
 } from './common';
 
 
-export function testPostParams(options={}) {
+export function testPostParams() {
 
-  let key1, key2, dataServer, blockchainProvider, guardian;
+  const signatory = '0x1234567890123456789012345678901234567890';
+
+  let dataServer, blockchainProvider, guardian;
 
   beforeAll(async () => {
-    key1 = await generateKey(['sign']);
-    key1.address = await publicKeyToEthereumAddress(key1.publicKey);
-    key2 = await generateKey(['sign']);
-    key2.address = await publicKeyToEthereumAddress(key2.publicKey);
     dataServer = new TestDataServer();
     blockchainProvider = new TestBlockchainProvider();
-    guardian = new Guardian(dataServer, blockchainProvider, '');
+    guardian = new Guardian(dataServer, blockchainProvider);
   })
 
   beforeEach( () => {
@@ -35,7 +32,6 @@ export function testPostParams(options={}) {
     test("is missing", async () => {
       const params = {...VALID_RPC_PARAMS};
       const method = undefined;
-      await signRPC(method, params, key1);
       return expect(guardian.post(method, params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_REQUEST, 'malformed method'));
     });
@@ -43,7 +39,6 @@ export function testPostParams(options={}) {
     test("is empty", async () => {
       const params = {...VALID_RPC_PARAMS};
       const method = '';
-      await signRPC(method, params, key1);
       return expect(guardian.post(method, params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_REQUEST, 'malformed method'));
     });
@@ -51,7 +46,6 @@ export function testPostParams(options={}) {
     test("is invalid type", async () => {
       const params = {...VALID_RPC_PARAMS};
       const method = 1;
-      await signRPC(method, params, key1);
       return expect(guardian.post(method, params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_REQUEST, 'malformed method'));
     });
@@ -59,8 +53,7 @@ export function testPostParams(options={}) {
     test("is unknown", async () => {
       const params = {...VALID_RPC_PARAMS};
       const method = 'garbled';
-      await signRPC(method, params, key1);
-      blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+      blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | Permissions.ALL_PERMISSIONS);
       return guardian.post(method, params)
@@ -81,7 +74,6 @@ export function testPostParams(options={}) {
     test("is missing", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.chainId = undefined;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed chainId'));
     });
@@ -89,7 +81,6 @@ export function testPostParams(options={}) {
     test("is invalid type", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.chainId = '1';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed chainId'));
     });
@@ -97,9 +88,8 @@ export function testPostParams(options={}) {
     test("is not supported", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.chainId = 2;
-      await signRPC('write', params, key1);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
-      blockchainProvider.recoverSignatory.mockReturnValueOnce(Promise.resolve(key1.address));
+      blockchainProvider.recoverSignatory.mockReturnValueOnce(Promise.resolve(signatory));
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_BLOCKCHAIN_NOT_SUPPORTED});
     });
@@ -112,7 +102,6 @@ export function testPostParams(options={}) {
     test("is missing", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = undefined;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -120,7 +109,6 @@ export function testPostParams(options={}) {
     test("is empty", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = '';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -128,7 +116,6 @@ export function testPostParams(options={}) {
     test("is too long", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = VALID_CONTRACT+'0';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -136,7 +123,6 @@ export function testPostParams(options={}) {
     test("is too short", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = VALID_CONTRACT.slice(0, VALID_CONTRACT.length-1);
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -144,7 +130,6 @@ export function testPostParams(options={}) {
     test("is invalid type", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = 1;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -152,7 +137,6 @@ export function testPostParams(options={}) {
     test("is missing leading '0x'", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.contract = params.contract.slice(2);
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract'));
     });
@@ -165,7 +149,6 @@ export function testPostParams(options={}) {
     test("is empty", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = '';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -173,7 +156,6 @@ export function testPostParams(options={}) {
     test("as directory is not a 32-byte hex string", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = 'my_dir';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -181,7 +163,6 @@ export function testPostParams(options={}) {
     test("as directory is too long", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = VALID_DIR+'0';
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -189,7 +170,6 @@ export function testPostParams(options={}) {
     test("is too short", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = VALID_DIR.slice(0, VALID_DIR.length-1);
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -197,7 +177,6 @@ export function testPostParams(options={}) {
     test("does not have a 32-byte hex directory part", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = 'my_dir/'+VALID_FILE_PART;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -205,7 +184,6 @@ export function testPostParams(options={}) {
     test("has a directory part that is too long", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = VALID_DIR+'0'+'/'+VALID_FILE_PART;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -213,7 +191,6 @@ export function testPostParams(options={}) {
     test("has a directory part that is too short", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = VALID_DIR.slice(0, VALID_DIR.length-1)+'/'+VALID_FILE_PART;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -221,7 +198,6 @@ export function testPostParams(options={}) {
     test("is invalid type", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.file = 1;
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file'));
     });
@@ -234,7 +210,6 @@ export function testPostParams(options={}) {
     test("is not a string", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.data = {};
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed data'));
     });
@@ -247,7 +222,6 @@ export function testPostParams(options={}) {
     test("is not an object", async () => {
       const params = {...VALID_RPC_PARAMS};
       params.options = "options";
-      await signRPC('write', params, key1);
       return expect(guardian.post('write', params))
         .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options'));
     });
@@ -261,66 +235,41 @@ export function testPostParams(options={}) {
       const params = {...VALID_RPC_PARAMS};
       params.signature = undefined;
       return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
-    });
-
-    test("is empty", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      params.signature = '';
-      return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
-    });
-
-    test("is invalid type", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      params.signature = 1;
-      return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature'));
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing signature'));
     });
 
     test("cannot be decoded (blockchain provider recoverSignatory throws)", async () => {
       const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.recoverSignatory.mockImplementation(() => { throw new Error('failed') });
       return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'invalid signature - failed'));
     });
 
     test("cannot be decoded (blockchain provider recoverSignatory rejects)", async () => {
       const params = {...VALID_RPC_PARAMS};
-      await signRPC('write', params, key1);
       blockchainProvider.getChainId.mockReturnValueOnce(1);
       blockchainProvider.recoverSignatory.mockRejectedValueOnce(new Error('failed'));
       return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature'));
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'invalid signature - failed'));
+    });
+
+    test("rejects with provider error if a BubbleError is thrown", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
+      blockchainProvider.recoverSignatory.mockImplementation(() => { throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'internal failure') });
+      return expect(guardian.post('write', params))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'internal failure'));
+    });
+
+    test("rejects with provider error if a BubbleError is rejected", async () => {
+      const params = {...VALID_RPC_PARAMS};
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
+      blockchainProvider.recoverSignatory.mockRejectedValueOnce(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'internal failure'));
+      return expect(guardian.post('write', params))
+        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'internal failure'));
     });
 
   });
-
-
-  describe("signaturePrefix", () => {
-
-    test("is not a string", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      params.signaturePrefix = {};
-      await signRPC('write', params, key1);
-      return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signaturePrefix'));
-    });
-
-  })
-
-  describe("delegate", () => {
-
-    test("is not an object", async () => {
-      const params = {...VALID_RPC_PARAMS};
-      params.delegate = "a delegate";
-      await signRPC('write', params, key1);
-      return expect(guardian.post('write', params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed delegate'));
-    });
-
-  })
 
 }

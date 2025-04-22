@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { getCrypto, hexToUint8Array, uint8ArrayToHex, strip0x } from '../utils.js';
-import { publicKeyToAddress, sign } from './ecdsa-utils.js';
+import { publicKeyToAddress, sign, getSignFunction } from './ecdsa-utils.js';
 import * as assert from './assertions.js';
 import secp256k1 from 'secp256k1';
 
@@ -52,7 +52,7 @@ export class Key {
     [this.uPublicKey, this.cPublicKey] = _generatePublicKeys(this.privateKeyBuf);
     this.address = publicKeyToAddress(this.uPublicKey);
     this.sign = this.sign.bind(this);
-    this.signFunction = this.signFunction.bind(this);
+    this.signFunction = getSignFunction(this.privateKey);
   }
 
 
@@ -67,14 +67,12 @@ export class Key {
   }
 
   /**
-   * Promise to sign the given hash. Designed for use with client Bubble classes.
+   * Promise to sign the given packet object. Designed for use with client Bubble classes.
    * 
-   * @param {hash} hash 32-byte hex string
-   * @returns Promise to resolve the signature as a hex string
+   * @param {Object} packet the packet to sign
+   * @returns Promise to resolve the signature as a plain signature object
    */
-  signFunction(hash) {
-    return Promise.resolve(this.sign(hash));
-  }
+  signFunction; // assigned in constructor
 
 }
 

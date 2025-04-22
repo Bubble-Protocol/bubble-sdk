@@ -33,6 +33,8 @@ Data encryption is achieved via [Encryption Policies](#encryption), optionally p
 
 Assumes a bubble has already been created on an off-chain storage service.
 
+Refer to [Content IDs](#content-ids) for details on identifying files or directories.
+
 ### Read A Public File
 ```javascript
 import { PublicContentManager } from '@bubble-protocol/client';
@@ -45,20 +47,49 @@ PublicContentManager.read('<content-id>').then(console.log);
 import { ContentManager } from '@bubble-protocol/client';
 import { ecdsa } from '@bubble-protocol/crypto';
 
-ContentManager.read('<content-id>', ecdsa.getSignFunction('<private-key>')).then(console.log);
+const signFunction = ecdsa.getSignFunction('<private-key>');
+
+ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
 
-### Read A Private File Using Metamask
+### Read A Private File With Local `ethers` Wallet
 ```javascript
-const accounts = await window.ethereum.getAccounts();
+import { ContentManager, getSignFunction } from '@bubble-protocol/client';
+import { ethers } from 'ethers';
 
-const signFunction = (hash) => {
-  return window.ethereum.request({
-    method: 'personal_sign',
-    params: [hash, accounts[0], 'Bubble content request'],
-  })
-  .then(toEthereumSignature);
-}
+const wallet = new ethers.Wallet('<private-key');
+
+const signFunction = getSignFunction(async (digest) => wallet.signingKey.sign(digest));
+
+ContentManager.read('<content-id>', signFunction).then(console.log);
+```
+
+### Read A Private File With Local `viem` Wallet
+```javascript
+import { ContentManager, getSignFunction } from '@bubble-protocol/client';
+import { sign } from 'viem/accounts';
+import { serializeSignature } from 'viem';
+
+const viemSign = async (digest) => serializeSignature(await sign({digest, privateKey: '<private-key>'}));
+
+const signFunction = getSignFunction(viemSign);
+
+ContentManager.read('<content-id>', signFunction).then(console.log);
+```
+
+### Read A Private File With An External Wallet
+
+Uses EIP-712 to prompt the user to authorise a data access request.
+
+```javascript
+import {ethers} from 'ethers';
+import {getEIP712SignFunction} from '@bubble-protocol/client';
+
+const provider = ...; // Your blockchain provider, e.g. Web3 or web3auth.provider
+const ethersProvider = new ethers.BrowserProvider(provider);
+const signer = await ethersProvider.getSigner();
+
+const signFunction = getEIP712SignFunction('rpc', signer.signTypedData.bind(signer));
 
 ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
@@ -66,16 +97,12 @@ ContentManager.read('<content-id>', signFunction).then(console.log);
 ### Read, Write and List Encrypted Private Files
 ```javascript
 import { BubbleContentManager, encryptionPolicies } from '@bubble-protocol/client';
-import { ecdsa } from '@bubble-protocol/crypto';
 
-const encryptionKey = new ecdsa.Key();
+const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy('<encryption-private-key>');
 
-const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy(encryptionKey.privateKey);
+const signFunction = ...; // see Read A Private File examples above
 
-const manager = new BubbleContentManager(
-  ecdsa.getSignFunction('<private-key>'),
-  encryptionPolicy
-);
+const manager = new BubbleContentManager(signFunction, encryptionPolicy);
 
 await manager.write('<content-id>', 'Hello World!');
 
@@ -100,10 +127,12 @@ const bubbleId = new ContentId({
   provider: '<storage_service_url>'
 });
 
+const signFunction = ...; // see Read A Private File examples above
+
 const bubble = new Bubble(
   bubbleId,
   new bubbleProviders.HTTPBubbleProvider(bubbleId.provider),
-  ecdsa.getSignFunction('<private-key>')
+  signFunction
 );
 
 await bubble.create();
@@ -124,7 +153,9 @@ const bubbleId = new ContentID({
   provider: '<storage_service_url>'
 });
 
-const bubbleFactory = new BubbleFactory(ecdsa.getSignFunction('<private-key>'));
+const signFunction = ...; // see Read A Private File examples above
+
+const bubbleFactory = new BubbleFactory(signFunction);
 
 const bubble = bubbleFactory.createAESGCMEncryptedBubble(bubbleId);
 

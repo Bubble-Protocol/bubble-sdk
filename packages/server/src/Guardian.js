@@ -3,16 +3,6 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { ROOT_PATH, BubbleProvider, BubblePermissions, assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
-import Web3 from 'web3';
-import { parseDelegation } from './Delegation.js';
-
-
-/**
- * Signatory used to get permissions if the request is a public request.
- * (Account address of a private key generated from the hash of '<Bubble Protocol Public Signatory>')
- */
-
-const PUBLIC_SIGNATORY = "0x99e2c875341d1cbb70432e35f5350f29bf20aa52";
 
 
 /**
@@ -41,12 +31,10 @@ export class Guardian extends BubbleProvider {
    * @param _dataServer the data server that handles permitted RPCs
    * @param _blockchainProvider web3 provider for access to the blockchain
    */
-  constructor(_dataServer, _blockchainProvider, _id) {
+  constructor(_dataServer, _blockchainProvider) {
     super();
-    assert.isString(_id, 'id');
     this.dataServer = _dataServer;
     this.blockchainProvider = _blockchainProvider;
-    this.id = _id;
   }
 
 
@@ -84,11 +72,8 @@ export class Guardian extends BubbleProvider {
     if (!this.blockchainProvider.validateContract(params.contract)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed contract');
 
-    if (params.signature !== 'public' && !assert.isHexString(params.signature)) 
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signature');
-
-    if (params.signaturePrefix && !assert.isString(params.signaturePrefix)) 
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed signaturePrefix');
+    if (!assert.isNotNull(params.signature))
+      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'missing signature');
 
     if (params.file !== undefined && (!assert.isString(params.file) || !assert.isNotEmpty(params.file))) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed file');
@@ -104,9 +89,6 @@ export class Guardian extends BubbleProvider {
 
     if (params.options && !assert.isObject(params.options)) 
       throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed options');
-
-    if (params.delegate && !assert.isObject(params.delegate)) 
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'malformed delegate');
 
 
     /**
@@ -299,50 +281,20 @@ export class Guardian extends BubbleProvider {
    */
   async _recoverSignatory(method, params) {
 
-    if (params.signature === 'public') return PUBLIC_SIGNATORY;
-
     const packet = {
       method: method,
       params: {...params}
     }
     delete packet.params.signature;
-    delete packet.params.signaturePrefix;
-    delete packet.params.delegate;
-  
-    let hash = Web3.utils.keccak256(JSON.stringify(packet)).slice(2);
-    if (params.signaturePrefix) hash = Web3.utils.keccak256(params.signaturePrefix+hash).slice(2);
-  
-    const signature = params.signature.slice(0,2) === '0x' ? params.signature.slice(2) : params.signature;
-  
-    let signatory;
+
+    let signature = params.signature;
+
     try {
-      signatory = await this.blockchainProvider.recoverSignatory(hash, signature);
+      return await this.blockchainProvider.recoverSignatory(packet, signature, 'rpc');
     }
     catch(error) {
-      throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode signature');
+     throw error.code ? error : new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, `invalid signature - ${error.message}`, {cause: error.cause});
     }
-    if (!assert.isHexString(signatory)) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain provider signature is invalid');
-
-
-    /**
-     * Recover delegate signatory, if present, and set as this request's signatory
-     */
-
-    if (params.delegate) {
-
-      const delegate = await parseDelegation(params.delegate, this.blockchainProvider);
-      if (!delegate.isValid()) 
-        throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'cannot decode delegate', {cause: delegate.error.message || delegate.error});
-    
-      const revoked = await this.blockchainProvider.hasBeenRevoked(delegate.hash);
-      const contentId = {chain: params.chainId, contract: params.contract, provider: this.id};
-      if (revoked || !delegate.canAccessContent(signatory, contentId)) 
-        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'delegate denied');
-    
-      signatory = delegate.signatory;
-    }
-
-    return signatory;
   }
 
 

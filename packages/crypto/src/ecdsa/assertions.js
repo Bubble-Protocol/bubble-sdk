@@ -61,3 +61,10 @@ export function isHash(value, name) {
   else return result;
 };
 
+export function isObject(value, name) {
+  const result = isNotEmpty(value, name) && (toString.call(value) === '[object Object]');
+  if (name !== undefined && !result) throw new TypeError(name + " type. Expected Object");
+  else return result;
+};
+
+

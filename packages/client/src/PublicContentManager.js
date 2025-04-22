@@ -6,10 +6,10 @@ import { BubbleContentManager } from "./BubbleContentManager.js";
 
 
 /**
- * @dev If a request's signature is the string 'public' the storage server's Guardian will use a
+ * @dev If a request's signature type is the string 'public' the storage server's Guardian will use a
  * random key to test for public access permissions
  */
-const signFunction = () => Promise.resolve('public')
+const signFunction = () => Promise.resolve({type: 'public'})
 
 
 /**

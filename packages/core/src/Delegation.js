@@ -48,10 +48,10 @@ class Permission {
 class BubblePermission extends Permission {
 
   constructor(bubbleId) {
-    assert.isObject(bubbleId, 'bubbleId');
-    assert.isNumber(bubbleId.chain, 'chain');
-    assert.isHexString(bubbleId.contract, 'contract');
-    assert.isString(bubbleId.provider, 'provider');
+    assert.isObject(bubbleId, 'permission bubbleId');
+    assert.isNumber(bubbleId.chain, 'permission chain');
+    assert.isHexString(bubbleId.contract, 'permission contract');
+    assert.isString(bubbleId.provider, 'permission provider');
     super('bubble', {chain: bubbleId.chain, contract: bubbleId.contract.toLowerCase(), provider: bubbleId.provider});
   }
   
@@ -65,8 +65,9 @@ class BubblePermission extends Permission {
 class ContractPermission extends Permission {
 
   constructor(bubbleId) {
-    assert.isNumber(bubbleId.chain, 'chain');
-    assert.isHexString(bubbleId.contract, 'contract');
+    assert.isObject(bubbleId, 'permission bubbleId');
+    assert.isNumber(bubbleId.chain, 'permission chain');
+    assert.isHexString(bubbleId.contract, 'permission contract');
     super('contract', {chain: bubbleId.chain, contract: bubbleId.contract.toLowerCase()});
   }
 
@@ -80,8 +81,8 @@ class ContractPermission extends Permission {
 class PermissionFactory {
 
   parse(obj) {
-    assert.isObject(obj, 'obj');
-    assert.isString(obj.type, 'type');
+    assert.isObject(obj, 'permission');
+    assert.isString(obj.type, 'permission type');
     switch (obj.type) {
       case 'contract': return new ContractPermission(obj);
       case 'bubble': return new BubblePermission(obj);
@@ -101,6 +102,11 @@ export class Delegation {
   static PermissionFactory = new PermissionFactory();
   static ContractPermission = ContractPermission;
   static BubblePermission = BubblePermission;
+
+  /**
+   * The version of the delegation protocol
+   */
+  version = 1;
 
   /**
    * The address to delegate to

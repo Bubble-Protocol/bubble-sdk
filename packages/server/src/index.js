@@ -4,3 +4,4 @@
 
 export {Guardian} from './Guardian.js';
 export {DataServer} from './DataServer.js';
+export {blockchainProviders} from './blockchain-providers/index.js';

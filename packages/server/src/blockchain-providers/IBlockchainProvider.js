@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Bubble Protocol
+// Copyright (c) 2025 Bubble Protocol
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 //
@@ -8,7 +8,7 @@
  * 
  * Chain agnostic interface to the blockchain
  */
-export class BlockchainProvider {
+export class IBlockchainProvider {
 
   /**
    * Calls the getPermissions function of the given contract and returns the permission bits.
@@ -19,7 +19,7 @@ export class BlockchainProvider {
    * getPermissions function
    * @returns Promise to return a BigInt containing the 256-bit uint returned by the contract
    */
-  getPermissions(contract, account, file) {
+  async getPermissions(contract, account, file) {
     throw new Error('BlockchainProvider.getPermissions is a virtual function and must be implemented');
   }
 
@@ -29,7 +29,7 @@ export class BlockchainProvider {
    * 
    * @param {32-byte hex string} delegateHash the hash to check if revoked
    */
-  hasBeenRevoked(delegateHash) {
+  async hasBeenRevoked(delegateHash) {
     throw new Error('BlockchainProvider.hasBeenRevoked is a virtual function and must be implemented');
   }
 
@@ -43,11 +43,14 @@ export class BlockchainProvider {
   /**
    * Recovers the signatory of the given message from the given signature.
    * 
-   * @param {ArrayBuffer} message the message that was originally signed
-   * @param {ArrayBuffer} signature the signature
+   * @param {Any} message the packet or message that was originally signed
+   * @param {Any} signature the signature
+   * @param {"rpc"|"delegate"|"message"|"digest"} context the context in which the signature was created. If
+   * "rpc" or "delegate" the message is a packet object, if "message" it is a string, and if "digest" it is a
+   * hex string of the digest.
    * @returns Promise to return the signatory in the format appropriate to this blockchain (usually account address)
    */
-  recoverSignatory(message, signature) {
+  async recoverSignatory(message, signature, context) {
     throw new Error('BlockchainProvider.recoverSignature is a virtual function and must be implemented');
   }
 
@@ -61,10 +64,8 @@ export class BlockchainProvider {
    * @returns `true` if valid, `false` otherwise
    */
   validateContract(contract) {
-    return VALID_EVM_CONTRACT_ADDRESS_REGEX.test(contract);
+    throw new Error('BlockchainProvider.validateContract is a virtual function and must be implemented');
   }
 
 }
 
-
-const VALID_EVM_CONTRACT_ADDRESS_REGEX = /^(0x)[0-9a-fA-F]{40}$/;

@@ -12,10 +12,16 @@ import Web3 from 'web3';
  * Constructs an asynchronous sign function for use with ContentManager and Bubble clients.
  * 
  * @param {string} privateKey private key as a hex string
- * @returns sign function that promises to resolve this key's signature of a given hash
+ * @returns sign function that promises to resolve this key's plain signature of a given packet object
  */
 export function getSignFunction(privateKey) {
-  return (hash) => Promise.resolve(sign(hash, privateKey));
+  return async (packet) => {
+    assert.isObject(packet, 'packet');
+    return {
+      type: 'plain',
+      signature: sign(hash(JSON.stringify(packet)), privateKey)
+    }
+  };
 }
 
 

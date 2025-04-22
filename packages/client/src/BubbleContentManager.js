@@ -32,7 +32,9 @@ export class BubbleContentManager {
    * @param {Function} signFunction optional function to sign all transactions.  If not given in 
    * the constructor it must be given in each method call.  Takes the form:
    * 
-   *   (Buffer: hash) => { return Promise to resolve the signature of the hash as a Buffer } 
+   *   (Object: packet) => { return Promise to resolve the signature }
+   * 
+   * The type and format of the signature must be appropriate to the blockchain platform.
    * 
    * @param {EncryptionPolicy} encryptionPolicy optional encryption policy
    */

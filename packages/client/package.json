@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/client",
-  "version": "0.2.3",
+  "version": "1.0.1",
   "description": "Bubble Protocol client-side library",
   "author": "Bubble Protocol",
   "license": "MIT",
@@ -34,10 +34,9 @@
     "jest": "^29.5.0"
   },
   "dependencies": {
-    "@bubble-protocol/core": "^0.0.13",
-    "@bubble-protocol/crypto": "^0.0.x",
+    "@bubble-protocol/core": "^0.0.14",
+    "@bubble-protocol/crypto": "^1.0.0",
     "jayson": "^4.0.0",
-    "web3": "^1.9.0",
     "ws": "^8.13.0"
   }
 }

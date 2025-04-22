@@ -405,6 +405,38 @@ describe("ECDSA", function() {
 
     });
 
+
+    describe("signFunction", function () {
+
+      let key;
+
+      beforeAll(() => {
+        key = new Key(account.privateKey);
+      })
+
+      describe("called with", function () {
+
+        test("no argument results in an error", async function () {
+          await expect(key.signFunction()).rejects.toThrow("packet is missing or empty");
+        });
+
+        test("an invalid argument type results in an error", async function () {
+          await expect(key.signFunction("hash")).rejects.toThrow("packet type. Expected Object");
+        });
+
+      });
+
+      test("returns a plain signature object for a valid hash and key", async function () {
+        const packet = { method: 'test', params: { version: 1, timestamp: 1234567890, nonce: 'nonce' } };
+        var signature = await key.signFunction(packet);
+        expect(signature).toMatchObject({
+          type: 'plain',
+          signature: expect.stringMatching(/^[0-9a-fA-F]{130}$/)
+        });
+      });
+
+    });
+
   });
 
 
@@ -476,8 +508,9 @@ describe("ECDSA", function() {
 
     test("recover verifies Key.signFunction", async () => {
       const key = new Key(account.privateKey);
-      const signature = await key.signFunction(randomHash);
-      expect(recover(randomHash, signature)).toBe(account.address);
+      const packet = { method: 'test', params: { version: 1, timestamp: 1234567890, nonce: 'nonce' } };
+      const signature = await key.signFunction(packet);
+      expect(recover(hash(JSON.stringify(packet)), signature.signature)).toBe(account.address);
     })
 
     test("Key.sign can be used in a different class scope", () => {
@@ -500,8 +533,9 @@ describe("ECDSA", function() {
       }
       const key = new Key(account.privateKey);
       const scope = new OtherScope(key.signFunction);
-      const signature = await scope.signFunction(randomHash);
-      expect(recover(randomHash, signature)).toBe(account.address);
+      const packet = { method: 'test', params: { version: 1, timestamp: 1234567890, nonce: 'nonce' } };
+      const signature = await scope.signFunction(packet);
+      expect(recover(hash(JSON.stringify(packet)), signature.signature)).toBe(account.address);
     })
 
   })

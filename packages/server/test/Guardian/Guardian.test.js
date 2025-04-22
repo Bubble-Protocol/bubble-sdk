@@ -1,7 +1,7 @@
-import { jest } from '@jest/globals';
+import { beforeAll, describe, jest } from '@jest/globals';
 import { BubbleError } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian.js';
-import { ErrorCodes, Permissions, signRPC, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, generateKey, VALID_FILE, ROOT_PATH, VALID_DIR, publicKeyToEthereumAddress, hashRPC, signDelegate, hashDelegate, VALID_RPC_PARAMS } from './common.js';
+import { ErrorCodes, Permissions, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, VALID_FILE, ROOT_PATH, VALID_DIR } from './common.js';
 import { testPostParams } from './post.params.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
@@ -12,18 +12,13 @@ describe("Guardian", () => {
 
   describe('Scenarios', () => {
 
-    const PROVIDER_URL = 'https://a.valid.url:1234';
-
-    let key1, key2, dataServer, blockchainProvider, guardian;
+    const signatory = '0x1234567890123456789012345678901234567890';
+    let dataServer, blockchainProvider, guardian;
 
     beforeAll(async () => {
-      key1 = await generateKey(['sign']);
-      key1.address = await publicKeyToEthereumAddress(key1.publicKey);
-      key2 = await generateKey(['sign']);
-      key2.address = await publicKeyToEthereumAddress(key2.publicKey);
       dataServer = new TestDataServer();
       blockchainProvider = new TestBlockchainProvider();
-      guardian = new Guardian(dataServer, blockchainProvider, PROVIDER_URL);
+      guardian = new Guardian(dataServer, blockchainProvider);
     })
 
     beforeEach( () => {
@@ -34,15 +29,12 @@ describe("Guardian", () => {
   
   
     function post(method, params, mockPermissions, options = {}) {
-      const key = options.key || key1
       const newParams = {...params};
       if (options.stubs) options.stubs();
-      return signRPC(method, newParams, key, options.signaturePrefix).then(() => {
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key.address);
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
-        return guardian.post(method, newParams, options.listener)
-      });
+      blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
+      blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
+      return guardian.post(method, newParams, options.listener)
     }
 
   
@@ -56,29 +48,27 @@ describe("Guardian", () => {
             .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
         })
 
-        test('resolves if user has (and only has) the require permissions', async () => {
-          const newParams = {...params};
-          await signRPC(method, newParams, key1);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        test('resolves if user has (and only has) the required permissions', async () => {
+          blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
           blockchainProvider.getChainId.mockReturnValueOnce(1);
           blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
           dataServer[method].mockResolvedValueOnce();
-          return expect(guardian.post(method, newParams, options.listener)).resolves.not.toThrow()
+          return expect(guardian.post(method, params, options.listener)).resolves.not.toThrow()
             .then(() => {
               const expectedSignedPacket = {
                 method: method,
-                params: {...newParams}
+                params: {...params}
               }
               delete expectedSignedPacket.params.signature;
               expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-              expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-              expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, params));
-              expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
+              expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('object');
+              expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toEqual(expect.objectContaining(expectedSignedPacket));
+              expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(params.signature);
               expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
               expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-              expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-              expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
-              expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
+              expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(params.contract);
+              expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(signatory);
+              expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(params.file ? VALID_DIR : ROOT_PATH);
               expect(dataServer[method].mock.calls).toHaveLength(1);
               let paramIndex = 0;
               expect(dataServer[method].mock.calls[0][paramIndex++]).toBe(params.contract);
@@ -88,20 +78,6 @@ describe("Guardian", () => {
             })
         })
   
-        test("rejects with permission denied error if the 'public' signature is given but has no permissions", async () => {
-          const newParams = {...params, signature: 'public'};
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.ALL_PERMISSIONS & ~requiredPermissions);
-          return expect(guardian.post(method, newParams, options.listener))
-          .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED})
-          .then(() => {
-            expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
-            expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
-          });
-        })
-    
       }
   
       test('rejects when the data server rejects and passes the error through if a BubbleError', async () => {
@@ -160,21 +136,6 @@ describe("Guardian", () => {
         })
       })
 
-      test("resolves when 'public' signature is given", async () => {
-        const newParams = {...params, signature: 'public'};
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
-        dataServer[method].mockResolvedValueOnce();
-        return expect(guardian.post(method, newParams, options.listener))
-        .resolves.not.toThrow()
-        .then(() => {
-          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(0);
-          expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-          expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe('0x99e2c875341d1cbb70432e35f5350f29bf20aa52');
-        });
-      })
-
       test('enforces lowercase contract', async () => {
         const contractIn = '0x'+'1234ABCDEF'.repeat(4);
         const expectedContract = '0x'+'1234abcdef'.repeat(4);
@@ -217,49 +178,6 @@ describe("Guardian", () => {
 
       }
 
-      test("resolves with the delegate signatory address when a delegate is given", async () => {
-        const delegateFields = {
-          delegate: key1.address,
-          expires: 2147483647,
-          permissions: [
-            {type: 'bubble', chain: params.chainId, contract: params.contract, provider: PROVIDER_URL}
-          ]
-        };
-        const delegate = {...delegateFields};
-        await signDelegate(delegate, key2);
-        const newParams = {...params};
-        await signRPC(method, newParams, key1);
-        newParams.delegate = delegate; // delegate does not form part of signed RPC, it's part of the signature
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address); // signature first
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address); // delegate signature second
-        blockchainProvider.hasBeenRevoked.mockResolvedValueOnce(false);
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | requiredPermissions);
-        dataServer[method].mockResolvedValueOnce();
-        return expect(guardian.post(method, newParams, options.listener)).resolves.not.toThrow()
-          .then(() => {
-            const expectedSignedPacket = {
-              method: method,
-              params: {...newParams}
-            }
-            delete expectedSignedPacket.params.signature;
-            expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(2);
-            expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, {...params}));
-            expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
-            expect(typeof blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe('string');
-            expect(blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe(hashDelegate(delegateFields));
-            expect(blockchainProvider.recoverSignatory.mock.calls[1][1]).toBe(delegate.signature);
-            expect(blockchainProvider.hasBeenRevoked.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.hasBeenRevoked.mock.calls[0][0]).toBe(hashDelegate(delegateFields));
-            expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-            expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-            expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key2.address);  // KEY2 address (the delegate signatory)
-            expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
-          })
-      })
-
     }
   
 
@@ -283,8 +201,7 @@ describe("Guardian", () => {
           ...COMMON_RPC_PARAMS,
           file: ROOT_PATH
         }
-        await signRPC(method, params, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.WRITE_BIT);
         dataServer[method].mockResolvedValueOnce();
@@ -294,7 +211,7 @@ describe("Guardian", () => {
           expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
           expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(params.contract);
-          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key1.address);
+          expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(signatory);
           expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(ROOT_PATH);
         })
       })
@@ -866,14 +783,13 @@ describe("Guardian", () => {
           .rejects.toBeBubbleError({code: ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED});
       })
   
-    })
+    })  // rpc terminate
       
     describe('fails gracefully when blockchain is unavailable', () => {
 
       test('BlockchainProvider throws', async () => {
         const params = {...COMMON_RPC_PARAMS};
-        await signRPC('create', params, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockImplementation(() => { throw new Error('getPermissions mock force failed') });
         return expect(guardian.post('create', params))
@@ -887,8 +803,7 @@ describe("Guardian", () => {
   
       test('BlockchainProvider rejects', async () => {
         const params = {...COMMON_RPC_PARAMS};
-        await signRPC('create', params, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
         blockchainProvider.getChainId.mockReturnValueOnce(1);
         blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
         return expect(guardian.post('create', params))
@@ -900,433 +815,7 @@ describe("Guardian", () => {
         });
       })
   
-    })
-  
-
-    describe("signature prefix", () => {
-
-      test('is not hashed with packet when not present', async () => {
-        const method = 'create';
-        const params = {...COMMON_RPC_PARAMS};
-        const expectedHash = hashRPC(method, params);
-        await signRPC(method, params, key1);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
-        return expect(guardian.post(method, params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
-        .then(() => {
-          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-          expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-          expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(expectedHash);
-          expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(params.signature);
-        });
-      })
-  
-      test('is hashed with packet when present', async () => {
-        const prefix = "\x19Ethereum Signed Message:\n64";
-        const method = 'create';
-        const params = {...COMMON_RPC_PARAMS};
-        const expectedHash = hashRPC(method, params, prefix);
-        await signRPC(method, params, key1, prefix);
-        blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-        blockchainProvider.getChainId.mockReturnValueOnce(1);
-        blockchainProvider.getPermissions.mockRejectedValueOnce(new Error('getPermissions mock force failed'));
-        return expect(guardian.post(method, params))
-        .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, "Blockchain unavailable - please try again later."))
-        .then(() => {
-          expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(1);
-          expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-          expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(expectedHash);
-          expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(params.signature);
-        });
-      })
-  
-    })
-    
-  
-    describe("delegate", () => {
-
-      let VALID_DELEGATE;
-
-      beforeAll(() => {
-        VALID_DELEGATE = {
-          delegate: key1.address,
-          expires: 2147483647,
-          permissions: [
-            {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-          ]
-        }
-      })
-
-
-      describe("succeeds when", () => {
-
-        // permission type is 'bubble' is tested in common tests above
-
-        async function testValidDelegate(delegateFields, sigPrefix) {
-          const method = 'write';
-          const delegate = {...delegateFields};
-          await signDelegate(delegate, key2, sigPrefix);
-          const newParams = {...VALID_RPC_PARAMS};
-          await signRPC(method, newParams, key1);
-          newParams.delegate = delegate; // delegate is part of the signature, not part of the RPC itself
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address); // signature first
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address); // delegate signature second
-          blockchainProvider.hasBeenRevoked.mockResolvedValueOnce(false);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT);
-          dataServer[method].mockResolvedValueOnce();
-          return expect(guardian.post(method, newParams)).resolves.not.toThrow()
-            .then(() => {
-              const expectedSignedPacket = {
-                method: method,
-                params: {...newParams}
-              }
-              delete expectedSignedPacket.params.signature;
-              expect(blockchainProvider.recoverSignatory.mock.calls).toHaveLength(2);
-              expect(typeof blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe('string');
-              expect(blockchainProvider.recoverSignatory.mock.calls[0][0]).toBe(hashRPC(method, {...VALID_RPC_PARAMS}));
-              expect(blockchainProvider.recoverSignatory.mock.calls[0][1]).toBe(newParams.signature);
-              expect(typeof blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe('string');
-              expect(blockchainProvider.recoverSignatory.mock.calls[1][0]).toBe(hashDelegate(delegateFields, sigPrefix));
-              expect(blockchainProvider.recoverSignatory.mock.calls[1][1]).toBe(delegate.signature);
-              expect(blockchainProvider.hasBeenRevoked.mock.calls).toHaveLength(1);
-              expect(blockchainProvider.hasBeenRevoked.mock.calls[0][0]).toBe(hashDelegate(delegateFields, sigPrefix));
-              expect(blockchainProvider.getChainId.mock.calls).toHaveLength(1);
-              expect(blockchainProvider.getPermissions.mock.calls).toHaveLength(1);
-              expect(blockchainProvider.getPermissions.mock.calls[0][0]).toBe(newParams.contract);
-              expect(blockchainProvider.getPermissions.mock.calls[0][1]).toBe(key2.address);  // KEY2 address (the delegate signatory)
-              expect(blockchainProvider.getPermissions.mock.calls[0][2]).toBe(newParams.file ? VALID_DIR : ROOT_PATH);
-            })
-        }
-
-        test("permission type is 'contract'", async () => {
-          const delegate = {
-            delegate: key1.address,
-            expires: Date.now()/1000 + 1,
-            permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract}
-            ]
-          };
-          return testValidDelegate(delegate);
-        })
-    
-        test("permissions = 'all-permissions'", async () => {
-          const delegate = {
-            delegate: key1.address,
-            expires: 2147483647,
-            permissions: 'all-permissions'
-          };
-          return testValidDelegate(delegate);
-        })
-    
-        test("expires = 'never'", async () => {
-          const delegate = {
-            delegate: key1.address,
-            expires: 'never',
-            permissions: 'all-permissions'
-          };
-          return testValidDelegate(delegate);
-        })
-    
-        test("delegate address is uppercase", async () => {
-          const delegate = {
-            delegate: '0x'+key1.address.toUpperCase().slice(2),
-            expires: 'never',
-            permissions: 'all-permissions'
-          };
-          return testValidDelegate(delegate);
-        })
-    
-        test("permission contract is uppercase", async () => {
-          const delegate = {
-            delegate: key1.address,
-            expires: Date.now()/1000 + 1,
-            permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId, contract: '0x'+VALID_RPC_PARAMS.contract.toUpperCase().slice(2)}
-            ]
-          };
-          return testValidDelegate(delegate);
-        })
-    
-        test("has sig prefix", async () => {
-          const delegate = {
-            delegate: key1.address,
-            expires: 2147483647,
-            permissions: 'all-permissions'
-          };
-          return testValidDelegate(delegate, '\x19Ethereum Signed Message:\n64');
-        })
-    
-      })
-
-
-      describe('fails gracefully when', () => {
-
-        async function constructPost(delegate) {
-          await signDelegate(delegate, key2);
-          const params = {...COMMON_RPC_PARAMS, delegate: delegate};
-          await signRPC('create', params, key1);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          return params;
-        }
-
-        async function testInvalidDelegate(delegate) {
-          const params = await constructPost(delegate);
-          return expect(guardian.post('create', params))
-          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, "cannot decode delegate"));
-        }
-
-        test('[does not reject when delegate is valid]', async () => {
-          const params = await constructPost(VALID_DELEGATE);
-          blockchainProvider.hasBeenRevoked.mockResolvedValueOnce(false);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          blockchainProvider.getPermissions.mockResolvedValueOnce(Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT);
-          dataServer['create'].mockResolvedValueOnce();
-          return expect(guardian.post('create', params))
-          .resolves.not.toThrow();
-        })
-        
-        test('its an empty object', async () => {
-          const params = {...COMMON_RPC_PARAMS, delegate: {}};
-          await signRPC('create', params, key1);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          return expect(guardian.post('create', params))
-          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, "cannot decode delegate"));
-        })
-    
-        test('the delegate field is missing', async () => {
-          const delegate = {...VALID_DELEGATE};
-          delete delegate.delegate;
-          return testInvalidDelegate(delegate);
-        })
-    
-        test('the signature is missing', async () => {
-          const params = await constructPost(VALID_DELEGATE);
-          delete params.delegate.signature;
-          return expect(guardian.post('create', params))
-          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.JSON_RPC_ERROR_INVALID_METHOD_PARAMS, "cannot decode delegate"));
-        })
-    
-        test('the delegate field is an incorrect type', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, delegate: 45});
-        })
-    
-        test('the delegate field is an empty string', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, delegate: ''});
-        })
-    
-        test('the delegate field is not a hex string', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, delegate: 'string'});
-        })
-    
-        test('the expires field is missing', async () => {
-          const delegate = {...VALID_DELEGATE};
-          delete delegate.expires;
-          return testInvalidDelegate(delegate);
-        })
-    
-        test('the expires field is an incorrect type', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, expires: ''});
-        })
-
-        test('the permissions field is missing', async () => {
-          const delegate = {...VALID_DELEGATE};
-          delete delegate.permissions;
-          return testInvalidDelegate(delegate);
-        })
-    
-        test('the permissions field is an incorrect type', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: 123});
-        })
-
-        test('the permissions field is a string but not all-permissions', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: 'al-permissions'});
-        })
-
-        test('the permissions array contains an incorrect type', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: ['']});
-        })
-
-        test('the permissions type is missing', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-            {chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-          ]});
-        })
-
-        test('the permissions type is an incorrect type', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-            {type: 42, chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-          ]});
-        })
-
-        test('the permissions type is not a recognised value', async () => {
-          return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-            {type: 'name', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-          ]});
-        })
-
-  
-        describe("permission is 'bubble' type and", () => {
-
-          test('the permissions chain is missing', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-            ]});
-          })
-
-          test('the permissions chain is an incorrect type', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: '1', contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-            ]});
-          })
-
-          test('the permissions contract is missing', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, provider: PROVIDER_URL}
-            ]});
-          })
-
-          test('the permissions contract is an incorrect type', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: {}, provider: PROVIDER_URL}
-            ]});
-          })
-
-          test('the permissions provider is missing', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, }
-            ]});
-          })
-
-          test('the permissions provider is an incorrect type', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: {}}
-            ]});
-          })
-
-        })
-
-
-        describe("permission is 'contract' type and", () => {
-
-          test('the permissions chain is missing', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', contract: VALID_RPC_PARAMS.contract}
-            ]});
-          })
-
-          test('the permissions chain is an incorrect type', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', chain: '1', contract: VALID_RPC_PARAMS.contract}
-            ]});
-          })
-
-          test('the permissions contract is missing', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId}
-            ]});
-          })
-
-          test('the permissions contract is an incorrect type', async () => {
-            return testInvalidDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId, contract: {}}
-            ]});
-          })
-
-        })
-
-      }) // delegate fails gracefully when
-      
-
-      describe('fails with permission error when', () => {
-
-        async function testPermissionDeniedDelegate(delegate) {
-          const params = {...COMMON_RPC_PARAMS, delegate: delegate};
-          await signDelegate(delegate, key2);
-          await signRPC('create', params, key1);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address);
-          blockchainProvider.hasBeenRevoked.mockResolvedValueOnce(false);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          return expect(guardian.post('create', params))
-          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, "delegate denied"));
-        }
-
-        test('permissions is an empty list', async () => {
-          return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: []});
-        })
-    
-        test('the delegate is for a different user', async () => {
-          return testPermissionDeniedDelegate({...VALID_DELEGATE, delegate: key2.address});
-        })
-    
-        test('the delegation has expired', async () => {
-          return testPermissionDeniedDelegate({...VALID_DELEGATE, expires: (Date.now() / 1000) - 1});
-        })
-    
-        test('the delegation has been revoked', async () => {
-          const params = {...COMMON_RPC_PARAMS, delegate: {...VALID_DELEGATE}};
-          await signDelegate(params.delegate, key2);
-          await signRPC('create', params, key1);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key1.address);
-          blockchainProvider.recoverSignatory.mockResolvedValueOnce(key2.address);
-          blockchainProvider.hasBeenRevoked.mockResolvedValueOnce(true);
-          blockchainProvider.getChainId.mockReturnValueOnce(1);
-          return expect(guardian.post('create', params))
-          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, "delegate denied"));
-        })
-    
-
-        describe("the type is 'bubble' and", () => {
-
-          test('the permission is for a different chain', async () => {
-            return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId+1, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL}
-            ]});
-          })
-      
-          test('the permission is for a different contract', async () => {
-            return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: key1.address, provider: PROVIDER_URL}
-            ]});
-          })
-      
-          test('the permission is for a different provider', async () => {
-            return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'bubble', chain: VALID_RPC_PARAMS.chainId, contract: VALID_RPC_PARAMS.contract, provider: PROVIDER_URL+'v3'}
-            ]});
-          })
-        
-        })
-
-
-        describe("the type is 'contract' and", () => {
-
-          test('the permission is for a different chain', async () => {
-            return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId+1, contract: VALID_RPC_PARAMS.contract}
-            ]});
-          })
-      
-          test('the permission is for a different contract', async () => {
-            return testPermissionDeniedDelegate({...VALID_DELEGATE, permissions: [
-              {type: 'contract', chain: VALID_RPC_PARAMS.chainId, contract: key1.address}
-            ]});
-          })
-
-        })
-
-      }) // delegate fails with permission error
-      
-
-    }) // delegate
-
+    }) // fails gracefully when blockchain is unavailable
 
   }) // Scenarios
 
