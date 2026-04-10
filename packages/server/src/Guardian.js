@@ -30,11 +30,16 @@ export class Guardian extends BubbleProvider {
   /**
    * @param _dataServer the data server that handles permitted RPCs
    * @param _blockchainProvider web3 provider for access to the blockchain
+   * @param _requestValidators an array of request validator functions, each with signature 
+   * `async ({method as String, params as Object, file as BubbleFilename, signatory as String, permissions as BubblePermissions}) => void` 
+   * that throw a BubbleError if the request is invalid.  Validators are called in order and 
+   * all must pass for the request to be serviced.
    */
-  constructor(_dataServer, _blockchainProvider) {
+  constructor(_dataServer, _blockchainProvider, _requestValidators) {
     super();
     this.dataServer = _dataServer;
     this.blockchainProvider = _blockchainProvider;
+    this.requestValidators = _requestValidators || [];
   }
 
 
@@ -44,9 +49,30 @@ export class Guardian extends BubbleProvider {
    * 
    * @param method the RPC method
    * @param params the RPC params
+   * @param subscriptionListener client to receive subscription notifications. Only required for subscribe requests.
    * @returns Promise to service the call resolving with data if appropriate
    */
   async post(method, params, subscriptionListener) {
+    const {response} = await this._handleRequest(method, params, subscriptionListener);
+    return response;
+  }
+
+
+  /**
+   * As `post` but also returns request metadata.
+   * 
+   * @param method the RPC method
+   * @param params the RPC params
+   * @param subscriptionListener client to receive subscription notifications. Only required for subscribe requests.
+   * @returns Promise to service the call resolving with 
+   * `{response as Any, file as BubbleFilename, signatory as String, permissionBits as BubblePermissions}` 
+   */
+  async postWithMetadata(method, params, subscriptionListener) {
+    return await this._handleRequest(method, params, subscriptionListener, true);
+  }
+
+
+  async _handleRequest(method, params, subscriptionListener) {
 
     if (method === 'subscribe') assert.isFunction(subscriptionListener, 'subscriptionListener');
 
@@ -111,6 +137,7 @@ export class Guardian extends BubbleProvider {
 
     if (method === 'unsubscribe') {
       return this.dataServer.unsubscribe(params.subscriptionId, params.options)
+        .then((response) => ({response}))
         .catch(_validateDataServerError);
     }
 
@@ -129,20 +156,25 @@ export class Guardian extends BubbleProvider {
     const permissionBits = await this._getPermissions(params.contract, file.getPermissionedPart(), signatory);
     file.setPermissions(new BubblePermissions(permissionBits)); 
 
+    /**
+     * Build response structure
+     */
+
+    function _buildResult(response) {
+      return { response, file, signatory, permissionBits };
+    }
 
     /**
      * Service getPermissions request regardless of whether or not the bubble has been terminated or whether
      * the permissions are valid.
      */
     
-    if (method === 'getPermissions') return Promise.resolve('0x'+permissionBits.toString(16));
+    if (method === 'getPermissions') return Promise.resolve('0x'+permissionBits.toString(16)).then(_buildResult);
 
 
     /**
      * Check whether the file is still valid now that permissions have been set (a file path with both directory
      * and file parts is invalid if the permissions indicate the directory part is not a directory).
-     * 
-     * Note, this must be checked AFTER bubbleTerminated() since 
      */
 
     if (!file.isValid()) throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
@@ -162,10 +194,20 @@ export class Guardian extends BubbleProvider {
           if (method === 'terminate') return;
           else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED, 'bubble has been terminated');
         })
+        .then(_buildResult)
         .catch((err) => {
           if (method === 'terminate') return _validateDataServerError(err);
           else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_BUBBLE_TERMINATED, "bubble has been terminated - send a 'terminate' request to delete the bubble data");
         })
+    }
+
+
+    /**
+     * Run request validators.  These are designed to allow custom validation logic to be injected into the Guardian, 
+     * for example to support an external Notification Manager that restricts access to certain reserved files.
+     */
+    for (const validator of this.requestValidators) {
+      await validator({method, params, file, signatory, permissions: file.permissions});
     }
 
 
@@ -178,6 +220,7 @@ export class Guardian extends BubbleProvider {
       case "create":
         if (file.isRoot() && file.permissions.canWrite()) {
           return this.dataServer.create(params.contract, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         }
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
@@ -186,6 +229,7 @@ export class Guardian extends BubbleProvider {
         if (params.data === undefined) throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'no data');
         else if (file.isFile() && file.permissions.canWrite())
           return this.dataServer.write(params.contract, file.fullFilename, params.data, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
@@ -193,6 +237,7 @@ export class Guardian extends BubbleProvider {
         if (params.data === undefined) throw new BubbleError(JSON_RPC_ERROR_INVALID_METHOD_PARAMS, 'no data');
         else if (file.isFile() && (file.permissions.canAppend() || file.permissions.canWrite()))
           return this.dataServer.append(params.contract, file.fullFilename, params.data, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
@@ -200,26 +245,31 @@ export class Guardian extends BubbleProvider {
         if (file.permissions.canRead())
           return file.isDirectory()
             ? this.dataServer.list(params.contract, file.fullFilename, params.options)
+                .then(_buildResult)
                 .catch(_validateDataServerError)
             : this.dataServer.read(params.contract, file.fullFilename, params.options)
+                .then(_buildResult)
                 .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "delete":
         if (!file.isRoot() && file.permissions.canWrite())
           return this.dataServer.delete(params.contract, file.fullFilename, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "mkdir":
         if (!file.isRoot() && file.isDirectory() && file.permissions.canWrite())
           return this.dataServer.mkdir(params.contract, file.fullFilename, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
       case "list":
         if (file.permissions.canRead())
           return this.dataServer.list(params.contract, file.fullFilename, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');
 
@@ -227,6 +277,7 @@ export class Guardian extends BubbleProvider {
         if (file.permissions.canRead()) {
           const subscription = new ProtectedSubscription(this.blockchainProvider, params.contract, file, signatory, subscriptionListener);
           return this.dataServer.subscribe(params.contract, file.fullFilename, subscription.listener, params.options)
+            .then(_buildResult)
             .catch(_validateDataServerError);
         }
         else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_PERMISSION_DENIED, 'permission denied');

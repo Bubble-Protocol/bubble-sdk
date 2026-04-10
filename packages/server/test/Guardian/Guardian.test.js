@@ -1,7 +1,7 @@
 import { beforeAll, describe, jest } from '@jest/globals';
-import { BubbleError } from '@bubble-protocol/core';
+import { BubbleError, BubbleFilename, BubblePermissions } from '@bubble-protocol/core';
 import { Guardian } from '../../src/Guardian.js';
-import { ErrorCodes, Permissions, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, VALID_FILE, ROOT_PATH, VALID_DIR } from './common.js';
+import { ErrorCodes, Permissions, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, VALID_FILE, ROOT_PATH, VALID_DIR, NOTIFICATION_CONFIG_FILE, PROVIDER_URL, VALID_CONTRACT } from './common.js';
 import { testPostParams } from './post.params.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
@@ -37,6 +37,14 @@ describe("Guardian", () => {
       return guardian.post(method, newParams, options.listener)
     }
 
+    function postWithMetadata(method, params, mockPermissions, options = {}) {
+      const newParams = {...params};
+      if (options.stubs) options.stubs();
+      blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
+      blockchainProvider.getChainId.mockReturnValueOnce(1);
+      blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
+      return guardian.postWithMetadata(method, newParams, options.listener)
+    }
   
     function commonTests(method, params, requiredPermissions, options={}) {
 
@@ -816,6 +824,95 @@ describe("Guardian", () => {
       })
   
     }) // fails gracefully when blockchain is unavailable
+
+    describe('postWithMetadata', () => {
+
+      test('returns response, file, signatory, and permissionBits', async () => {
+        const params = {
+          ...COMMON_RPC_PARAMS,
+          file: VALID_FILE,
+          data: 'hello world'
+        };
+        dataServer.write.mockResolvedValueOnce('server-result');
+
+        const result = await postWithMetadata('write', params, Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT);
+
+        expect(result.response).toBe('server-result');
+        expect(result.file).toBeInstanceOf(BubbleFilename);
+        expect(result.signatory).toBe(signatory);
+        expect(result.permissionBits).toBe(Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT);
+      });
+
+      test('does not return when the data server rejects', async () => {
+        const params = {
+          ...COMMON_RPC_PARAMS,
+          file: VALID_FILE,
+          data: 'hello world'
+        };
+        dataServer.write.mockRejectedValueOnce(new Error('data server simple error'));
+
+        await expect(postWithMetadata('write', params, Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT))
+          .rejects.toBeBubbleError(new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'data server simple error'));
+      });
+
+    });
+
+    describe('request validators', () => {
+
+      test('when constructed with validators they are called and all must pass', async () => {
+        const method = 'write';
+        const params = {
+          ...COMMON_RPC_PARAMS,
+          file: VALID_FILE,
+          data: 'hello world'
+        };
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT;
+        const validator1 = jest.fn().mockReturnValueOnce(true);
+        const validator2 = jest.fn().mockReturnValueOnce(true);
+        const guardianWithValidators = new Guardian(dataServer, blockchainProvider, [validator1, validator2]);
+        dataServer[method].mockResolvedValueOnce();
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
+        return expect(guardianWithValidators.post(method, params)).resolves.not.toThrow()
+        .then(() => {
+          const checkValidatorCall = (validator) => {
+            expect(validator.mock.calls[0][0].method).toEqual(method);
+            expect(validator.mock.calls[0][0].params).toBe(params);
+            expect(validator.mock.calls[0][0].file).toBeInstanceOf(BubbleFilename);
+            expect(validator.mock.calls[0][0].file.fullFilename).toBe(VALID_FILE);
+            expect(validator.mock.calls[0][0].signatory).toBe(signatory);
+            expect(validator.mock.calls[0][0].permissions).toBeInstanceOf(BubblePermissions);
+          }
+          checkValidatorCall(validator1);
+          checkValidatorCall(validator2);
+          expect(dataServer[method].mock.calls).toHaveLength(1);
+        })
+      })
+
+      test('when a validator fails the request is rejected and the data server is not called', async () => {
+        const method = 'write';
+        const params = {
+          ...COMMON_RPC_PARAMS,
+          file: VALID_FILE,
+          data: 'hello world'
+        };
+        const mockPermissions = Permissions.DIRECTORY_BIT | Permissions.WRITE_BIT;
+        blockchainProvider.recoverSignatory.mockResolvedValueOnce(signatory);
+        blockchainProvider.getChainId.mockReturnValueOnce(1);
+        blockchainProvider.getPermissions.mockResolvedValueOnce(mockPermissions);
+        const validator1 = jest.fn().mockRejectedValueOnce(new BubbleError(1234, 'validator1 rejection'));
+        const validator2 = jest.fn().mockReturnValueOnce(true);
+        const guardianWithValidators = new Guardian(dataServer, blockchainProvider, [validator1, validator2]);
+        return expect(guardianWithValidators.post(method, params)).rejects.toBeBubbleError({code: 1234})
+        .then(() => {
+          expect(validator1.mock.calls).toHaveLength(1);
+          expect(validator2.mock.calls).toHaveLength(0);
+          expect(dataServer[method].mock.calls).toHaveLength(0);
+        })
+      })
+
+    })
 
   }) // Scenarios
 

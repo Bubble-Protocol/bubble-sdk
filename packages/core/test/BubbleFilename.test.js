@@ -1,4 +1,4 @@
-import { BubbleFilename, ROOT_PATH } from "../src"
+import { BubbleFilename, BubblePermissions, ROOT_PATH } from "../src"
 
 const VALID_DIR = '0x24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063';
 const VALID_FILE = '0x24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063/hello-world.txt';
@@ -6,6 +6,10 @@ const VALID_MAX_LENGTH_FILE = '0x24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830c
 const VALID_DIR_NO_PREFIX = '24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063';
 const VALID_FILE_NO_PREFIX = '24802edc1eba0f578dcffd6ada3c5b954a8e76e55ba830cf19a3083d489a6063/hello-world.txt';
 const ROOT_PATH_NO_PREFIX = ROOT_PATH.slice(2);
+const PERMISSIONS_DRW = new BubblePermissions(1n << 254n | 1n << 253n | 1n << 252n);
+const PERMISSIONS_DRWA = new BubblePermissions(1n << 254n | 1n << 253n | 1n << 252n | 1n << 251n);
+const PERMISSIONS_RW = new BubblePermissions(1n << 253n | 1n << 252n);
+const PERMISSIONS_RWA = new BubblePermissions(1n << 253n | 1n << 252n | 1n << 251n);
 
 const VALID_UNICODE_PATH_EXTENSIONS = [
   // ASCII filenames
@@ -53,6 +57,7 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
       expect(filename.getFilePart()).toBe(VALID_DIR);
+      expect(filename.isChildOf(VALID_DIR)).toBe(false);
     })
 
     test('with a valid file with path extension', () => {
@@ -64,6 +69,8 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
       expect(filename.getFilePart()).toBe('hello-world.txt');
+      expect(filename.isChildOf(VALID_DIR)).toBe(true);
+      expect(filename.isChildOf(ROOT_PATH)).toBe(false);
     })
 
     test('with the root path', () => {
@@ -75,6 +82,8 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(ROOT_PATH);
       expect(filename.getFilePart()).toBe(ROOT_PATH);
+      expect(filename.isChildOf(ROOT_PATH)).toBe(false);
+
     })
 
     test('with a valid file with no path extension (no 0x prefix)', () => {
@@ -86,6 +95,7 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
       expect(filename.getFilePart()).toBe(VALID_DIR);
+      expect(filename.isChildOf(VALID_DIR)).toBe(false);
     })
 
     test('with a valid file with path extension (no 0x prefix)', () => {
@@ -97,6 +107,7 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
       expect(filename.getFilePart()).toBe('hello-world.txt');
+      expect(filename.isChildOf(VALID_DIR)).toBe(true);
     })
 
     test('with the root path (no 0x prefix)', () => {
@@ -108,6 +119,8 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(true);
       expect(filename.getPermissionedPart()).toBe(ROOT_PATH);
       expect(filename.getFilePart()).toBe(ROOT_PATH);
+      expect(filename.isChildOf(ROOT_PATH)).toBe(false);
+
     })
 
     test('with valid unicode characters', () => {
@@ -121,6 +134,7 @@ describe('BubbleFilename', () => {
         expect(filename.isDirectory()).toBe(false);
         expect(filename.getPermissionedPart()).toBe(VALID_DIR);
         expect(filename.getFilePart()).toBe(path);
+        expect(filename.isChildOf(VALID_DIR)).toBe(true);
       })
     })
 
@@ -134,6 +148,7 @@ describe('BubbleFilename', () => {
       expect(filename.isDirectory()).toBe(false);
       expect(filename.getPermissionedPart()).toBe(VALID_DIR);
       expect(filename.getFilePart()).toBe('a'.repeat(255));
+      expect(filename.isChildOf(VALID_DIR)).toBe(true);
     })
 
   })  
@@ -248,6 +263,184 @@ describe('BubbleFilename', () => {
       expect(filename.fullFilename).toBe(VALID_DIR+'/MyFile.txt');
     })
   
+  })
+
+
+  describe('isChildOf', () => {
+
+    test('returns true when the parameter is a BubbleFilename instance with a matching permissioned part', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      const directory = new BubbleFilename(VALID_DIR);
+      expect(filename.isChildOf(directory)).toBe(true);
+    })
+
+    test('returns true when the parameter is a string matching the permissioned part', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      expect(filename.isChildOf(VALID_DIR)).toBe(true);
+    })
+
+    test('returns false when the parameter is a string not matching the permissioned part', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      expect(filename.isChildOf('0x'+'1'.repeat(64))).toBe(false);
+    })
+
+    test('returns false when the parameter is a BubbleFilename instance with a non-matching permissioned part', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      const directory = new BubbleFilename('0x'+'1'.repeat(64));
+      expect(filename.isChildOf(directory)).toBe(false);
+    })
+
+    test('returns false when the parameter is a valid directory but this filename is a directory (and thus not a child)', () => {
+      const filename = new BubbleFilename(VALID_DIR);
+      const directory = new BubbleFilename(VALID_DIR);
+      expect(filename.isChildOf(directory)).toBe(false);
+    })
+
+    test('returns true even if the parameter matches but permissions indicate it is not a directory', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      const directory = new BubbleFilename(VALID_DIR);
+      directory.setPermissions(PERMISSIONS_RW);
+      expect(filename.isChildOf(directory)).toBe(true);
+    })
+
+    test('returns false when the specified directory is invalid', () => {
+      const filename = new BubbleFilename(VALID_DIR+'/child.txt');
+      expect(filename.isChildOf('invalid')).toBe(false);
+    })
+
+    test('returns false when the filename is invalid', () => {
+      const filename = new BubbleFilename('invalid');
+      expect(filename.isChildOf(VALID_DIR)).toBe(false);
+    })
+
+    test('returns false when the filename and specified directory are invalid', () => {
+      const filename = new BubbleFilename('invalid');
+      expect(filename.isChildOf('invalid')).toBe(false);
+    })
+
+    test('returns false when the parameter is not a string or BubbleFilename instance', () => {
+      const filename = new BubbleFilename(VALID_FILE);
+      expect(filename.isChildOf({})).toBe(false);
+    })
+
+  })
+
+
+  describe('equals', () => {
+
+    test('returns true for two identical directories', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      const filename2 = new BubbleFilename(VALID_DIR);
+      expect(filename1.equals(filename2)).toBe(true);
+    })
+
+    test('returns true for two identical directories when one is a string', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      expect(filename1.equals(VALID_DIR)).toBe(true);
+    })
+
+    test('returns true for two identical valid filenames', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = new BubbleFilename(VALID_FILE);
+      expect(filename1.equals(filename2)).toBe(true);
+    })
+
+    test('returns true for two identical valid filenames when one is a string', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      expect(filename1.equals(VALID_FILE)).toBe(true);
+    })
+
+    test('returns true for two identical filenames even if their permissions differ', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      const filename2 = new BubbleFilename(VALID_DIR);
+      filename1.setPermissions(PERMISSIONS_DRW);
+      filename2.setPermissions(PERMISSIONS_DRWA);
+      expect(filename1.equals(filename2)).toBe(true);
+    })
+
+    test('returns false for two different valid filenames', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = new BubbleFilename(VALID_FILE.replace('hello-world.txt', 'goodbye-world.txt'));
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false for two different valid filenames when one is a string', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = VALID_FILE.replace('hello-world.txt', 'goodbye-world.txt');
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false for two different valid directories', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      const filename2 = new BubbleFilename(ROOT_PATH);
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false for two different valid directories when one is a string', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      expect(filename1.equals(ROOT_PATH)).toBe(false);
+    })
+
+    test('returns false when the other filename is invalid', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = new BubbleFilename('invalid');
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false when this filename is invalid', () => {
+      const filename1 = new BubbleFilename('invalid');
+      const filename2 = new BubbleFilename(VALID_FILE);
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false when both filenames are invalid', () => {
+      const filename1 = new BubbleFilename('invalid');
+      const filename2 = new BubbleFilename('invalid');
+      expect(filename1.equals(filename2)).toBe(false);
+    })
+
+    test('returns false when the other filename is not a BubbleFilename or string', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      expect(filename1.equals({})).toBe(false);
+    })
+
+  })
+
+
+  describe('deepEquals', () => {
+
+    test('returns true for two identical directories with identical permissions', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      const filename2 = new BubbleFilename(VALID_DIR);
+      filename1.setPermissions(PERMISSIONS_DRW);
+      filename2.setPermissions(PERMISSIONS_DRW);
+      expect(filename1.deepEquals(filename2)).toBe(true);
+    })
+
+    test('returns false for two identical directories with different permissions', () => {
+      const filename1 = new BubbleFilename(VALID_DIR);
+      const filename2 = new BubbleFilename(VALID_DIR);
+      filename1.setPermissions(PERMISSIONS_RW);
+      filename2.setPermissions(PERMISSIONS_RWA);
+      expect(filename1.deepEquals(filename2)).toBe(false);
+    })
+    
+    test('returns true for two identical valid filenames with identical permissions', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = new BubbleFilename(VALID_FILE);
+      filename1.setPermissions(PERMISSIONS_DRW);
+      filename2.setPermissions(PERMISSIONS_DRW);
+      expect(filename1.deepEquals(filename2)).toBe(true);
+    })
+
+    test('returns false for two identical valid filenames with different permissions', () => {
+      const filename1 = new BubbleFilename(VALID_FILE);
+      const filename2 = new BubbleFilename(VALID_FILE);
+      filename1.setPermissions(PERMISSIONS_DRW);
+      filename2.setPermissions(PERMISSIONS_DRWA);
+      expect(filename1.deepEquals(filename2)).toBe(false);
+    })
+
   })
 
 })

@@ -48,7 +48,7 @@ describe("Guardian/Provider Integration Tests", () => {
   beforeAll(async () => {
     dataServer = new TestDataServer();
     blockchainProvider = new EVMProvider("1.0", 137, mockEthersProvider, "bubble.io");
-    guardian = new Guardian(dataServer, blockchainProvider, "bubble.io");
+    guardian = new Guardian(dataServer, blockchainProvider);
   })
 
   beforeEach( () => {
