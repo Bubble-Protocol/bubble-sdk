@@ -16,3 +16,4 @@ export {Delegation} from './Delegation.js';
 export * from './bubbles/index.js';
 export * from './utils.js';
 export {eip712} from './eip712.js';
+export {eip191} from './eip191.js';

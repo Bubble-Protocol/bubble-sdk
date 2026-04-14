@@ -4,4 +4,5 @@
 
 export {Guardian} from './Guardian.js';
 export {DataServer} from './DataServer.js';
+export {NotificationManager, NOTIFICATION_CONFIG_FILE, NOTIFICATION_OPERATIONS, NOTIFICATION_MATCH_TYPES} from './NotificationManager.js';
 export {blockchainProviders} from './blockchain-providers/index.js';

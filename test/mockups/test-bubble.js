@@ -6,6 +6,7 @@ import { BubblePermissions, ContentId } from '../../packages/core';
 import defaultContractSrc from '../contracts/TestContract.json';
 import { Key } from '../../packages/crypto/src/ecdsa/Key.js';
 import { ecdsa } from '../../packages/crypto/src/index.js';
+import { ethers } from 'ethers';
 
 
 //
@@ -118,17 +119,17 @@ export async function testSignFunction(signFunction, accountAddress) {
   expect(['Function', 'AsyncFunction', 'Promise']).toContain(signFunction.constructor.name);
   const message = 'hello world!';
   const hash = ecdsa.hash(message);
-  let recoveryHash = hash;
   let sig = await signFunction(hash);
-  expect(['string', 'object']).toContain(typeof sig);
-  if (typeof sig === 'object') {
-    expect(sig.signature).not.toBeUndefined();
-    expect(sig.prefix).not.toBeUndefined();
-    expect(typeof sig.signature).toBe('string');
-    expect(typeof sig.prefix).toBe('string');
-    recoveryHash = ecdsa.hash(sig.prefix+hash);
-    sig = sig.signature;
-  }
+  expect(typeof sig).toBe('object');
+  expect(sig.type).not.toBeUndefined();
+  expect(sig.signature).not.toBeUndefined();
+  expect(['plain', 'eip191', 'eip712']).toContain(sig.type);
+  expect(typeof sig.signature).toBe('string');
+  const recoveryHash = 
+    sig.type === 'plain' ? hash 
+    : sig.type === 'eip191' ? ethers.hashMessage(hash) 
+    : hash; // eip712 not supported in this test, would require domain and types to reconstruct the hash
+  sig = sig.signature;
   const recoveredAddress = ecdsa.recover(recoveryHash, sig);
   expect(recoveredAddress.toLowerCase()).toBe(accountAddress.toLowerCase());
 }

@@ -1,6 +1,6 @@
 import { pingServerTest, startServers, stopServers } from '../mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, constructTestBubble, owner, ownerSign, requesterBubble, requesterSign } from '../mockups/test-bubble.js';
-import { BubbleContentManager } from '../../packages/client';
+import { BubbleContentManager, toFileId } from '../../packages/client';
 
 // Imports under test
 import { BubbleFilename } from "../../packages/core/src/index.js";
@@ -32,9 +32,9 @@ describe('Client README encryption policy code example', () => {
   // Code under test
 
   const filenames = {
-    publicDir: ContentManager.toFileId(1),          // '0x0000000000000000000000000000000000000000000000000000000000000001'
-    welcome: ContentManager.toFileId(1, 'welcome'), // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
-    privateDir: ContentManager.toFileId(5)          // '0x0000000000000000000000000000000000000000000000000000000000000005'
+    publicDir: toFileId(1),          // '0x0000000000000000000000000000000000000000000000000000000000000001'
+    welcome: toFileId(1, 'welcome'), // '0x0000000000000000000000000000000000000000000000000000000000000001/welcome'
+    privateDir: toFileId(5)          // '0x0000000000000000000000000000000000000000000000000000000000000005'
   }
   
 

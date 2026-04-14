@@ -132,32 +132,6 @@ function getEIP712SignFunction(context, signFn) {
   }
 }
 
-function getEIP191SignFunction(signFn) {
-  assert.isFunction(signFn, 'signFn');
-  return async (packet) => {
-    assert.isObject(packet, 'packet');
-    const sig = await signFn(JSON.stringify(packet))
-    .catch((err) => {throw new Error(`EIP191 sign function error: ${err.message}`, {cause: err})});
-    return {
-      type: 'eip191',
-      signature: sig,
-    }
-  }
-}
-
-function getSignFunction(signFn) {
-  assert.isFunction(signFn, 'signFn');
-  return async (packet) => {
-    assert.isObject(packet, 'packet');
-    const sig = await signFn(JSON.stringify(packet))
-    .catch((err) => {throw new Error(`Sign function error: ${err.message}`, {cause: err})});
-    return {
-      type: 'plain',
-      signature: sig,
-    }
-  }
-}
-
 export const eip712 = {
   getEIP712Domain,
   EIP712_REQUEST_TYPES,
@@ -165,7 +139,5 @@ export const eip712 = {
   rpcToEIP712Message,
   delegateToEIP712Message,
   packetToTypedData,
-  getEIP191SignFunction,
-  getEIP712SignFunction,
-  getSignFunction
+  getEIP712SignFunction
 }
