@@ -3,7 +3,7 @@
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
 import { BubbleFilename, assert } from "@bubble-protocol/core";
-
+import { ecdsa } from "@bubble-protocol/crypto";
 
 /**
  * Largest file id (2^256-1)
@@ -43,4 +43,32 @@ export function toFileId(value, extension) {
   }
   // Invalid type
   throw new TypeError('Invalid parameter. Must be a number, BigInt or hex string');
+}
+
+
+export const getSignFunction = ecdsa.getSignFunction;
+
+/**
+ * Adds a delegation to a signature.
+ * 
+ * @param {string} sig signature
+ * @param {Delegation} delegate delegate to include in the signature
+ * @returns signature object
+ */
+export function toDelegateSignature(sig, delegate) {
+  if (typeof sig === 'object') return {...sig, delegate};
+  else return {signature: sig, delegate: {...delegate}};
+}
+
+
+/**
+ * Alternative method of preparing a signature with delegate, for adding to a request 
+ * (@see `toDelegateSignature`).
+ * 
+ * @param {function} signFunction sign function whose signature must be converted
+ * @param {Delegation} delegate delegate to include in the signature
+ * @returns a sign function
+ */
+export function toDelegateSignFunction(signFunction, delegate) {
+  return (hash) => signFunction(hash).then(sig => toDelegateSignature(sig, delegate));
 }

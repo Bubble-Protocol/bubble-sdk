@@ -8,7 +8,7 @@ export class RamBasedBubbleServerWebSocket {
   constructor(host, port, blockchainProvider) {
     this.port = port;
     this.dataServer = new RamBasedDataServer();
-    this.guardian = new Guardian(this.dataServer, blockchainProvider, host+':'+port);
+    this.guardian = new Guardian(this.dataServer, blockchainProvider);
 
     this.wsServer = new WebSocketServer.Server({ port: this.port });
 

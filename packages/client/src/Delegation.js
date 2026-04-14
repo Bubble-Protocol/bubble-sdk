@@ -58,12 +58,12 @@ export class Delegation extends CoreDelegation {
    * @returns this object
    */
   async sign(signFunction) {
-    const packet = JSON.parse(JSON.stringify({ // JSON removes undefined properties
+    const packet = JSON.stringify({
       version: this.version,
       delegate: this.delegate,
       expires: this.expires,
       permissions: this.permissions
-    }));
+    });
     this.signature = await signFunction(packet)
     return this;
   }

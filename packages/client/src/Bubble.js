@@ -739,7 +739,7 @@ export class RPCFactory {
    */
   sign(rpc) {
     if (rpc.options === undefined) delete rpc.options;
-    return this.signFunction(rpc)
+    return this.signFunction(JSON.stringify(rpc))
       .then(signature => {
         rpc.params.signature = signature;
         return rpc;

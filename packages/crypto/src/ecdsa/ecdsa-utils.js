@@ -9,18 +9,37 @@ import Web3 from 'web3';
 
 
 /**
- * Constructs an asynchronous sign function for use with ContentManager and Bubble clients.
+ * Returns a hash digest for the given data. If the data is already a hash it is returned as is, 
+ * if it's an object it is stringified and then hashed, if it's a string it is hashed directly.
+ * This allows for flexible signing of different types of data.
  * 
- * @param {string} privateKey private key as a hex string
- * @returns sign function that promises to resolve this key's plain signature of a given packet object
+ * @param {*} data object, string or hash to be signed
+ * @returns 32-byte hash digest as a hex string (without leading `0x`)
  */
-export function getSignFunction(privateKey) {
-  return async (packet) => {
-    assert.isObject(packet, 'packet');
+export function getDigest(data) {
+  const digest = assert.isHash(data) ? data : assert.isObject(data) ? hash(JSON.stringify(data)) : assert.isString(data, 'data') ? hash(data) : null;
+  if (!digest) throw new Error("Invalid data type for signing");
+  return digest;
+}
+
+
+/**
+ * Constructs an asynchronous sign function for use with ContentManager and Bubble clients.
+ * Is more powerful than a standard sign function in that it can take a string, object or hash as 
+ * input and will hash the string or object before signing.
+ * 
+ * @param {string|function} privateKeyOrSignFn private key as a hex string or a custom plain sign function (non-EIP191 and non-EIP712)
+ * @returns sign function that promises to resolve this key's plain signature of a given hash, string or object
+ */
+export function getSignFunction(privateKeyOrSignFn) {
+  const signFn = assert.isPrivateKey(privateKeyOrSignFn) ? async (digest) => sign(digest, privateKeyOrSignFn) : typeof privateKeyOrSignFn === 'function' ? privateKeyOrSignFn : null;
+  if (!signFn) throw new Error("Invalid parameter. Must be a private key or sign function");
+  return async (data) => {
+    const digest = getDigest(data);
     return {
       type: 'plain',
-      signature: sign(hash(JSON.stringify(packet)), privateKey)
-    }
+      signature: await signFn('0x' + digest)
+    };
   };
 }
 

@@ -2,7 +2,6 @@
 // Distributed under the MIT software license, see the accompanying
 // file LICENSE or http://www.opensource.org/licenses/mit-license.php.
 
-import { assert } from '@bubble-protocol/core';
 import { Bubble } from '../Bubble.js';
 import { MultiUserManager } from '../user-managers/MultiUserManager.js';
 import { AESGCMEncryptionPolicy } from '../encryption-policies/AESGCMEncryptionPolicy.js';

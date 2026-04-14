@@ -26,14 +26,20 @@ A Data Server is an implementation of the [`DataServer`](src/DataServer.js) inte
 
 Not all features of a Data Server are mandated.  Implementation of the following features is optional:
 
-- *Subscriptions* - the `subscribe` and `unsubscribe` methods.
+*Subscriptions*
+
+Subscriptions via a websocket connection allow clients to subscribe to mutation changes of specific files and directories within a bubble. Support of this feature is optional for a provider. Implementation the `subscribe` and `unsubscribe` methods within the `DataServer` to support subscriptions.
+
+*Notifications*
+
+Notifications are more powerful version of subscriptions. Mutation changes of specific files and directories notify one or more external notification services based on configuration within a reserved file within a bubble. To support notifications create an instance of [`NotificationManager`](src/NotificationManager.js) and pass it's `validateRequest` method to the Guardian on construction. Then  See the example server below.
 
 ## Example Server
 
 Example of a JSONRPC 2.0 web server.
 
 ```javascript
-import { Guardian, DataServer } from '@bubble-protocol/server';
+import { Guardian, DataServer, NotificationManager, NOTIFICATION_OPERATIONS } from '@bubble-protocol/server';
 import { blockchainProviders } from '@bubble-protocol/core';
 import Web3 from 'web3';
 import http from 'http';
@@ -51,14 +57,35 @@ class MyDataServer extends DataServer {
 
 class BubbleServer {
 
-  constructor(port, guardian) {
+  constructor(port, guardian, notificationMgr) {
     this.port = port;
     this.guardian = guardian;
+    this.notificationMgr = notificationMgr;
     this.server = http.createServer(this._handleRequest.bind(this));
   }
 
   _handleRequest(req, res) {
       
+      const postNotify = async (method, params) => {
+        this.guardian.postWithMetadata(request.method, request.params)
+          .then(response => {
+            this._sendResponse(req, res, {result: response.response});
+          })
+          .catch(error => {
+            this._sendResponse(req, res, {error: error.toObject()});
+          })
+      }
+
+      const post = async (method, params) => {
+        this.guardian.post(request.method, request.params)
+          .then(result => {
+            this._sendResponse(req, res, {result});
+          })
+          .catch(error => {
+            this._sendResponse(req, res, {error: error.toObject()});
+          })
+      }
+
       let body = '';
 
       req.on('data', (chunk) => {
@@ -67,9 +94,12 @@ class BubbleServer {
 
       req.on('end', async () => {
         const request = JSON.parse(body);
-        this.guardian.post(request.method, request.params)
-          .then(result => {
-            this._sendResponse(req, res, {result: result});
+        this.guardian.postWithMetadata(request.method, request.params)
+          .then(response => {
+            this._sendResponse(req, res, {result: response.response});
+            if (this.notificationMgr && NOTIFICATION_OPERATIONS.includes(request.method)) {
+              notificationManager.notify(method, params, response.file, response.signatory);
+            }
           })
           .catch(error => {
             this._sendResponse(req, res, {error: error.toObject()});
@@ -103,6 +133,7 @@ class BubbleServer {
 const SERVER_PORT = 8131;
 const CHAIN_ID = 1;
 const BLOCKCHAIN_API = 'https://ethereum.infura.io/v3/YOUR_PROJECT_ID';
+const SERVER_URL = 'https://my-bubble-server.io';
 
 
 // Setup blockchain api
@@ -116,6 +147,42 @@ const bubbleServer = new BubbleServer(SERVER_PORT, guardian);
 
 // Launch the server
 bubbleServer.start(() => console.log('server started'));
+
+```
+
+### Supporting Notifications
+
+Example server but with notifications supported.
+
+```javascript
+...
+// Construct the Bubble Guardian
+const dataServer = new MyDataServer();
+const notificationMgr = new NotificationManager(dataServer, SERVER_URL, postNotification)
+const notificationValidators = [notificationMgr.validateRequest];
+const guardian = new Guardian(dataServer, blockchainProvider, notificationValidators);
+const bubbleServer = new BubbleServer(SERVER_PORT, guardian, notificationMgr);
+
+// Launch the server
+bubbleServer.start(() => console.log('server started'));
+
+// Handler for optional notifcation support. Posts notifications to remote apis.
+function postNotification(target, notification) {
+
+  const postJson = (url, body) => {
+    ...
+    // typical RESTful api POST
+  }
+  
+  if (target.transport?.type !== 'webhook' || !target.transport?.url) {
+    console.log('notification target not supported:', target.id, target.transport?.type);
+    return;
+  }
+  postJson(target.transport.url, JSON.stringify(notification))
+    .catch((error) => {
+      console.log('notification delivery failed:', target.id, error.message || error);
+    });
+}
 ```
 
 ## Testing Your Server

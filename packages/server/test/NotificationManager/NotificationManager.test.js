@@ -133,12 +133,12 @@ describe('NotificationManager', () => {
 
   describe('notify', () => {
 
-    test('sends notifications to targets with matching exact and children path rules', () => {
-      dataServer.read.mockReturnValue(validConfig());
+    test('sends notifications to targets with matching exact and children path rules', async () => {
+      dataServer.read.mockReturnValue(JSON.stringify(validConfig()));
 
-      manager.notify('write', buildParams('write data'), EXACT_FILE, SIGNATORY);
+      await manager.notify('write', buildParams('write data'), EXACT_FILE, SIGNATORY);
 
-      expect(dataServer.read).toHaveBeenCalledWith(CONTRACT, RESERVED_FILE, { silent: true });
+      expect(dataServer.read).toHaveBeenCalledWith(CONTRACT, RESERVED_FILE.fullFilename, { silent: true });
       expect(notifier).toHaveBeenCalledTimes(2);
       expect(notifier).toHaveBeenNthCalledWith(
         1,
@@ -181,12 +181,12 @@ describe('NotificationManager', () => {
       );
     });
 
-    test('sends notification when the second operation matches', () => {
-      dataServer.read.mockReturnValue(validConfig());
+    test('sends notification when the second operation matches', async () => {
+      dataServer.read.mockReturnValue(JSON.stringify(validConfig()));
 
-      manager.notify('append', buildParams('append data'), EXACT_FILE, SIGNATORY);
+      await manager.notify('append', buildParams('append data'), EXACT_FILE, SIGNATORY);
 
-      expect(dataServer.read).toHaveBeenCalledWith(CONTRACT, RESERVED_FILE, { silent: true });
+      expect(dataServer.read).toHaveBeenCalledWith(CONTRACT, RESERVED_FILE.fullFilename, { silent: true });
       expect(notifier).toHaveBeenCalledTimes(1);
       expect(notifier).toHaveBeenNthCalledWith(
         1,
@@ -213,12 +213,12 @@ describe('NotificationManager', () => {
       );
     });
 
-    test('does not notify when the config is disabled or missing', () => {
-      dataServer.read.mockReturnValueOnce({ version: 1, enabled: false, targets: [] });
-      manager.notify('write', buildParams('write'), CHILD_FILE, SIGNATORY);
+    test('does not notify when the config is disabled or missing', async () => {
+      dataServer.read.mockReturnValueOnce(JSON.stringify({ version: 1, enabled: false, targets: [] }));
+      await manager.notify('write', buildParams('write'), CHILD_FILE, SIGNATORY);
 
       dataServer.read.mockReturnValueOnce(undefined);
-      manager.notify('write', buildParams('write'), CHILD_FILE, SIGNATORY);
+      await manager.notify('write', buildParams('write'), CHILD_FILE, SIGNATORY);
 
       expect(notifier).not.toHaveBeenCalled();
     });

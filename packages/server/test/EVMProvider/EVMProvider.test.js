@@ -6,6 +6,7 @@ import { keccak256, serializeSignature, toBytes } from 'viem';
 import { generatePrivateKey } from 'viem/accounts';
 import { eip712 } from '../../src/blockchain-providers/EVM/eip712.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
+import { ethers } from 'ethers';
 
 
 describe("EVMProvider", () => {
@@ -277,8 +278,9 @@ describe("EVMProvider", () => {
   
       test("recovers from a hash", async () => {
         const hash = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
+        const eip191Hash = ethers.hashMessage(Buffer.from(hash.slice(2), 'hex'));
         const sig = await account.signMessage({ message: {raw: hash} });
-        const result = await uut.recoverSignatory(hash, { type: "eip191", signature: sig }, "digest");
+        const result = await uut.recoverSignatory(eip191Hash, { type: "eip191", signature: sig }, "digest");
         expect(result).toBe(account.address);
       });
 

@@ -5,9 +5,10 @@ import { ContentManager, bubbleProviders } from '../../packages/client';
 import contractSrc from '../contracts/TestContract.json';
 
 // Imports under test
-import { Guardian, DataServer } from '../../packages/server';
-import { blockchainProviders } from '../../packages/core';
+import { Guardian } from '../../packages/server';
+import { blockchainProviders } from '../../packages/server';
 import Web3 from 'web3';
+import { ethers } from 'ethers';
 import http from 'http';
 import { TestContract } from '../mockups/TestContract.js';
 
@@ -33,13 +34,14 @@ describe('Server README code examples', () => {
       // Example HTTP server (no error handling)
       
       class BubbleServer {
-      
-        constructor(port, guardian) {
+
+        constructor(port, guardian, notificationMgr) {
           this.port = port;
           this.guardian = guardian;
+          this.notificationMgr = notificationMgr;
           this.server = http.createServer(this._handleRequest.bind(this));
         }
-      
+
         _handleRequest(req, res) {
             
             let body = '';
@@ -47,20 +49,23 @@ describe('Server README code examples', () => {
             req.on('data', (chunk) => {
               body += chunk.toString();
             });
-      
+
             req.on('end', async () => {
               const request = JSON.parse(body);
-              this.guardian.post(request.method, request.params)
-                .then(result => {
-                  this._sendResponse(req, res, {result: result});
+              this.guardian.postWithMetadata(request.method, request.params)
+                .then(response => {
+                  this._sendResponse(req, res, {result: response.response});
+                  if (this.notificationMgr && NOTIFICATION_OPERATIONS.includes(request.method)) {
+                    this.notificationMgr.notify(request.method, request.params, response.file, response.signatory);
+                  }
                 })
                 .catch(error => {
                   this._sendResponse(req, res, {error: error.toObject()});
                 })
             });
-      
+
         }
-      
+
         _sendResponse(req, res, result) {
           const response = {
             ...result,
@@ -70,17 +75,16 @@ describe('Server README code examples', () => {
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(response));
         }
-      
+
         start(callback) {
           this.server.listen(this.port, callback);
         }
-      
+
         close(callback) {
           this.server.close(callback);
         }
-      
-      }
 
+      }
       // Config
 
       const SERVER_PORT = 8131;
@@ -89,12 +93,12 @@ describe('Server README code examples', () => {
 
 
       // Setup blockchain api
-      const blockchainProvider = new blockchainProviders.Web3Provider(CHAIN_ID, new Web3(BLOCKCHAIN_API), '0.0.2')
+      const blockchainProvider = new blockchainProviders.EVMProvider('1.0', CHAIN_ID, new ethers.JsonRpcProvider(BLOCKCHAIN_API), '127.0.0.1')
 
 
       // Construct the Bubble Guardian and launch the server
       const dataServer = new MyDataServer();
-      const guardian = new Guardian(dataServer, blockchainProvider, 'http://127.0.0.1:'+SERVER_PORT);
+      const guardian = new Guardian(dataServer, blockchainProvider);
       const bubbleServer = new BubbleServer(SERVER_PORT, guardian);
 
       // Launch the server

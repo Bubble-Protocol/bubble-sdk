@@ -59,20 +59,32 @@ import { ethers } from 'ethers';
 
 const wallet = new ethers.Wallet('<private-key');
 
-const signFunction = getSignFunction(async (digest) => wallet.signingKey.sign(digest));
+const signFunction = getSignFunction((digest) => wallet.signingKey.sign(digest).serialized);
 
 ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
 
-### Read A Private File With Local `viem` Wallet
+### Read A Private File With Local `viem` Account
 ```javascript
-import { ContentManager, getSignFunction } from '@bubble-protocol/client';
+import { ContentManager, eip191 } from '@bubble-protocol/client';
 import { sign } from 'viem/accounts';
 import { serializeSignature } from 'viem';
 
-const viemSign = async (digest) => serializeSignature(await sign({digest, privateKey: '<private-key>'}));
+const account = privateKeyToAccount('0x' + owner.privateKey);
 
-const signFunction = getSignFunction(viemSign);
+const signFunction = eip191.getEIP191SignFunction((message) => account.signMessage({ message }) );
+
+ContentManager.read('<content-id>', signFunction).then(console.log);
+```
+
+### Read A Private File With Local `web3js` Wallet
+```javascript
+import { ContentManager, eip191 } from '@bubble-protocol/client';
+import Web3 from web3;
+
+const web3 = new Web3();
+
+const signFunction = eip191.getEIP191SignFunction((digest) => web3.eth.accounts.sign(digest, '<privateKey>').signature);
 
 ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
@@ -83,13 +95,13 @@ Uses EIP-712 to prompt the user to authorise a data access request.
 
 ```javascript
 import {ethers} from 'ethers';
-import {getEIP712SignFunction} from '@bubble-protocol/client';
+import {eip712} from '@bubble-protocol/client';
 
 const provider = ...; // Your blockchain provider, e.g. Web3 or web3auth.provider
 const ethersProvider = new ethers.BrowserProvider(provider);
 const signer = await ethersProvider.getSigner();
 
-const signFunction = getEIP712SignFunction('rpc', signer.signTypedData.bind(signer));
+const signFunction = eip712.getEIP712SignFunction('rpc', signer.signTypedData.bind(signer));
 
 ContentManager.read('<content-id>', signFunction).then(console.log);
 ```
@@ -98,7 +110,7 @@ ContentManager.read('<content-id>', signFunction).then(console.log);
 ```javascript
 import { BubbleContentManager, encryptionPolicies } from '@bubble-protocol/client';
 
-const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy('<encryption-private-key>');
+const encryptionPolicy = new encryptionPolicies.AESGCMEncryptionPolicy('<optional-encryption-key>');
 
 const signFunction = ...; // see Read A Private File examples above
 
@@ -1022,7 +1034,7 @@ async deploy(from, abi, bytecode, constructorParams=[]) {
     .send({
       from: from,
       gas: 1500000,
-      gasPrice: '10000000000'
+      gasPrice: '30000000000000'
     })
     .on('receipt', receipt => {
       contract.options.address = receipt.contractAddress;
@@ -1056,7 +1068,7 @@ In this case, our bubble will have the following features:
 
 ```javascript
 import Web3 from 'web3';
-import { Bubble, bubbleProviders, Delegation, encryptionPolicies, userManagers, toEthereumSignature, toDelegateSignFunction } from '@bubble-protocol/client';
+import { Bubble, bubbleProviders, Delegation, encryptionPolicies, userManagers, eip191, toDelegateSignFunction } from '@bubble-protocol/client';
 import { ContentId } from '@bubble-protocol/core';
 import { ecdsa } from '@bubble-protocol/crypto';
 
@@ -1078,10 +1090,7 @@ delegation.permitAccessToBubble(bubbleId);
 // Sign the delegation using your wallet key
 const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
 const accounts = await web3.eth.getAccounts();
-await delegation.sign((hash) => {
-  return web3.eth.sign(hash, accounts[0])
-  .then(toEthereumSignature)
-})
+await delegation.sign(eip191.getEIP191SignFunction((digest) => web3.eth.sign(digest, accounts[0])));
 
 // Construct a `BubbleProvider` appropriate to the API of the remote storage system.
 const storageProvider = new bubbleProviders.HTTPBubbleProvider(bubbleId.provider);
@@ -1164,11 +1173,35 @@ A user-defined policy given to a Content Manager or `Bubble` that describes whic
 
 The sign function is passed to the `ContentManager` or a `Bubble` instance to sign each content request before submitting it to an off-chain storage service.  The signature identifies the user to the off-chain storage service.  It is a user-defined function and depends on the platform (e.g. browser, Node.js) and on your application's identity strategy (whether you use Metamask, WalletConnect, a local blockchain node, a local private key, etc).
 
+```typescript
+// Sign Function signature. Takes a 32-byte hex-like string digest of the form "0x0102.." and returns
+// a signature object containing the signature bytes as a hex string and the type of signature
+const signFn = async (digest: HexString32) : Promise<{ type: 'plain' | 'eip191' | 'eip712', signature: HexString }>;
+```
+
+Three signatures types are supported:
+- `plain` - plain ECDSA signature
+- `eip191` - EIP-191 signature with prefixed `"\x19Ethereum Signed Message:\n"+message.length`
+- `eip712` - EIP-712 typed signatures for wallet compatibility
+
+To support the creation of the signature object, the following three functions are provided:
+```javascript
+
+import { getSignFunction, eip191, eip712 } from '@bubble-protocol/client';
+
+const mySignFn = async (digest) => ... // returns signature hex string (not signature object)
+
+const plainSignFn = getSignFunction(mySignFn);
+const eip191SgnFn = eip191.getEIP191SignFunction(mySignFn);
+const eip712SignFn = eip712.getEIP712SignFunction(context, mySignFn); // where context = 'rpc' for a standard request or 'delegate' for a delegate request
+
+```
+
 Example using the Crypto Library `Key` class:
 
 ```javascript
 const key = new ecdsa.Key('<private_key>');
-const signFunction = key.promiseToSign;
+const signFunction = key.signFunction;
 ```
 
 Example using the Crypto Library `sign` function:
@@ -1186,9 +1219,9 @@ Example of a web3.js sign function:
 ```javascript
 const accounts = await web3.eth.getAccounts();
 
-const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
+const signFunction = eip191.getEIP191SignFunction((hash) => web3.eth.sign(hash, accounts[0]));
 ```
-**NB**: observe the `.then(toEthereumSignature)` chain in the example above.  Since Ethereum wallets prefix signed messages with the string `"\x19Ethereum Signed Message:\n"+message.length`, any sign function that uses an Ethereum-type wallet must pass its output to the `toEthereumSignature` function defined in the Crypto Library.  This prepares the signature so that the storage server's Guardian software will recognise it as having a prefix and handle it accordingly.
+**NB**: observe the `getEIP191SignFunction` chain in the example above.  Since Ethereum wallets prefix signed messages with the string `"\x19Ethereum Signed Message:\n"+message.length`, any sign function that uses an Ethereum-type wallet must be wrapped in the `getEIP191SignFunction` function defined in the Client Library.  This prepares the signature so that the storage server's Guardian software will recognise it as having a prefix and handle it accordingly.
 
 #### Subscription
 

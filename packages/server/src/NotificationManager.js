@@ -1,9 +1,9 @@
-import { assert, BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
+import { assert, BubbleError, ErrorCodes, BubbleFilename, ROOT_PATH } from '@bubble-protocol/core';
 
 
-const NOTIFICATION_CONFIG_FILE = new BubbleFilename('0xb9f67f2a5b929a7c1f97864c755308c84d01d3764ba7d8061f6de8de52e0eec8');
-const NOTIFICATION_OPERATIONS = ['write', 'append', 'delete', 'mkdir'];
-const NOTIFICATION_MATCH_TYPES = ['exact', 'children'];
+export const NOTIFICATION_CONFIG_FILE = new BubbleFilename('0xb9f67f2a5b929a7c1f97864c755308c84d01d3764ba7d8061f6de8de52e0eec8');
+export const NOTIFICATION_OPERATIONS = ['write', 'append', 'delete', 'mkdir'];
+export const NOTIFICATION_MATCH_TYPES = ['exact', 'children', 'descendents'];
 
 
 /**
@@ -80,14 +80,29 @@ export class NotificationManager {
    * @param {BubbleFilename} file the file being modified
    * @param {Address} signatory the address of the signer
    */
-  notify(method, params, file, signatory) {
-    const config = this.dataServer.read(params.contract, NOTIFICATION_CONFIG_FILE, {silent: true});
-    if (config && config.enabled) {
-      const targets = config.version === 1 ? v1Config.getNotificationTargets(config, method, file) : [];
-      if (targets.length > 0) {
-        const notification = this._buildNotification(method, params, file, signatory);
-        targets.forEach((t) => this.notifier(t, notification));
+  async notify(method, params, file, signatory) {
+    try {
+      const configJSON = await this.dataServer.read(params.contract, NOTIFICATION_CONFIG_FILE.fullFilename, {silent: true});
+      if (configJSON) {
+        try {
+          const config = JSON.parse(configJSON);
+          if (config && config.enabled) {
+            const targets = config.version === 1 ? v1Config.getNotificationTargets(config, method, file) : [];
+            if (targets.length > 0) {
+              const notification = this._buildNotification(method, params, file, signatory);
+              targets.forEach((t) => this.notifier(t, notification));
+            }
+          }
+        }
+        catch(error) {
+          console.warn('invalid notification config JSON in contract', params.contract, 'skipping notifications');
+          return;
+        }
       }
+    }
+    catch(error) {
+      console.error('error checking notification config for contract', params.contract, 'skipping notifications', error);
+      return;
     }
   }
 
@@ -230,7 +245,12 @@ const v1Config = {
         const notify = (target.paths || []).some((pathRule) => {
           let isMatch = false;
           if (pathRule.match === 'exact') isMatch = file.equals(pathRule.path);
-          else if (pathRule.match === 'children') isMatch = file.isChildOf(pathRule.path);
+          else if (pathRule.match === 'children') {
+            isMatch = pathRule.path === ROOT_PATH ? !file.hasDirectory() : file.isChildOf(pathRule.path);
+          }
+          else if (pathRule.match === 'descendents') {
+            isMatch = pathRule.path === ROOT_PATH ? true : file.isChildOf(pathRule.path);
+          }
           return isMatch && pathRule.operations.includes(method);
         });
         if (notify) targets.push({ id: target.id,transport: target.transport });

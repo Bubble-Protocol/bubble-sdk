@@ -7,7 +7,7 @@ import { BubbleError, ErrorCodes, assert } from '@bubble-protocol/core';
 import { IBlockchainProvider } from '../IBlockchainProvider.js';
 import { Delegation } from '../../Delegation.js';
 import { eip712 } from './eip712.js';
-import { ethers, getBytes } from 'ethers';
+import { ethers } from 'ethers';
 import { ABIs } from './abi.js';
 
 /**
@@ -53,7 +53,6 @@ export class EVMProvider extends IBlockchainProvider{
   }
 
   async recoverSignatory(message, signature, context) {
-
     if (isLegacyRPC(message, signature, context)) {
       const {legacyPacket, signatureObj} = parseLegacyPacket(message, signature);
       return this.recoverSignatory(legacyPacket, signatureObj, 'rpc');  
@@ -65,24 +64,24 @@ export class EVMProvider extends IBlockchainProvider{
     assert.isString(signature.type, 'signature type');
     if (signature.type !== 'public') assert.isHexString(signature.signature, 'signature hex');
 
-    function getDigest(context, message) {
+    function getDigest(context, message, hashFn) {
       switch (context) {
         case 'rpc':
         case 'delegate':
           assert.isObject(message, 'message');
-          return JSON.stringify(message);
+          const json = JSON.stringify(message);
+          return hashFn(json);
         case 'message':
           assert.isString(message, 'message');
-          return message;
+          return hashFn(message);
         case 'digest':
           assert.isHexString(message, 'digest');
-          return getBytes(message);
+          return message;
         default:
           throw new Error('context not supported', {cause: "'"+context+"'"});
       }
     }
 
-    const digest = getDigest(context, message);
     const signatureHex = signature.type === 'public' || signature.signature.startsWith('0x') ? signature.signature : '0x' + signature.signature;
     const delegate = signature.delegate;
     let signatory;
@@ -92,10 +91,10 @@ export class EVMProvider extends IBlockchainProvider{
       case 'public':
         return PUBLIC_SIGNATORY;
       case 'plain':
-        signatory = this._recoverPlainSignature(digest, signatureHex, context);
+        signatory = ethers.recoverAddress(getDigest(context, message, (str) => ethers.keccak256(Buffer.from(str))), signatureHex);
         break;
       case 'eip191':
-        signatory = this._recoverEIP191Signature(digest, signatureHex);
+        signatory = ethers.recoverAddress(getDigest(context, message, ethers.hashMessage), signatureHex);
         break;
       case 'eip712':
         signatory = this._recoverEIP712Signature(message, signatureHex, context);
@@ -119,16 +118,6 @@ export class EVMProvider extends IBlockchainProvider{
     }
 
     return signatory;
-  }
-
-  _recoverPlainSignature(digest, signature, context) {
-    const hash = (context === 'digest') ? digest : ethers.keccak256(Buffer.from(digest));
-    return ethers.recoverAddress(hash, signature);
-  }
-
-  _recoverEIP191Signature(digest, signature) {
-    const hash = ethers.hashMessage(digest);
-    return ethers.recoverAddress(hash, signature);
   }
 
   _recoverEIP712Signature(message, signature, context) {

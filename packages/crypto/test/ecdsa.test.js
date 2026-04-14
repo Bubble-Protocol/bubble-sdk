@@ -417,21 +417,38 @@ describe("ECDSA", function() {
       describe("called with", function () {
 
         test("no argument results in an error", async function () {
-          await expect(key.signFunction()).rejects.toThrow("packet is missing or empty");
+          await expect(key.signFunction()).rejects.toThrow("data is missing or empty");
         });
 
         test("an invalid argument type results in an error", async function () {
-          await expect(key.signFunction("hash")).rejects.toThrow("packet type. Expected Object");
+          await expect(key.signFunction(1234)).rejects.toThrow("data type. Expected string");
         });
 
       });
 
-      test("returns a plain signature object for a valid hash and key", async function () {
+      test("returns the correct plain signature object for a valid object", async function () {
         const packet = { method: 'test', params: { version: 1, timestamp: 1234567890, nonce: 'nonce' } };
         var signature = await key.signFunction(packet);
         expect(signature).toMatchObject({
           type: 'plain',
-          signature: expect.stringMatching(/^[0-9a-fA-F]{130}$/)
+          signature: sign(hash(JSON.stringify(packet)), account.privateKey)
+        });
+      });
+
+      test("returns the correct plain signature for a valid hash", async function () {
+        var signature = await key.signFunction(randomHash);
+        expect(signature).toMatchObject({
+          type: 'plain',
+          signature: sign(randomHash, account.privateKey)
+        });
+      });
+
+      test("returns the correct plain signature for a valid string", async function () {
+        const text = "Hello World!";
+        var signature = await key.signFunction(text);
+        expect(signature).toMatchObject({
+          type: 'plain',
+          signature: sign(hash(text), account.privateKey)
         });
       });
 

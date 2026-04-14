@@ -4,13 +4,13 @@ import { testSignFunction } from '../mockups/test-bubble.js';
 
 // Imports under test
 import Web3 from 'web3';
-import { Bubble, Delegation, bubbleProviders, encryptionPolicies, toDelegateSignFunction, toEthereumSignature, userManagers } from '../../packages/client';
+import { Bubble, Delegation, bubbleProviders, encryptionPolicies, toDelegateSignFunction, eip191, userManagers } from '../../packages/client';
 import { ContentId } from '../../packages/core';
 import { ecdsa } from '../../packages/crypto/src/index.js';
 
 
 
-describe('Client README Create Bubble section', () => {
+describe('Client README Creating a Bubble (Example)', () => {
 
   var testState = {};
 
@@ -24,7 +24,7 @@ describe('Client README Create Bubble section', () => {
   }, 20000)
 
 
-  test('deploy contract', async () => {
+  test('Deploy The Contract', async () => {
 
     async function codeUnderTest() {
 
@@ -86,12 +86,12 @@ describe('Client README Create Bubble section', () => {
   test('sign function', async () => {
     const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
     const accounts = await web3.eth.getAccounts();
-    const signFunction = (hash) => web3.eth.sign(hash, accounts[0]).then(toEthereumSignature);
+    const signFunction = eip191.getEIP191SignFunction((hash) => web3.eth.sign(hash, accounts[0]));
     await testSignFunction(signFunction, accounts[0]);
   })
   
 
-  test("create bubble", async () => {
+  test("Create The Off-Chain Bubble", async () => {
 
     async function codeUnderTest() {
 
@@ -115,10 +115,7 @@ describe('Client README Create Bubble section', () => {
       // Sign the delegation using your wallet key
       const web3 = new Web3('http://127.0.0.1:8545');  // configure to your provider's url or use a different signing strategy
       const accounts = await web3.eth.getAccounts();
-      await delegation.sign((hash) => {
-        return web3.eth.sign(hash, accounts[0])
-        .then(toEthereumSignature)
-      })
+      await delegation.sign(eip191.getEIP191SignFunction((digest) => web3.eth.sign(digest, accounts[0])));
 
       // Construct a `BubbleProvider` appropriate to the API of the remote storage system.
       const storageProvider = new bubbleProviders.HTTPBubbleProvider(bubbleId.provider);
@@ -153,7 +150,7 @@ describe('Client README Create Bubble section', () => {
   })
 
 
-  test('Add friend', async () => {
+  test('Add a Friend', async () => {
 
     const contractSrc = testState.contractSrc;
     const bubble = testState.bubble;
