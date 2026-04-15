@@ -378,9 +378,7 @@ async function getPermissions(blockchainProvider, contract, file, signatory) {
     return await blockchainProvider.getPermissions(contract, signatory, file);
   }
   catch(error) {
-    if(error && error.message && error.message.match("execution reverted")) {
-      throw new BubbleError(ErrorCodes.BUBBLE_ERROR_METHOD_FAILED, 'Blockchain reverted. Is this an Access Control Contract?', {cause: error.message});
-    }
+    if (error instanceof BubbleError) throw error;
     else throw new BubbleError(ErrorCodes.BUBBLE_ERROR_INTERNAL_ERROR, 'Blockchain unavailable - please try again later.', {cause: error.message});
   }
 }

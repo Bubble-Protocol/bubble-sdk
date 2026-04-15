@@ -40,7 +40,15 @@ export class EVMProvider extends IBlockchainProvider{
 
   async getPermissions(contract, account, file) {
     const contractObj = new ethers.Contract(contract, this.abi, this.provider);
-    const permissions = await contractObj.getAccessPermissions(account, file);
+    const permissions = await contractObj.getAccessPermissions(account, file).catch(error => {
+      if (error && error.code === 'BAD_DATA' && error.value === '0x') {
+        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_CONTRACT_DOES_NOT_EXIST, 'contract does not exist', {cause: `${error.shortMessage||error.message}, value='${error.value}'`});
+      } 
+      else if(error && error.message && error.message.match("execution reverted")) {
+        throw new BubbleError(ErrorCodes.BUBBLE_ERROR_METHOD_FAILED, 'Blockchain reverted. Is this an Access Control Contract?', {cause: error.message});
+      }
+      else throw error;
+    });
     return BigInt(permissions);
   }
 
