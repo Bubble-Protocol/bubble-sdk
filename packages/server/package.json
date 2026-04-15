@@ -1,6 +1,6 @@
 {
   "name": "@bubble-protocol/server",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Bubble Protocol server-side library",
   "author": "Bubble Protocol",
   "license": "MIT",
@@ -35,7 +35,7 @@
     "viem": "^2.26.5"
   },
   "dependencies": {
-    "@bubble-protocol/core": "^0.0.16",
+    "@bubble-protocol/core": "^1.0.0",
     "ethers": "^6.13.5"
   }
 }
