@@ -1,15 +1,14 @@
+// uut imports
+import { Guardian, blockchainProviders } from '../../packages/server';
+import Web3 from 'web3';
+import { ethers } from 'ethers';
+import http from 'http';
 
+// test imports
 import { startBlockchain, stopBlockchain } from '../mockups/test-blockchain.js';
 import { RamBasedDataServer } from '../mockups/RamBasedDataServer.js';
 import { ContentManager, bubbleProviders } from '../../packages/client';
 import contractSrc from '../contracts/TestContract.json';
-
-// Imports under test
-import { Guardian } from '../../packages/server';
-import { blockchainProviders } from '../../packages/server';
-import Web3 from 'web3';
-import { ethers } from 'ethers';
-import http from 'http';
 import { TestContract } from '../mockups/TestContract.js';
 
 

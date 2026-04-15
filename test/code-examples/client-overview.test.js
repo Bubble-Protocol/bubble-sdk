@@ -1,11 +1,12 @@
-
-import { pingServerTest, startServers, stopServers } from '../mockups/test-servers.js';
-import { bubbleAvailableTest, clearTestBubble, constructTestBubble, owner, ownerBubble, requester } from '../mockups/test-bubble.js';
+// uut imports
 import { ContentManager, getSignFunction, BubbleContentManager, encryptionPolicies, eip191 } from '../../packages/client';
 import { ethers } from 'ethers';
 import { privateKeyToAccount } from 'viem/accounts';
-import { randomBytes } from 'crypto';
 import Web3 from 'web3';
+
+// test imports
+import { pingServerTest, startServers, stopServers } from '../mockups/test-servers.js';
+import { bubbleAvailableTest, clearTestBubble, constructTestBubble, owner, ownerBubble } from '../mockups/test-bubble.js';
 
 describe('Client README overview code examples', () => {
 

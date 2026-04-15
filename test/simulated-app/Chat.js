@@ -1,6 +1,4 @@
-import { assert } from '../../packages/core/src/index.js';
-import { Bubble, toFileId } from "../../packages/client/src";
-import { WebsocketBubbleProvider } from "../../packages/client/src/bubble-providers/WebsocketBubbleProvider";
+import { Bubble, toFileId, bubbleProviders, assert } from "../../packages/client/src";
 
 export const CONTENT = {
   metadataFile: toFileId(101),
@@ -17,7 +15,7 @@ export class Chat extends Bubble {
   messages = [];
   
   constructor(bubbleId, deviceKey, encryptionPolicy, userManager) {
-    const provider = new WebsocketBubbleProvider(bubbleId.provider);
+    const provider = new bubbleProviders.WebsocketBubbleProvider(bubbleId.provider);
     super(bubbleId, provider, deviceKey.signFunction, encryptionPolicy, userManager);
     provider.on('reconnect', () => {this._subscribeToContent(true, true)});
   }

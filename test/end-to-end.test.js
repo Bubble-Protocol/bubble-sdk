@@ -1,5 +1,7 @@
-import { BubblePermissions, ContentId, ErrorCodes } from '../packages/client/node_modules/@bubble-protocol/core';
-import { BubbleContentManager, ContentManager, encryptionPolicies, toDelegateSignFunction, toFileId } from '../packages/client';
+// uut imports
+import { BubblePermissions, ContentId, ErrorCodes, BubbleContentManager, ContentManager, encryptionPolicies, toDelegateSignFunction, toFileId, Delegation } from '../packages/client';
+
+// test imports
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requester, requesterBubble, requesterSign } from './mockups/test-bubble.js';
 import { DataServerTestPoint } from '../packages/server/test/DataServerTestSuite/DataServerTestPoint.js';
@@ -7,7 +9,6 @@ import { testDataServerRequirements } from '../packages/server/test/DataServerTe
 import { RamBasedDataServer } from './mockups/RamBasedDataServer.js';
 import { constructTestBubble } from './mockups/test-bubble.js';
 import '../packages/core/test/BubbleErrorMatcher.js';
-import { Delegation } from '../packages/client/src/Delegation';
 
 
 const JSON_RPC_ERROR_INVALID_METHOD_PARAMS = -32602;

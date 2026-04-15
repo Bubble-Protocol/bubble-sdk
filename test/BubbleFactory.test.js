@@ -1,9 +1,11 @@
-import { Bubble, BubbleFactory } from '../packages/client/src';
+// uut imports
+import { Bubble, BubbleFactory, ecies } from '../packages/client';
+
+// test imports
 import { pingServerTest, startServers, stopServers, BUBBLE_SERVER_URL } from './mockups/test-servers.js';
 import { bubbleAvailableTest, owner, ownerBubble as bubble, ownerSign, requester, requesterSign, deleteAllBubbles } from './mockups/test-bubble.js';
 import { constructTestBubble } from './mockups/test-bubble.js';
 import '../packages/core/test/BubbleErrorMatcher.js';
-import { ecies } from '../packages/crypto/src';
 import multiUserContractSrc from './contracts/MultiUserContract.json';
 
 

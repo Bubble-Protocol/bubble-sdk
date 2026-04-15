@@ -1,7 +1,6 @@
 import { beforeAll, describe, jest } from '@jest/globals';
-import { BubbleError, BubbleFilename, BubblePermissions } from '@bubble-protocol/core';
-import { Guardian } from '../../src/Guardian.js';
-import { ErrorCodes, Permissions, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, VALID_FILE, ROOT_PATH, VALID_DIR, NOTIFICATION_CONFIG_FILE, PROVIDER_URL, VALID_CONTRACT } from './common.js';
+import { BubbleError, BubbleFilename, BubblePermissions, Guardian } from '../../src/index.js';
+import { ErrorCodes, Permissions, TestBlockchainProvider, TestDataServer, COMMON_RPC_PARAMS, VALID_FILE, ROOT_PATH, VALID_DIR } from './common.js';
 import { testPostParams } from './post.params.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 

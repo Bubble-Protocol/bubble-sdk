@@ -1,6 +1,5 @@
 import { describe, jest } from '@jest/globals';
-import { BubbleError, ErrorCodes } from '@bubble-protocol/core';
-import { EVMProvider } from '../../src/blockchain-providers/EVM/EVMProvider.js';
+import { BubbleError, ErrorCodes, blockchainProviders } from '../../src/index.js';
 import { privateKeyToAccount, sign } from 'viem/accounts';
 import { keccak256, serializeSignature, toBytes } from 'viem';
 import { generatePrivateKey } from 'viem/accounts';
@@ -116,7 +115,7 @@ describe("EVMProvider", () => {
   //
 
   beforeAll(async () => {
-    uut = new EVMProvider(PROTOCOL_VERSION, CHAIN_ID, PROVIDER, HOST_DOMAIN);
+    uut = new blockchainProviders.EVMProvider(PROTOCOL_VERSION, CHAIN_ID, PROVIDER, HOST_DOMAIN);
     activeBubbleDelegate = await _constructSignedDelegate(VALID_DELEGATE, account.address, delegateKey);
   })
 
@@ -143,9 +142,9 @@ describe("EVMProvider", () => {
   describe("getChainId", () => {
 
     test("returns the chainId passed in the constructor", () => {
-      const uut = new EVMProvider(PROTOCOL_VERSION, 1, PROVIDER, HOST_DOMAIN);
+      const uut = new blockchainProviders.EVMProvider(PROTOCOL_VERSION, 1, PROVIDER, HOST_DOMAIN);
       expect(uut.getChainId()).toBe(1);
-      const uut2 = new EVMProvider(PROTOCOL_VERSION, 1337, PROVIDER, HOST_DOMAIN);
+      const uut2 = new blockchainProviders.EVMProvider(PROTOCOL_VERSION, 1337, PROVIDER, HOST_DOMAIN);
       expect(uut2.getChainId()).toBe(1337);
     });
   

@@ -1,10 +1,13 @@
+// uut imports
+import { ROOT_PATH } from '../packages/client';
+
+// test imports
 import { jest } from '@jest/globals';
 import { pingWebsocketServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, ownerBubble, requesterBubble } from './mockups/test-bubble.js';
 import { constructTestBubble } from './mockups/test-bubble.js';
 import '../packages/core/test/BubbleErrorMatcher.js';
 import contractSrc from './contracts/MultiUserContract.json';
-import { ROOT_PATH } from '../packages/core/src/index.js';
 
 
 const publicDir = "0x0000000000000000000000000000000000000000000000000000000000000001";

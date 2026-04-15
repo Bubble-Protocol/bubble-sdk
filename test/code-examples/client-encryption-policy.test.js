@@ -1,12 +1,9 @@
+// uut imports
+import { ContentManager, BubbleFilename, encryptionPolicies, BubbleContentManager, toFileId } from '../../packages/client';
+
+// test imports
 import { pingServerTest, startServers, stopServers } from '../mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, constructTestBubble, owner, ownerSign, requesterBubble, requesterSign } from '../mockups/test-bubble.js';
-import { BubbleContentManager, toFileId } from '../../packages/client';
-
-// Imports under test
-import { BubbleFilename } from "../../packages/core/src/index.js";
-import { encryptionPolicies } from '../../packages/client/src/index.js';
-import { ContentManager } from '../../packages/client';
-
 
 describe('Client README encryption policy code example', () => {
 

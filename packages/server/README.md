@@ -39,8 +39,7 @@ Notifications are more powerful version of subscriptions. Mutation changes of sp
 Example of a JSONRPC 2.0 web server.
 
 ```javascript
-import { Guardian, DataServer, NotificationManager, NOTIFICATION_OPERATIONS } from '@bubble-protocol/server';
-import { blockchainProviders } from '@bubble-protocol/core';
+import { Guardian, DataServer, blockchainProviders, NotificationManager, NOTIFICATION_OPERATIONS } from '@bubble-protocol/server';
 import Web3 from 'web3';
 import http from 'http';
 
