@@ -1,4 +1,4 @@
-import { ContentId, Bubble, BubblePermissions } from '@bubble-protocol/client';
+import { ContentId, Bubble, BubblePermissions, eip191 } from '@bubble-protocol/client';
 
 
 //
@@ -59,7 +59,7 @@ export class TestContract {
       provider: bubbleServerURL
     });
 
-    return new Bubble(bubbleId, bubbleProvider, (hash) => this.web3.eth.sign(hash, this.accounts[accountIndex]));
+    return new Bubble(bubbleId, bubbleProvider, eip191.getEIP191SignFunction((hash) => this.web3.eth.sign(hash, this.accounts[accountIndex])));
   }
 
 
