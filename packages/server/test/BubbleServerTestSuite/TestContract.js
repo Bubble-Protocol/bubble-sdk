@@ -1,6 +1,4 @@
-import { BubblePermissions } from '@bubble-protocol/core';
-import { ContentId } from '@bubble-protocol/core';
-import { Bubble } from '@bubble-protocol/client';
+import { ContentId, Bubble, BubblePermissions } from '@bubble-protocol/client';
 
 
 //

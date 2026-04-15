@@ -1,6 +1,5 @@
 import { describe, expect, jest } from '@jest/globals';
-import { BubbleError, ErrorCodes, BubbleFilename } from '@bubble-protocol/core';
-import { NotificationManager } from '../../src/NotificationManager.js';
+import { NotificationManager, BubbleError, ErrorCodes, BubbleFilename } from '../../src/index.js';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
 
 

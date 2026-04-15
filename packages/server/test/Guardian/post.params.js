@@ -1,7 +1,6 @@
 import { jest } from '@jest/globals';
-import { BubbleError } from '@bubble-protocol/core';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
-import { Guardian } from '../../src/Guardian.js';
+import { Guardian, BubbleError } from '../../src/index.js';
 import { 
   VALID_CONTRACT, VALID_DIR, VALID_FILE_PART, VALID_RPC_PARAMS, 
   TestDataServer, TestBlockchainProvider, 

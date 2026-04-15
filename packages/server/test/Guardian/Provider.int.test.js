@@ -1,13 +1,11 @@
 import { expect, jest } from '@jest/globals';
-import { BubbleError, ROOT_PATH } from '@bubble-protocol/core';
 import '@bubble-protocol/core/test/BubbleErrorMatcher.js';
-import { Guardian } from '../../src/Guardian.js';
+import { Guardian, BubbleError, ROOT_PATH, blockchainProviders } from '../../src/index.js';
 import { 
   VALID_CONTRACT, 
   TestDataServer, 
   ErrorCodes, Permissions
 } from './common.js';
-import { EVMProvider } from '../../src/blockchain-providers/EVM/EVMProvider.js';
 import { generatePrivateKey, privateKeyToAccount, serializeSignature, sign } from 'viem/accounts';
 import { keccak256, toBytes } from 'viem';
 import { eip712 } from '../../src/blockchain-providers/EVM/eip712.js';
@@ -47,7 +45,7 @@ describe("Guardian/Provider Integration Tests", () => {
 
   beforeAll(async () => {
     dataServer = new TestDataServer();
-    blockchainProvider = new EVMProvider("1.0", 137, mockEthersProvider, "bubble.io");
+    blockchainProvider = new blockchainProviders.EVMProvider("1.0", 137, mockEthersProvider, "bubble.io");
     guardian = new Guardian(dataServer, blockchainProvider);
   })
 
