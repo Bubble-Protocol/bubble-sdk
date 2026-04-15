@@ -102,7 +102,6 @@ export function recover(hash, signature, asPublicKey=false) {
  * @returns the hash (without leading `0x`)
  */
 export function hash(data, encoding) {
-  assert.isString(data, 'data');
   return Web3.utils.keccak256(Buffer.from(data, encoding)).slice(2);
 }
 

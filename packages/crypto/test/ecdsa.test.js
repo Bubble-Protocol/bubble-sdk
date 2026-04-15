@@ -96,6 +96,11 @@ describe("ECDSA", function() {
       expect(hash(text)).toBe("20a39c5a3c8b006065fbb57eff6e6ee6b63c425d8f121c7fd2de83199a2a16a8");
     });
 
+    test.only("calculates the correct hash for a uint8array", function() {
+      const uint8array = new Uint8Array([1,2,3,4,5]);
+      expect(hash(uint8array, '')).toBe("7d87c5ea75f7378bb701e404c50639161af3eff66293e9f375b5f17eb50476f4");
+    });
+
   });
 
 
