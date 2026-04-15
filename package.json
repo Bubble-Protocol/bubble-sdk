@@ -26,6 +26,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/Bubble-Protocol/bubble-sdk.git"
   },
+  "workspaces": ["packages/*"],
   "bugs": {
     "url": "https://github.com/Bubble-Protocol/bubble-sdk/issues"
   },

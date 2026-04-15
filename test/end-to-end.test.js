@@ -1,4 +1,4 @@
-import { BubblePermissions, ContentId, ErrorCodes } from '../packages/client/node_modules/@bubble-protocol/core';
+import { BubblePermissions, ContentId, ErrorCodes } from '../packages/core';
 import { BubbleContentManager, ContentManager, encryptionPolicies, toDelegateSignFunction, toFileId } from '../packages/client';
 import { BUBBLE_SERVER_URL, CHAIN_ID, MockBubbleServer, pingServerTest, startServers, stopServers } from './mockups/test-servers.js';
 import { bubbleAvailableTest, clearTestBubble, contract, owner, ownerBubble, ownerSign, requester, requesterBubble, requesterSign } from './mockups/test-bubble.js';
