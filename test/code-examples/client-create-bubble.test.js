@@ -1,13 +1,10 @@
+// uut imports
+import { ContentId, ecdsa, Bubble, Delegation, bubbleProviders, encryptionPolicies, toDelegateSignFunction, eip191, userManagers } from '../../packages/client';
+import Web3 from 'web3';
 
+// test imports
 import { startServers, stopServers } from '../mockups/test-servers.js';
 import { testSignFunction } from '../mockups/test-bubble.js';
-
-// Imports under test
-import Web3 from 'web3';
-import { Bubble, Delegation, bubbleProviders, encryptionPolicies, toDelegateSignFunction, eip191, userManagers } from '../../packages/client';
-import { ContentId } from '../../packages/core';
-import { ecdsa } from '../../packages/crypto/src/index.js';
-
 
 
 describe('Client README Creating a Bubble (Example)', () => {

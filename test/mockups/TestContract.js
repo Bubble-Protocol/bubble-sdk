@@ -1,5 +1,5 @@
-import { BubblePermissions, ContentId } from '../../packages/core';
-import { Bubble, eip191 } from '../../packages/client';
+// uut imports
+import { BubblePermissions, ContentId, Bubble, eip191 } from '../../packages/client';
 
 
 //

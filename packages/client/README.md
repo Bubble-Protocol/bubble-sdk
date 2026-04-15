@@ -14,7 +14,6 @@ The Bubble Private Cloud is a cloud-based bubble provider available to developer
 
 ```shell
 npm i @bubble-protocol/client
-npm i @bubble-protocol/crypto  # if you need to access private or encrypted content
 ```
 
 ## Overview
@@ -44,8 +43,7 @@ PublicContentManager.read('<content-id>').then(console.log);
 
 ### Read A Private File
 ```javascript
-import { ContentManager } from '@bubble-protocol/client';
-import { ecdsa } from '@bubble-protocol/crypto';
+import { ContentManager, ecdsa } from '@bubble-protocol/client';
 
 const signFunction = ecdsa.getSignFunction('<private-key>');
 
@@ -129,9 +127,7 @@ Assumes a smart contract implementing the `AccessControlledStorage` interface ha
 
 ### Create A New Bubble
 ```javascript
-import { Bubble, bubbleProviders } from '@bubble-protocol/client';
-import { ContentId } from '@bubble-protocol/core';
-import { ecdsa } from '@bubble-protocol/crypto';
+import { ContentId, Bubble, bubbleProviders, ecdsa } from '@bubble-protocol/client';
 
 const bubbleId = new ContentId({
   chain: <chain_id>,
@@ -183,7 +179,7 @@ A multi-user bubble is an encrypted bubble with a metadata file for each user. E
 Assumes a smart contract implementing the `AccessControlledStorage` interface has already been deployed to a blockchain giving all users access to at least their metadata file.  See [Access Control Contracts](#access-control-contracts).
 
 ```javascript
-const key = new Key('<private-key>');
+const key = new ecdsa.Key('<private-key>');
 
 const bubbleId = new ContentID({
   chain: <chain_id>,
@@ -207,7 +203,7 @@ A user encrypted bubble holds a metadata file for the user containing the bubble
 Assumes a smart contract implementing the `AccessControlledStorage` interface has already been deployed to a blockchain and the user has access to at least their metadata file.  See [Access Control Contracts](#access-control-contracts).
 
 ```javascript
-const key = new Key('<user-private-key>');
+const key = new ecdsa.Key('<user-private-key>');
 
 const bubbleId = new ContentID({
   chain: <chain_id>,
@@ -230,8 +226,7 @@ Requires the abi and bytecode for the bubble's [Access Control Contract](#access
 
 ### Construct A New Bubble
 ```javascript
-import { DeployableBubble } from '@bubble-protocol/client';
-import { ecdsa } from '@bubble-protocol/crypto';
+import { DeployableBubble, ecdsa } from '@bubble-protocol/client';
 
 const contractSourceCode = {
   abi: [...],
@@ -314,7 +309,7 @@ This indicates it is a file within a directory in the bubble and will derive its
 
 File zero is reserved and means the root of the bubble itself.  Only users with write permissions to file `0` can create the bubble on an off-chain storage service.  Listing file `0` will return a list of all files and directories in the bubble.
 ```javascript
-import { ROOT_PATH } from '@bubble-protocol/core';
+import { ROOT_PATH } from '@bubble-protocol/client';
 
 bubble.list(ROOT_PATH).then(console.log);
 ``` 
@@ -372,8 +367,7 @@ Each method takes a content id and a sign function.
 Example of writing and reading a file using the `ContentManager` (assumes you have a web3 provider, a content id and have rw access to the content):
 
 ```javascript
-import { ContentManager } from '@bubble-protocol/client';
-import { ecdsa } from '@bubble-protocol/crypto';
+import { ContentManager, ecdsa } from '@bubble-protocol/client';
 
 // Construct a sign function
 const signFunction = ecdsa.getSignFunction('<private-key>')
@@ -407,8 +401,7 @@ The Bubble class is designed to be extended to meet your use case.  This SDK inc
 Example of using the `Bubble` class to create a bubble, write a file, list a directory and terminate the bubble.  Assumes the bubble's smart contract is already deployed to the blockchain and that you have access permissions.
 
 ```javascript
-import { Bubble, bubbleProviders, toFileId } from '@bubble-protocol/client';
-import { ContentId } from '@bubble-protocol/core';
+import { ContentId, Bubble, bubbleProviders, toFileId } from '@bubble-protocol/client';
 
 
 // Identify the bubble (this example assumes the smart contract has already been deployed)
@@ -478,8 +471,7 @@ Multiple policies can be merged into a single policy using the [`MultiEncryption
 An encryption policy can be used on its own or can be passed to the `ContentManager` or `Bubble`, either in the constructor or via the `setEncryptionPolicy` method.  The `BubbleFactory` uses encryption policies to provide common patterns for encrypted bubbles, which can be overridden via the options parameter.
 
 ```javascript
-import { BubbleFilename } from "@bubble-protocol/core";
-import { encryptionPolicies, ContentManager, toFileId } from '@bubble-protocol/client';
+import { BubbleFilename, encryptionPolicies, ContentManager, toFileId } from '@bubble-protocol/client';
 
 const filenames = {
   publicDir: toFileId(1),           // '0x0000000000000000000000000000000000000000000000000000000000000001'
@@ -638,9 +630,7 @@ contract SimpleFileVault is AccessControlledStorage {
 ### The App
 
 ```javascript
-import { DeployableBubble, toFileId } from '@bubble-protocol/client';
-import { ecdsa } from '@bubble-protocol/crypto';
-import { Key } from '@bubble-protocol/crypto/src/ecdsa';
+import { DeployableBubble, toFileId, ecdsa } from '@bubble-protocol/client';
 import Web3 from 'web3';
 
 class SimpleFileVault extends DeployableBubble {
@@ -724,7 +714,7 @@ class Wallet {
   async login(message) {
     const from = window.ethereum.selectedAddress;
     const signature = await this.web3.eth.personal.sign(message, from, '');
-    this.loginKey = new Key(ecdsa.hash(signature));
+    this.loginKey = new ecdsa.Key(ecdsa.hash(signature));
   }
 
   getChainId() { return 1 }
@@ -1068,10 +1058,7 @@ In this case, our bubble will have the following features:
 
 ```javascript
 import Web3 from 'web3';
-import { Bubble, bubbleProviders, Delegation, encryptionPolicies, userManagers, eip191, toDelegateSignFunction } from '@bubble-protocol/client';
-import { ContentId } from '@bubble-protocol/core';
-import { ecdsa } from '@bubble-protocol/crypto';
-
+import { ContentId, Bubble, bubbleProviders, Delegation, ecdsa, encryptionPolicies, userManagers, eip191, toDelegateSignFunction } from '@bubble-protocol/client';
 
 // Identify your bubble
 const bubbleId = new ContentId({

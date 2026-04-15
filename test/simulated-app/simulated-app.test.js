@@ -3,9 +3,7 @@ import { bubbleAvailableTest, owner, ownerBubble, requester} from '../mockups/te
 import { constructTestBubble } from '../mockups/test-bubble.js';
 import '../../packages/core/test/BubbleErrorMatcher.js';
 import contractSrc from '../contracts/GroupBubble.json';
-import { assert } from '../../packages/core/src/index.js';
-import { encryptionPolicies, toFileId, userManagers } from '../../packages/client/src/index.js';
-import { ecdsa, ecies } from '../../packages/crypto/src/index.js';
+import { encryptionPolicies, toFileId, userManagers, assert, ecdsa, ecies } from '../../packages/client/src/index.js';
 import { Chat, CONTENT, DEFAULT_METADATA } from './Chat.js';
 
 describe('simulated application tests', () => {
