@@ -65,26 +65,6 @@ class BubbleServer {
 
   _handleRequest(req, res) {
       
-      const postNotify = async (method, params) => {
-        this.guardian.postWithMetadata(request.method, request.params)
-          .then(response => {
-            this._sendResponse(req, res, {result: response.response});
-          })
-          .catch(error => {
-            this._sendResponse(req, res, {error: error.toObject()});
-          })
-      }
-
-      const post = async (method, params) => {
-        this.guardian.post(request.method, request.params)
-          .then(result => {
-            this._sendResponse(req, res, {result});
-          })
-          .catch(error => {
-            this._sendResponse(req, res, {error: error.toObject()});
-          })
-      }
-
       let body = '';
 
       req.on('data', (chunk) => {
@@ -93,12 +73,9 @@ class BubbleServer {
 
       req.on('end', async () => {
         const request = JSON.parse(body);
-        this.guardian.postWithMetadata(request.method, request.params)
+        this.guardian.post(request.method, request.params)
           .then(response => {
-            this._sendResponse(req, res, {result: response.response});
-            if (this.notificationMgr && NOTIFICATION_OPERATIONS.includes(request.method)) {
-              notificationManager.notify(method, params, response.file, response.signatory);
-            }
+            this._sendResponse(req, res, {result: response});
           })
           .catch(error => {
             this._sendResponse(req, res, {error: error.toObject()});
@@ -155,6 +132,24 @@ Example server but with notifications supported.
 
 ```javascript
 ...
+
+      // Replace `req.on` in the BubbleServer class with:
+      req.on('end', async () => {
+        const request = JSON.parse(body);
+        this.guardian.postWithMetadata(request.method, request.params)
+          .then(response => {
+            this._sendResponse(req, res, {result: response.response});
+            if (NOTIFICATION_OPERATIONS.includes(request.method)) {
+              notificationManager.notify(method, params, response.file, response.signatory);
+            }
+          })
+          .catch(error => {
+            this._sendResponse(req, res, {error: error.toObject()});
+          })
+      });
+
+...
+
 // Construct the Bubble Guardian
 const dataServer = new MyDataServer();
 const notificationMgr = new NotificationManager(dataServer, SERVER_URL, postNotification)
